@@ -4,6 +4,7 @@
 
 using namespace std;
 
+#include "TH2.h"
 #include "TRandom1.h"
 #include "Math/SpecFunc.h"
 #include "Minuit2/FCNBase.h"
@@ -22,6 +23,8 @@ struct wave {
   wave(const wave& o) { l = o.l; m = o.m; a = o.a; }
 };
 
+class event;
+
 struct coherent_waves {
   int reflectivity;
   int spinflip;
@@ -29,11 +32,15 @@ struct coherent_waves {
 
   coherent_waves() {}
   coherent_waves(const coherent_waves& o) { reflectivity = o.reflectivity; spinflip = o.spinflip; waves = o.waves; }
+
+  complex<double> sum(const vector<double>& x, size_t idx_base, const event& e) const;
+  size_t getNwaves() { return waves.size(); }
 };
 
 typedef vector<coherent_waves> waveset;
 
-struct event {
+class event {
+public:
   double theta;
   double phi;
 
@@ -42,6 +49,13 @@ struct event {
   event(const event& other) { theta = other.theta; phi = other.phi; }
   */
   event(double th, double ph) { theta = th; phi = ph; }
+
+  double decayAmplitude(int reflectivity, const wave& w) const
+  { return decayAmplitude(reflectivity, w.l, w.m); };
+  double decayAmplitude(int reflectivity, int l, int m) const;
+  double MCweight(int reflectivity, const wave& w1, const wave& w2) const
+  { return MCweight(reflectivity, w1.l, w1.m, w2.l, w2.m); }
+  double MCweight(int reflectivity, int l1, int m1, int l2, int m2) const;
 };
 
 event RDevents[NRDEVENTS]; // not a reference because of Cint limitations
@@ -61,17 +75,17 @@ private:
   double
   decay(int reflectivity, int l, int m, double theta, double phi) const;
 
-  complex<double>
-  coherentSum(const coherent_waves& waves, const event& e) const;
+  double
+  probabilityDensity(const vector<double>& x, double theta, double phi) const;
 
   double
-  probabilityDensity(const event& e) const;
+  probabilityDensity(const vector<double>& x, const event& e) const;
 
   double
-  mcWeight(int reflectivity, int l1, int m1, int l2, int m2) const;
+  MCweight(int reflectivity, const wave& w1, const wave& w2) const;
 
   double
-  calc_likelihood() const;
+  calc_likelihood(const vector<double>& x) const;
 
 public:
   double
@@ -91,42 +105,64 @@ public:
 // NOTE the phase is ignored, as different reflectivities don't interfere
 
 double
-likelihood::decay(int reflectivity, int l, int m, double theta, double phi) const
+event::decayAmplitude(int reflectivity, int l, int m) const
 {
-  double spherical = ROOT::Math::sph_legendre(l, m, theta);
+  double spherical = ROOT::Math::sph_legendre(l, m, this->theta);
 
-  double factor = .5;
+  // This absorbs the factor 2 from e^i \pm e^-i = 2 {i sin, cos}
+  double factor = 1;
   if (m != 0)
-    factor = sqrt(.5);    
+    factor = sqrt(2.);    
 
   if (reflectivity == +1)
-    return 2.*factor*spherical*sin(m*phi);
+    return factor*spherical*sin(m*this->phi);
   else
-    return 2.*factor*spherical*cos(m*phi);
+    return factor*spherical*cos(m*this->phi);
+}
+
+
+double
+event::MCweight(int reflectivity, int l1, int m1, int l2, int m2) const
+{
+  // This is real and no conjugate is employed because of the special
+  // form of the two-pseudoscalar decay amplitudes.
+  return (this->decayAmplitude(reflectivity,l1,m1)
+	  * this->decayAmplitude(reflectivity,l2,m2));
 }
 
 complex<double>
-likelihood::coherentSum(const coherent_waves& waves, const event& e) const
+coherent_waves::sum(const vector<double>& x, size_t idx_base, const event& e) const
 {
-  complex<double> sum = 0;
+  complex<double> result = 0;
+  size_t idx = idx_base;
   vector<wave>::const_iterator it;
-  for (it = waves.waves.begin(); it != waves.waves.end(); it++)
+  for (it = this->waves.begin(); it != this->waves.end(); it++)
     {
-      sum += it->a * decay(waves.reflectivity,it->l,it->m,e.theta,e.phi);
+      complex<double> a(x[idx], x[idx+1]);
+      result += a * e.decayAmplitude(this->reflectivity,*it);
+      idx += 2;
     }
 
-  return sum;
+  return result;
 }
 
 double
-likelihood::probabilityDensity(const event& e) const
+likelihood::probabilityDensity(const vector<double>& x, double theta, double phi) const
+{
+  return this->probabilityDensity(x, event(theta, phi));
+}
+
+double
+likelihood::probabilityDensity(const vector<double>& x, const event& e) const
 {
   double sum = 0;
   waveset::const_iterator it;
+  size_t idx_base = 0;
   for (it = ws.begin(); it != ws.end(); it++)
     {
       // norm = abs^2
-      sum += norm(coherentSum(*it, e));
+      sum += norm(it->sum(x, idx_base, e));
+      idx_base += 2*it->waves.size();
     }
   return sum;
 }
@@ -134,9 +170,10 @@ likelihood::probabilityDensity(const event& e) const
 map<int, double> weights;
 
 double
-likelihood::mcWeight(int reflectivity, int l1, int m1, int l2, int m2) const
+likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
 {
-  int id = reflectivity + ((l1 << 16) | (m1 << 12) | (l2 << 8) | (m2 << 4));
+  int id = reflectivity + ((w1.l << 16) | (w1.m << 12)
+			   | (w2.l << 8) | (w2.m << 4));
   if (weights.find(id) != weights.end())
     return weights[id];
 
@@ -148,8 +185,7 @@ likelihood::mcWeight(int reflectivity, int l1, int m1, int l2, int m2) const
       // Forming this sum as REAL sum and with no conjugate, because
       // the form of the decay amplitudes allows this.  This is not
       // the most general form!
-      double y = (decay(reflectivity,l1,m1,MCevents[i].theta,MCevents[i].phi)
-		  * decay(reflectivity,l2,m2,MCevents[i].theta,MCevents[i].phi)) - c;
+      double y = MCevents[i].MCweight(reflectivity,w1,w2) - c;
       double t = sum + y;
       c = (t - sum) - y;  // compensation term.
       sum = t;
@@ -159,19 +195,31 @@ likelihood::mcWeight(int reflectivity, int l1, int m1, int l2, int m2) const
 }
 
 double
-likelihood::calc_likelihood() const
+likelihood::calc_likelihood(const vector<double>& x) const
 {
   double sumMC = 0;
   waveset::const_iterator it;
+  size_t waveset_base = 0;
   for (it = ws.begin(); it != ws.end(); it++)
     {
       vector<wave>::const_iterator wave1, wave2;
-      for (wave1 = it->waves.begin(); wave1 != it->waves.end(); wave1++)
-	for (wave2 = it->waves.begin(); wave2 != it->waves.end(); wave2++)
-	  sumMC +=  real(wave1->a*conj(wave2->a)
-			 *mcWeight(it->reflectivity,
-				   wave1->l, wave1->m,
-				   wave2->l, wave2->m));
+      size_t idx1;
+      for (wave1 = it->waves.begin(), idx1 = waveset_base;
+	   wave1 != it->waves.end();
+	   wave1++, idx1 += 2)
+	{
+	  complex<double> a1(x[idx1], x[idx1+1]);
+	  size_t idx2;
+	  for (wave2 = it->waves.begin(), idx2 = waveset_base;
+	       wave2 != it->waves.end();
+	       wave2++, idx2 += 2)
+	    {
+	      complex<double> conj_a2(x[idx2], -x[idx2+1]);
+	      sumMC +=  real(a1*conj_a2
+			     *MCweight(it->reflectivity, *wave1, *wave2));
+	    }
+	}
+      waveset_base = idx1;
     }
 
   // Uses Kahan summation
@@ -179,14 +227,14 @@ likelihood::calc_likelihood() const
   double c = 0;
   for (size_t i = 0; i < NRDEVENTS /*RDevents.size()*/; i++)
     {
-      double y = log(probabilityDensity(RDevents[i])) - c;
+      double y = log(probabilityDensity(x, RDevents[i])) - c;
       double t = sumRD + y;
       c = (t - sumRD) - y;
       sumRD = t;
       //sumRD += y;
     }
 
-  cout << "likelihood = " << sumRD << " - " << sumMC << endl;
+  //cout << "likelihood = " << sumRD << " - " << sumMC << endl;
   return sumRD - sumMC;
 }
 
@@ -194,19 +242,8 @@ likelihood::calc_likelihood() const
 double
 likelihood::operator()(const vector<double>& x) const
 {
-  size_t idx = 0;
-  vector<coherent_waves>::iterator it;
-  for (it = const_cast<likelihood*>(this)->ws.begin(); it != const_cast<likelihood*>(this)->ws.end(); it++)
-    {
-      vector<wave>::iterator wave;
-      for (wave = it->waves.begin(); wave != it->waves.end(); wave++)
-	{
-	  wave->a = complex<double>(x[idx], x[idx + 1]);
-	  idx += 2;
-	}
-    }
 
-  return -this->calc_likelihood();
+  return -this->calc_likelihood(x);
 }
 
 
@@ -242,11 +279,15 @@ myFit()
   ws.push_back(wsPos);
   ws.push_back(wsNeg);
 
+  TH2* hRD = new TH2I("hRD", "RD", 10, -1, 1, 10, -M_PI, M_PI);
+  TH2* hMC = new TH2I("hMC", "MC", 10, -1, 1, 10, -M_PI, M_PI);
+
   //vector<event> RDevents(2500, event(0,0));
   for (int i = 0; i < NRDEVENTS; i++)
     {
       event e(acos(gRandom->Uniform(-1,1)), gRandom->Uniform(-4*atan(1),4*atan(1)));
       RDevents[i] = e;
+      hRD->Fill(cos(e.theta), e.phi);
     }
 
   //vector<event> MCevents(10000, event(0,0));
@@ -254,6 +295,7 @@ myFit()
     {
       event e(acos(gRandom->Uniform(-1,1)), gRandom->Uniform(-4*atan(1),4*atan(1)));
       MCevents[i] =  e;
+      hMC->Fill(cos(e.theta), e.phi);
     }
   likelihood myL(ws); //, RDevents, MCevents);
 
@@ -262,25 +304,23 @@ myFit()
   TFitterMinuit* minuit = new TFitterMinuit();
   minuit->SetMinuitFCN(&myL);
 
-  bool allowPositive = false;
-
   for (int i = 0; i < 5; i++)
     {
       sw.Start();
 
       minuit->Clear();
-      /*
+
       minuit->SetParameter(0,"Rea(+,2,1)", 0, 0, 0, 0);
       minuit->SetParameter(1,"Ima(+,2,1)", 0, 0, 0, 0);
       minuit->SetParameter(2,"Rea(+,1,1)", 0, 0, 0, 0);
       minuit->SetParameter(3,"Ima(+,1,1)", 0, 0, 0, 0);
-      */
+      /*
       minuit->SetParameter(0,"Rea(+,2,1)", gRandom->Uniform(-10,10), 0.1, 0, 0);
       minuit->SetParameter(1,"Ima(+,2,1)", 0, 0.1, 0, 0);
       minuit->FixParameter(1);
       minuit->SetParameter(2,"Rea(+,1,1)", gRandom->Uniform(-10,10), 0.1, 0, 0);
       minuit->SetParameter(3,"Ima(+,1,1)", gRandom->Uniform(-10,10), 0.1, 0, 0);
-
+      */
       minuit->SetParameter(4,"Rea(-,0,0)", gRandom->Uniform(-10,10), 0.5, 0, 0);
       minuit->SetParameter(5,"Ima(-,0,0)",   0, 0.1, 0, 0);
       minuit->FixParameter(5);
@@ -300,6 +340,25 @@ myFit()
       sw.Stop();
       cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
     }
+
+  vector<double> result;
+  for (int i = 0; i < minuit->GetNumberTotalParameters(); i++)
+    {
+      result.push_back(minuit->GetParameter(i));
+    }
+
+  TH2* hPredict = new TH2I("hPredict", "prediction", 100, -1, 1, 100, -M_PI, M_PI);
+  for (int ix = 0; ix < 100; ix++)
+    {
+      double x = -1 + 2./100*ix;
+      for (int iy = 0; iy < 100; iy++)
+	{
+	  double y = -M_PI + 2*M_PI/100*iy;
+	  hPredict->SetBinContent(ix + 1, iy + 1, myL.probabilityDensity(result, acos(x), y));
+	}
+    }
+  hPredict->Draw();
+      
 }
 
 #if 0
