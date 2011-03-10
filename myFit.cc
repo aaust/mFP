@@ -7,6 +7,8 @@ using namespace std;
 #include <stdio.h>
 
 #include "TH2.h"
+#include "TH3.h"
+#include "TCanvas.h"
 #include "TRandom1.h"
 #include "Math/SpecFunc.h"
 #include "Minuit2/FCNBase.h"
@@ -239,7 +241,7 @@ likelihood::calc_likelihood(const vector<double>& x) const
       waveset_base = idx1;
     }
 
-  // Uses Kahan summation2
+  // Uses Kahan summation
   double sumRD = 0;
   double c = 0;
   for (size_t i = 0; i < nrdevents; i++)
@@ -274,6 +276,7 @@ myFit()
   vector<wave> positive;
   positive.push_back(wave(2, 1));
   positive.push_back(wave(1, 1));
+  positive.push_back(wave(4, 1));
 
   vector<wave> negative;
   negative.push_back(wave(0,0));
@@ -338,10 +341,12 @@ myFit()
     double value;
     bool fixed;
   }
-  startingValues[14] = { { "Rea(+,2,1)", gRandom->Uniform(5), false },
+  startingValues[16] = { { "Rea(+,2,1)", gRandom->Uniform(5), false },
 			 { "Ima(+,2,1)", 0, true },
 			 { "Rea(+,1,1)", gRandom->Uniform(5), false },
 			 { "Ima(+,1,1)", gRandom->Uniform(5), false },
+			 { "Rea(+,4,1)", gRandom->Uniform(1), false },
+			 { "Ima(+,4,1)", gRandom->Uniform(1), false },
 			 { "Rea(-,0,0)", gRandom->Uniform(5), false },
 			 { "Ima(-,0,0)", 0, true },
 			 { "Rea(-,1,0)", gRandom->Uniform(5), false },
@@ -360,22 +365,28 @@ myFit()
 			 nBins, 0.65, 0.65 + nBins*binWidth);
   TH1* hPwave = new TH1D("hPwave", "P wave intensity",
 			 nBins, 0.65, 0.65 + nBins*binWidth);
-  TH1* hPhase = new TH1D("hPhase", "D - P phase",
+  TH1* hFwave = new TH1D("hFwave", "F wave intensity",
+			 nBins, 0.65, 0.65 + nBins*binWidth);
+  TH1* hPhaseDP = new TH1D("hPhaseDP", "D - P phase",
+			 nBins, 0.65, 0.65 + nBins*binWidth);
+  TH1* hPhaseDF = new TH1D("hPhaseDF", "D - F phase",
 			 nBins, 0.65, 0.65 + nBins*binWidth);
   TH1* hIntensity = new TH1D("hIntensity", "total intensity as predicted",
 			     nBins, 0.65, 0.65 + nBins*binWidth);
-
+  TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
   TStopwatch fulltime;
   fulltime.Start();
   for (int i = 0; i < nBins; i++)
     {
       massLow = 0.65 + i*binWidth;
       massHigh = 0.65 + (i+1)*binWidth;
+
+      cout << "mass bin [" << massLow << ", " << massHigh << "]" << endl;
       sw.Start();
 
       minuit->Clear();
 
-      for (int j= 0; j < 14; j++)
+      for (int j= 0; j < 16; j++)
 	{
 	  minuit->SetParameter(j, startingValues[j].name,
 			       startingValues[j].value, 1, 0, 0);
@@ -396,6 +407,8 @@ myFit()
 				 startingValues[1].value);
 	  complex<double> aPwave(startingValues[2].value,
 				 startingValues[3].value);
+	  complex<double> aFwave(startingValues[4].value,
+				 startingValues[5].value);
 
 	  hDwave->SetBinContent(i+1,norm(aDwave));
 	  hDwave->SetBinError(i+1, 2*abs(aDwave)*minuit->GetParError(0));
@@ -406,8 +419,36 @@ myFit()
 				  * minuit->GetCovarianceMatrixElement(2, 3))));
 	  hPwave->SetBinError(i+1, error);
 
-	  //			      abs(aPwave)*(minuit->GetParError(2)/ real(aPwave) + minuit->GetParError(3) / imag(aPwave)));
-	  hPhase->SetBinContent(i+1,arg(aDwave / aPwave));
+	  double phase = arg(aDwave / aPwave);
+	  if (i > 1)
+	    {
+	      double oldPhase = hPhaseDP->GetBinContent(i);
+	      if (phase - oldPhase > M_PI)
+		phase -= 2*M_PI;
+	      else if (oldPhase - phase > M_PI)
+		phase += 2*M_PI;
+	    }
+	  hPhaseDP->SetBinContent(i+1,phase);
+	  hPhaseDP->SetBinError(i+1, .2);
+
+	  error = 2*(sqrt(pow(real(aFwave) * minuit->GetParError(4), 2)
+			       + pow(imag(aFwave) * minuit->GetParError(5), 2)
+			       + (2*real(aFwave)*imag(aFwave)
+				  * minuit->GetCovarianceMatrixElement(4, 5))));
+	  hFwave->SetBinContent(i+1,norm(aFwave));
+	  hFwave->SetBinError(i+1, error);
+
+	  phase = arg(aDwave / aFwave);
+	  if (i > 1)
+	    {
+	      double oldPhase = hPhaseDF->GetBinContent(i);
+	      if (phase - oldPhase > M_PI)
+		phase -= 2*M_PI;
+	      else if (oldPhase - phase > M_PI)
+		phase += 2*M_PI;
+	    }
+	  hPhaseDF->SetBinContent(i+1,phase);
+	  hPhaseDF->SetBinError(i+1, .2);
 
 	  vector<double> result;
 	  for (int iPar = 0; iPar < minuit->GetNumberTotalParameters(); iPar++)
@@ -423,6 +464,7 @@ myFit()
 		{
 		  double y = -M_PI + 2*M_PI/100*iy;
 		  intensity += myL.probabilityDensity(result, acos(x), y);
+		  hPredict->SetBinContent(i, ix + 1, iy + 1, myL.probabilityDensity(result, acos(x), y));
 		}
 	    }
 	  hIntensity->SetBinContent(i + 1, intensity / 10000);
@@ -432,22 +474,17 @@ myFit()
   fulltime.Stop();
   cout << "took " << fulltime.CpuTime() << " s CPU time, " << fulltime.RealTime() << " s wall time" << endl;
 
-  vector<double> result;
-  for (int i = 0; i < minuit->GetNumberTotalParameters(); i++)
-    {
-      result.push_back(minuit->GetParameter(i));
-    }
 
-  TH2* hPredict = new TH2D("hPredict", "prediction", 100, -1, 1, 100, -M_PI, M_PI);
-  for (int ix = 0; ix < 100; ix++)
+  TCanvas* c = new TCanvas();
+  c->Divide(5, 5);
+  for (int i = 1; i <= 25; i++)
     {
-      double x = -1 + 2./100*ix;
-      for (int iy = 0; iy < 100; iy++)
-	{
-	  double y = -M_PI + 2*M_PI/100*iy;
-	  hPredict->SetBinContent(ix + 1, iy + 1, myL.probabilityDensity(result, acos(x), y));
-	}
+      hPredict->GetXaxis()->SetRange(i, i);
+      char name[555];
+      sprintf(name, "yz%d", i);
+      TH2* hProjection = (TH2*)hPredict->Project3D(name);
+      c->cd(i);
+      hProjection->Draw("colz");
     }
-  hPredict->Draw("surf3");
       
 }
