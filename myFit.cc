@@ -38,7 +38,7 @@ struct coherent_waves {
   coherent_waves() {}
   coherent_waves(const coherent_waves& o) { reflectivity = o.reflectivity; spinflip = o.spinflip; waves = o.waves; }
 
-  complex<double> sum(const vector<double>& x, size_t idx_base, const event& e) const;
+  complex<double> sum(const double* x, const event& e) const;
   size_t getNwaves() { return waves.size(); }
 };
 
@@ -141,10 +141,10 @@ event::MCweight(int reflectivity, int l1, int m1, int l2, int m2) const
 }
 
 complex<double>
-coherent_waves::sum(const vector<double>& x, size_t idx_base, const event& e) const
+coherent_waves::sum(const double* x, const event& e) const
 {
   complex<double> result = 0;
-  size_t idx = idx_base;
+  size_t idx = 0;
   vector<wave>::const_iterator it;
   for (it = this->waves.begin(); it != this->waves.end(); it++)
     {
@@ -171,7 +171,7 @@ likelihood::probabilityDensity(const vector<double>& x, const event& e) const
   for (it = ws.begin(); it != ws.end(); it++)
     {
       // norm = abs^2
-      sum += norm(it->sum(x, idx_base, e));
+      sum += norm(it->sum(&x[idx_base], e));
       idx_base += 2*it->waves.size();
     }
   return sum;
