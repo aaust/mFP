@@ -17,7 +17,12 @@ using namespace std;
 
 #define NRDEVENTS 100000
 size_t nrdevents;
-#define NMCEVENTS 10000 //(4*NRDEVENTS)
+#define NMCEVENTS 10000000 //(4*NRDEVENTS)
+size_t nmcevents;
+
+double massLow = 0;
+double massHigh = 9999;
+int iBin;
 
 struct wave {
   int l, m;
@@ -68,7 +73,7 @@ public:
   double MCweight(int reflectivity, int l1, int m1, int l2, int m2) const;
 };
 
-event RDevents[NRDEVENTS]; // not a reference because of Cint limitations
+event RDevents[NRDEVENTS]; // not a vector because of Cint limitations
 event MCevents[NMCEVENTS]; // idem
 
 class likelihood : public ROOT::Minuit2::FCNBase {
@@ -191,10 +196,11 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
   double sum = 0;
   double c = 0;
   int countRejected = 0;
-  for (size_t i = 0; i < NMCEVENTS /*MCevents.size()*/; i++)
+  for (size_t i = 0; i < nmcevents /*MCevents.size()*/; i++)
     {
-      if (0 && cos(MCevents[i].theta) < -.8)
+      if (MCevents[i].mass < massLow || MCevents[i].mass > massHigh)
 	{
+	  //cout << "rejected " << MCevents[i].mass << " not in [" << massLow << ", " << massHigh << "]" << endl;
 	  countRejected++;
 	  continue;
 	}
@@ -207,11 +213,9 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
       sum = t;
     }
 
-  return (weights[id] = sum / (NMCEVENTS - countRejected));
+  //cout << "calculated MCweight " << sum / (nmcevents - countRejected) << " from " << (nmcevents - countRejected) << " MC events." << endl;
+  return (weights[id] = sum / (nmcevents - countRejected));
 }
-
-double massLow = 0;
-double massHigh = 9999;
 
 double
 likelihood::calc_likelihood(const vector<double>& x) const
@@ -302,10 +306,16 @@ myFit()
   TH2* hMC = new TH2D("hMC", "MC", 10, -1, 1, 10, -M_PI, M_PI);
   TH1* hMass = new TH1D("hMass", "mass distribution",
 			250, 0.5, 3);
+  TH1* htprime = new TH1D("htprime", "t' distribution",
+			  250, 0, 1);
+  TH1* hMassMC = new TH1D("hMassMC", "MC mass distribution",
+			250, 0.5, 3);
+  TH1* htprimeMC = new TH1D("htprimeMC", "t' distribution",
+			  250, 0, 1);
 
   //vector<event> RDevents(2500, event(0,0));
 
-  FILE* fd = fopen("dataEtaPpi.txt", "r");
+  FILE* fd = fopen("dataEtaPi.txt", "r");
   char line[99999];
   nrdevents = 0;
   while (fgets(line, 99999, fd))
@@ -314,6 +324,7 @@ myFit()
       sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
 
       hMass->Fill(m);
+      htprime->Fill(tPr);
       event e(m, tPr, theta, phi);
       RDevents[nrdevents++] = e;
       hRD->Fill(cos(theta), phi);
@@ -323,12 +334,33 @@ myFit()
   //nrdevents = nrdevents / 10;
 
   //vector<event> MCevents(10000, event(0,0));
-  for (int i = 0; i < NMCEVENTS; i++)
+  fd = fopen("/data/zup/diefenbach/data/Eta/dataMCEta.txt", "r");
+  nmcevents = 0;
+  while (fgets(line, 99999, fd))
     {
-      event e(acos(gRandom->Uniform(-1,1)), gRandom->Uniform(-4*atan(1),4*atan(1)));
-      MCevents[i] =  e;
-      hMC->Fill(cos(e.theta), e.phi);
+      double m, tPr, theta, phi;
+      sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
+
+      hMassMC->Fill(m);
+      htprimeMC->Fill(tPr);
+      event e(m, tPr, acos(theta), phi);
+      MCevents[nmcevents++] = e;
     }
+  fclose(fd);
+  fd = fopen("/data/zup/diefenbach/data/Eta/dataMCEtaMcut.txt", "r");
+  while (fgets(line, 99999, fd))
+    {
+      double m, tPr, theta, phi;
+      sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
+
+      hMassMC->Fill(m);
+      htprimeMC->Fill(tPr);
+      event e(m, tPr, acos(theta), phi);
+      MCevents[nmcevents++] = e;
+    }
+  fclose(fd);
+  cout << "read " << nmcevents << " MC events" << endl;
+
   likelihood myL(ws); //, RDevents, MCevents);
 
   TStopwatch sw;
@@ -376,15 +408,16 @@ myFit()
   TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
   TStopwatch fulltime;
   fulltime.Start();
-  for (int i = 0; i < nBins; i++)
+  for (iBin = 0; iBin < nBins; iBin++)
     {
-      massLow = 0.65 + i*binWidth;
-      massHigh = 0.65 + (i+1)*binWidth;
+      massLow = 0.65 + iBin*binWidth;
+      massHigh = 0.65 + (iBin+1)*binWidth;
 
       cout << "mass bin [" << massLow << ", " << massHigh << "]" << endl;
       sw.Start();
 
       minuit->Clear();
+      weights.clear();
 
       for (int j= 0; j < 16; j++)
 	{
@@ -410,45 +443,45 @@ myFit()
 	  complex<double> aFwave(startingValues[4].value,
 				 startingValues[5].value);
 
-	  hDwave->SetBinContent(i+1,norm(aDwave));
-	  hDwave->SetBinError(i+1, 2*abs(aDwave)*minuit->GetParError(0));
-	  hPwave->SetBinContent(i+1,norm(aPwave));
+	  hDwave->SetBinContent(iBin+1,norm(aDwave));
+	  hDwave->SetBinError(iBin+1, 2*abs(aDwave)*minuit->GetParError(0));
+	  hPwave->SetBinContent(iBin+1,norm(aPwave));
 	  double error = 2*(sqrt(pow(real(aPwave) * minuit->GetParError(2), 2)
 			       + pow(imag(aPwave) * minuit->GetParError(3), 2)
 			       + (2*real(aPwave)*imag(aPwave)
 				  * minuit->GetCovarianceMatrixElement(2, 3))));
-	  hPwave->SetBinError(i+1, error);
+	  hPwave->SetBinError(iBin+1, error);
 
 	  double phase = arg(aDwave / aPwave);
-	  if (i > 1)
+	  if (iBin > 1)
 	    {
-	      double oldPhase = hPhaseDP->GetBinContent(i);
+	      double oldPhase = hPhaseDP->GetBinContent(iBin);
 	      if (phase - oldPhase > M_PI)
 		phase -= 2*M_PI;
 	      else if (oldPhase - phase > M_PI)
 		phase += 2*M_PI;
 	    }
-	  hPhaseDP->SetBinContent(i+1,phase);
-	  hPhaseDP->SetBinError(i+1, .2);
+	  hPhaseDP->SetBinContent(iBin+1,phase);
+	  hPhaseDP->SetBinError(iBin+1, .2);
 
 	  error = 2*(sqrt(pow(real(aFwave) * minuit->GetParError(4), 2)
 			       + pow(imag(aFwave) * minuit->GetParError(5), 2)
 			       + (2*real(aFwave)*imag(aFwave)
 				  * minuit->GetCovarianceMatrixElement(4, 5))));
-	  hFwave->SetBinContent(i+1,norm(aFwave));
-	  hFwave->SetBinError(i+1, error);
+	  hFwave->SetBinContent(iBin+1,norm(aFwave));
+	  hFwave->SetBinError(iBin+1, error);
 
 	  phase = arg(aDwave / aFwave);
-	  if (i > 1)
+	  if (iBin > 1)
 	    {
-	      double oldPhase = hPhaseDF->GetBinContent(i);
+	      double oldPhase = hPhaseDF->GetBinContent(iBin);
 	      if (phase - oldPhase > M_PI)
 		phase -= 2*M_PI;
 	      else if (oldPhase - phase > M_PI)
 		phase += 2*M_PI;
 	    }
-	  hPhaseDF->SetBinContent(i+1,phase);
-	  hPhaseDF->SetBinError(i+1, .2);
+	  hPhaseDF->SetBinContent(iBin+1,phase);
+	  hPhaseDF->SetBinError(iBin+1, .2);
 
 	  vector<double> result;
 	  for (int iPar = 0; iPar < minuit->GetNumberTotalParameters(); iPar++)
@@ -464,10 +497,10 @@ myFit()
 		{
 		  double y = -M_PI + 2*M_PI/100*iy;
 		  intensity += myL.probabilityDensity(result, acos(x), y);
-		  hPredict->SetBinContent(i, ix + 1, iy + 1, myL.probabilityDensity(result, acos(x), y));
+		  hPredict->SetBinContent(iBin+1, ix + 1, iy + 1, myL.probabilityDensity(result, acos(x), y));
 		}
 	    }
-	  hIntensity->SetBinContent(i + 1, intensity / 10000);
+	  hIntensity->SetBinContent(iBin + 1, intensity / 10000);
 	}
     }
 
@@ -486,5 +519,11 @@ myFit()
       c->cd(i);
       hProjection->Draw("colz");
     }
-      
+
+  c = new TCanvas();
+  c->Divide(2,2);
+  c->cd(1); hPwave->Draw();
+  c->cd(2); hDwave->Draw();
+  c->cd(3); hFwave->Draw();
+  c->cd(4); hPhaseDP->Draw();
 }
