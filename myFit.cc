@@ -14,15 +14,25 @@ using namespace std;
 #include "Minuit2/FCNBase.h"
 #include "TFitterMinuit.h"
 #include "TStopwatch.h"
+#include "TFile.h"
 
-#define NRDEVENTS 100000
+#define NRDEVENTS 1000000
 size_t nrdevents;
 #define NMCEVENTS 10000000 //(4*NRDEVENTS)
 size_t nmcevents;
 
+bool flatMC = false;
 double massLow = 0;
 double massHigh = 9999;
 int iBin;
+
+const char dataFile[] = "dataEtaPpi_eta_to_2gamma.txt";
+const char MCFile[] = "/data/zup/diefenbach/data/EtaPr/dataMCEtaPr.txt";
+double threshold = 1.1;
+int nBins = 80;
+double binWidth = 0.02;
+
+#define NWAVES 8
 
 struct wave {
   int l, m;
@@ -198,7 +208,7 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
   int countRejected = 0;
   for (size_t i = 0; i < nmcevents /*MCevents.size()*/; i++)
     {
-      if (MCevents[i].mass < massLow || MCevents[i].mass > massHigh)
+      if (!flatMC && (MCevents[i].mass < massLow || MCevents[i].mass > massHigh))
 	{
 	  //cout << "rejected " << MCevents[i].mass << " not in [" << massLow << ", " << massHigh << "]" << endl;
 	  countRejected++;
@@ -302,6 +312,31 @@ myFit()
   ws.push_back(wsPos);
   ws.push_back(wsNeg);
 
+  assert(NWAVES == negative.size() + positive.size());
+
+  struct {
+    const char* name;
+    double value;
+    bool fixed;
+  }
+  startingValues[2 * NWAVES] =
+    { { "Rea(+,2,1)", gRandom->Uniform(5), false },
+      { "Ima(+,2,1)", 0, true },
+      { "Rea(+,1,1)", gRandom->Uniform(5), false },
+      { "Ima(+,1,1)", gRandom->Uniform(5), false },
+      { "Rea(+,4,1)", gRandom->Uniform(1), false },
+      { "Ima(+,4,1)", gRandom->Uniform(1), false },
+      { "Rea(-,0,0)", gRandom->Uniform(5), false },
+      { "Ima(-,0,0)", 0, true },
+      { "Rea(-,1,0)", gRandom->Uniform(5), false },
+      { "Ima(-,1,0)", gRandom->Uniform(5), false },
+      { "Rea(-,1,1)", gRandom->Uniform(5), false },
+      { "Ima(-,1,1)", gRandom->Uniform(5), false },
+      { "Rea(-,2,0)", gRandom->Uniform(5), false },
+      { "Ima(-,2,0)", gRandom->Uniform(5), false },
+      { "Rea(-,2,1)", gRandom->Uniform(5), false },
+      { "Ima(-,2,1)", gRandom->Uniform(5), false } };
+
   TH2* hRD = new TH2D("hRD", "RD", 10, -1, 1, 10, -M_PI, M_PI);
   TH2* hMC = new TH2D("hMC", "MC", 10, -1, 1, 10, -M_PI, M_PI);
   TH1* hMass = new TH1D("hMass", "mass distribution",
@@ -315,10 +350,10 @@ myFit()
 
   //vector<event> RDevents(2500, event(0,0));
 
-  FILE* fd = fopen("dataEtaPi.txt", "r");
+  FILE* fd = fopen(dataFile, "r");
   char line[99999];
   nrdevents = 0;
-  while (fgets(line, 99999, fd))
+  while (fgets(line, 99999, fd) /*&& nrdevents < 5000*/)
     {
       double m, tPr, theta, phi;
       sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
@@ -331,35 +366,35 @@ myFit()
     }
   fclose(fd);
   cout << "read " << nrdevents << " RD events" << endl;
-  //nrdevents = nrdevents / 10;
+  //return;
 
-  //vector<event> MCevents(10000, event(0,0));
-  fd = fopen("/data/zup/diefenbach/data/Eta/dataMCEta.txt", "r");
-  nmcevents = 0;
-  while (fgets(line, 99999, fd))
+  if (!flatMC)
     {
-      double m, tPr, theta, phi;
-      sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
+      // Note that Max writes cos(theta) instead of theta
+      fd = fopen(MCFile, "r");
+      nmcevents = 0;
+      while (fgets(line, 99999, fd))
+	{
+	  double m, tPr, theta, phi;
+	  sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
 
-      hMassMC->Fill(m);
-      htprimeMC->Fill(tPr);
-      event e(m, tPr, acos(theta), phi);
-      MCevents[nmcevents++] = e;
+	  hMassMC->Fill(m);
+	  htprimeMC->Fill(tPr);
+	  event e(m, tPr, acos(theta), phi);
+	  MCevents[nmcevents++] = e;
+	}
+      fclose(fd);
+      cout << "read " << nmcevents << " MC events" << endl;
     }
-  fclose(fd);
-  fd = fopen("/data/zup/diefenbach/data/Eta/dataMCEtaMcut.txt", "r");
-  while (fgets(line, 99999, fd))
+  else
     {
-      double m, tPr, theta, phi;
-      sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
-
-      hMassMC->Fill(m);
-      htprimeMC->Fill(tPr);
-      event e(m, tPr, acos(theta), phi);
-      MCevents[nmcevents++] = e;
+      for (int iMC = 0; iMC < 100000; iMC++)
+	{
+	  event e(gRandom->Uniform(-1,1), gRandom->Uniform(0, 2*M_PI));
+	  MCevents[iMC] = e;
+	}
+      nmcevents = 100000;
     }
-  fclose(fd);
-  cout << "read " << nmcevents << " MC events" << endl;
 
   likelihood myL(ws); //, RDevents, MCevents);
 
@@ -368,58 +403,36 @@ myFit()
   TFitterMinuit* minuit = new TFitterMinuit();
   minuit->SetMinuitFCN(&myL);
 
-  struct {
-    const char* name;
-    double value;
-    bool fixed;
-  }
-  startingValues[16] = { { "Rea(+,2,1)", gRandom->Uniform(5), false },
-			 { "Ima(+,2,1)", 0, true },
-			 { "Rea(+,1,1)", gRandom->Uniform(5), false },
-			 { "Ima(+,1,1)", gRandom->Uniform(5), false },
-			 { "Rea(+,4,1)", gRandom->Uniform(1), false },
-			 { "Ima(+,4,1)", gRandom->Uniform(1), false },
-			 { "Rea(-,0,0)", gRandom->Uniform(5), false },
-			 { "Ima(-,0,0)", 0, true },
-			 { "Rea(-,1,0)", gRandom->Uniform(5), false },
-			 { "Ima(-,1,0)", gRandom->Uniform(5), false },
-			 { "Rea(-,1,1)", gRandom->Uniform(5), false },
-			 { "Ima(-,1,1)", gRandom->Uniform(5), false },
-			 { "Rea(-,2,0)", gRandom->Uniform(5), false },
-			 { "Ima(-,2,0)", gRandom->Uniform(5), false },
-			 { "Rea(-,2,1)", gRandom->Uniform(5), false },
-			 { "Ima(-,2,1)", gRandom->Uniform(5), false } };
-
-  int nBins = 40;
-  double binWidth = 0.05;
-
+  double lower = threshold;
+  double upper = threshold + nBins*binWidth;
   TH1* hDwave = new TH1D("hDwave", "D wave intensity",
-			 nBins, 0.65, 0.65 + nBins*binWidth);
+			 nBins, lower, upper);
   TH1* hPwave = new TH1D("hPwave", "P wave intensity",
-			 nBins, 0.65, 0.65 + nBins*binWidth);
+			 nBins, lower, upper);
   TH1* hFwave = new TH1D("hFwave", "F wave intensity",
-			 nBins, 0.65, 0.65 + nBins*binWidth);
+			 nBins, lower, upper);
   TH1* hPhaseDP = new TH1D("hPhaseDP", "D - P phase",
-			 nBins, 0.65, 0.65 + nBins*binWidth);
+			 nBins, lower, upper);
   TH1* hPhaseDF = new TH1D("hPhaseDF", "D - F phase",
-			 nBins, 0.65, 0.65 + nBins*binWidth);
+			 nBins, lower, upper);
   TH1* hIntensity = new TH1D("hIntensity", "total intensity as predicted",
-			     nBins, 0.65, 0.65 + nBins*binWidth);
+			     nBins, lower, upper);
   TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
   TStopwatch fulltime;
   fulltime.Start();
   for (iBin = 0; iBin < nBins; iBin++)
     {
-      massLow = 0.65 + iBin*binWidth;
-      massHigh = 0.65 + (iBin+1)*binWidth;
+      massLow = threshold + iBin*binWidth;
+      massHigh = threshold + (iBin+1)*binWidth;
 
       cout << "mass bin [" << massLow << ", " << massHigh << "]" << endl;
       sw.Start();
 
       minuit->Clear();
-      weights.clear();
+      if (!flatMC)
+	weights.clear();
 
-      for (int j= 0; j < 16; j++)
+      for (int j= 0; j < 2*NWAVES; j++)
 	{
 	  minuit->SetParameter(j, startingValues[j].name,
 			       startingValues[j].value, 1, 0, 0);
@@ -507,7 +520,7 @@ myFit()
   fulltime.Stop();
   cout << "took " << fulltime.CpuTime() << " s CPU time, " << fulltime.RealTime() << " s wall time" << endl;
 
-
+#if 0
   TCanvas* c = new TCanvas();
   c->Divide(5, 5);
   for (int i = 1; i <= 25; i++)
@@ -526,4 +539,17 @@ myFit()
   c->cd(2); hDwave->Draw();
   c->cd(3); hFwave->Draw();
   c->cd(4); hPhaseDP->Draw();
+#endif
+}
+
+
+int main()
+{
+  TFile* out = TFile::Open("out.root", "RECREATE");
+  out->cd();
+  myFit();
+  out->Write();
+  delete out;
+
+  return 0;
 }
