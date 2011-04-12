@@ -28,9 +28,11 @@ double massHigh = 9999;
 int iBin;
 
 //const char dataFile[] = "dataEtaPpi_eta_to_2gamma.txt";
-//const char MCFile[] = "/data/zup/diefenbach/data/EtaPr/dataMCEtaPr.txt";
+//const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1Mio_EtaPr_3Pi_flat_m5_tcut/dataMCEtaPr.txt";
+//const char dataFile[] = "dataEtaPpi_eta_to_3pi.txt";
+//const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1Mio_EtaPr_5Pi_falt_m5_tcut/dataMCEtaPr.txt";
 const char dataFile[] = "dataEtaPi.txt";
-const char MCFile[] = "/data/zup/diefenbach/data/Eta/dataMCEta.txt";
+const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1Mio_Eta_3Pi_flat_m5_tcut/dataMCEta.txt";
 double threshold = 0.7;
 int nBins = 40;
 double binWidth = 0.05;
@@ -84,6 +86,13 @@ public:
   double MCweight(int reflectivity, const wave& w1, const wave& w2) const
   { return MCweight(reflectivity, w1.l, w1.m, w2.l, w2.m); }
   double MCweight(int reflectivity, int l1, int m1, int l2, int m2) const;
+
+  bool accepted() {
+    return (this->mass >= massLow && this->mass < massHigh
+	    //&& this->tPrime > 0.1 && this->tPrime < 0.3);
+	    //&& this->tPrime > 0.3);
+            && 1);
+  }
 };
 
 event RDevents[NRDEVENTS]; // not a vector because of Cint limitations
@@ -111,6 +120,12 @@ public:
 
   double
   MCweight(int reflectivity, const wave& w1, const wave& w2) const;
+
+  double
+  calc_mc_likelihood(const vector<double>& x) const;
+
+  double
+  calc_rd_likelihood(const vector<double>& x) const;
 
   double
   calc_likelihood(const vector<double>& x) const;
@@ -211,8 +226,7 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
   int countRejected = 0;
   for (size_t i = 0; i < nmcevents; i++)
     {
-      if (!flatMC
-	  && (MCevents[i].mass < massLow || MCevents[i].mass > massHigh))
+      if (!flatMC && !MCevents[i].accepted())
 	{
 	  //cout << "rejected " << MCevents[i].mass << " not in [" << massLow << ", " << massHigh << "]" << endl;
 	  countRejected++;
@@ -237,7 +251,7 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
 }
 
 double
-likelihood::calc_likelihood(const vector<double>& x) const
+likelihood::calc_mc_likelihood(const vector<double>& x) const
 {
   double sumMC = 0;
   waveset::const_iterator it;
@@ -264,12 +278,18 @@ likelihood::calc_likelihood(const vector<double>& x) const
       waveset_base = idx1;
     }
 
+  return sumMC;
+}
+
+double
+likelihood::calc_rd_likelihood(const vector<double>& x) const
+{
   // Uses Kahan summation
   double sumRD = 0;
   double c = 0;
   for (size_t i = 0; i < nrdevents; i++)
     {
-      if (RDevents[i].mass < massLow || RDevents[i].mass > massHigh)
+      if (!RDevents[i].accepted())
 	continue;
       double y = log(probabilityDensity(x, RDevents[i])) - c;
       double t = sumRD + y;
@@ -278,8 +298,18 @@ likelihood::calc_likelihood(const vector<double>& x) const
       //sumRD += y;
     }
 
-  //cout << "likelihood = " << sumRD << " - " << sumMC << endl;
-  return sumRD - sumMC;
+  return sumRD;
+}
+
+
+double
+likelihood::calc_likelihood(const vector<double>& x) const
+{
+  double lhMC = calc_mc_likelihood(x);
+  double lhRD = calc_rd_likelihood(x);
+
+  //cout << "likelihood = " << lhRD << " - " << lhMC << endl;
+  return lhRD - lhMC;
 }
 
 
@@ -375,7 +405,6 @@ myFit()
     }
   fclose(fd);
   cout << "read " << nrdevents << " RD events" << endl;
-  //return;
 
   if (!flatMC)
     {
@@ -416,6 +445,8 @@ myFit()
   double upper = threshold + nBins*binWidth;
   TH1* hSwave = new TH1D("hSwave", "S wave intensity (#epsilon = -1)",
 			 nBins, lower, upper);
+  TH1* hD0wave = new TH1D("hD0wave", "D0 wave intensity (#epsilon = -1)",
+			  nBins, lower, upper);
   TH1* hDwave = new TH1D("hDwave", "D wave intensity",
 			 nBins, lower, upper);
   TH1* hPwave = new TH1D("hPwave", "P wave intensity",
@@ -426,6 +457,8 @@ myFit()
 			 nBins, lower, upper);
   TH1* hPhaseDF = new TH1D("hPhaseDF", "D - F phase",
 			 nBins, lower, upper);
+  TH1* hPhaseD0S = new TH1D("hPhaseD0S", "D0 - S phase",
+			    nBins, lower, upper);
   TH1* hIntensity = new TH1D("hIntensity", "total intensity as predicted",
 			     nBins, lower, upper);
   //TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
@@ -445,10 +478,34 @@ myFit()
 	// two-body amplitudes.
 	weights.clear();
 
+      // The MC part of the likelihood function will evaluate to the
+      // number of events in the fit.  In order to speed up the
+      // calculation we scale the starting values such that this
+      // condition obtains.
+      vector<double> vStartingValues(2*NWAVES);
+      for (size_t iSV = 0; iSV < 2*NWAVES; iSV++)
+	{
+	  vStartingValues[iSV] = startingValues[iSV].value;
+	}
+      size_t nGood = 0;
+      for (size_t iEvent = 0; iEvent < nrdevents; iEvent++)
+	{
+	  if (!RDevents[iEvent].accepted())
+	    continue;
+	  nGood++;
+	}
+      if (nGood == 0)
+	continue;
+      double ratio = sqrt(nGood / myL.calc_mc_likelihood(vStartingValues));
+      for (size_t iSV = 0; iSV < 2*NWAVES; iSV++)
+	{
+	  vStartingValues[iSV] *= ratio;
+	}
+
       for (int j= 0; j < 2*NWAVES; j++)
 	{
 	  minuit->SetParameter(j, startingValues[j].name,
-			       startingValues[j].value, 1, 0, 0);
+			       startingValues[j].value*ratio, 1, 0, 0);
 	  if (startingValues[j].fixed)
 	    minuit->FixParameter(j);
 	}
@@ -459,17 +516,25 @@ myFit()
       cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
       if (iret == 0)
 	{
+	  vector<double> vStartingValue(2*NWAVES);
+	  for (int j = 0; j < 2*NWAVES; j++)
+	    {
+	      vStartingValues[j] = minuit->GetParameter(j);
+	    }
+
 	  for (int j = 0; j < minuit->GetNumberTotalParameters(); j++)
 	    startingValues[j].value = minuit->GetParameter(j);
 
-	  complex<double> aDwave(startingValues[0].value,
-				 startingValues[1].value);
-	  complex<double> aPwave(startingValues[2].value,
-				 startingValues[3].value);
-	  complex<double> aFwave(startingValues[4].value,
-				 startingValues[5].value);
-	  complex<double> aSwave(startingValues[6].value,
-				 startingValues[7].value);
+	  complex<double> aDwave(minuit->GetParameter(0),
+				 minuit->GetParameter(1));
+	  complex<double> aPwave(minuit->GetParameter(2),
+				 minuit->GetParameter(3));
+	  complex<double> aFwave(minuit->GetParameter(4),
+				 minuit->GetParameter(5));
+	  complex<double> aSwave(minuit->GetParameter(6),
+				 minuit->GetParameter(7));
+	  complex<double> aD0wave(minuit->GetParameter(12),
+				  minuit->GetParameter(13));
 
 	  hDwave->SetBinContent(iBin+1,norm(aDwave));
 	  hDwave->SetBinError(iBin+1, 2*abs(aDwave)*minuit->GetParError(0));
@@ -506,6 +571,25 @@ myFit()
 				  * minuit->GetCovarianceMatrixElement(6, 7))));
 	  hSwave->SetBinContent(iBin+1,norm(aSwave));
 	  hSwave->SetBinError(iBin+1, error);
+
+	  error = 2*(sqrt(pow(real(aD0wave) * minuit->GetParError(12), 2)
+			       + pow(imag(aD0wave) * minuit->GetParError(13), 2)
+			       + (2*real(aD0wave)*imag(aD0wave)
+				  * minuit->GetCovarianceMatrixElement(12, 13))));
+	  hD0wave->SetBinContent(iBin+1,norm(aD0wave));
+	  hD0wave->SetBinError(iBin+1, error);
+
+	  phase = arg(aD0wave / aSwave);
+	  if (iBin > 1)
+	    {
+	      double oldPhase = hPhaseD0S->GetBinContent(iBin);
+	      if (phase - oldPhase > M_PI)
+		phase -= 2*M_PI;
+	      else if (oldPhase - phase > M_PI)
+		phase += 2*M_PI;
+	    }
+	  hPhaseD0S->SetBinContent(iBin+1,phase);
+	  hPhaseD0S->SetBinError(iBin+1, .2);
 
 	  phase = arg(aDwave / aFwave);
 	  if (iBin > 1)
@@ -568,11 +652,16 @@ myFit()
 
 int main()
 {
-  TFile* out = TFile::Open("out.root", "RECREATE");
-  out->cd();
-  myFit();
-  out->Write();
-  delete out;
+  for (int i = 0; i < 240; i++)
+    {
+      char outFileName[999];
+      snprintf(outFileName, 999, "out%2.2d.root", i);
+      TFile* out = TFile::Open(outFileName, "RECREATE");
+      out->cd();
+      myFit();
+      out->Write();
+      delete out;
+    }
 
   return 0;
 }
