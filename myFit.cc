@@ -22,15 +22,18 @@ size_t nrdevents;
 size_t nmcevents;
 
 bool flatMC = false;
+#define NFLATMCEVENTS 100000
 double massLow = 0;
 double massHigh = 9999;
 int iBin;
 
-const char dataFile[] = "dataEtaPpi_eta_to_2gamma.txt";
-const char MCFile[] = "/data/zup/diefenbach/data/EtaPr/dataMCEtaPr.txt";
-double threshold = 1.1;
-int nBins = 80;
-double binWidth = 0.02;
+//const char dataFile[] = "dataEtaPpi_eta_to_2gamma.txt";
+//const char MCFile[] = "/data/zup/diefenbach/data/EtaPr/dataMCEtaPr.txt";
+const char dataFile[] = "dataEtaPi.txt";
+const char MCFile[] = "/data/zup/diefenbach/data/Eta/dataMCEta.txt";
+double threshold = 0.7;
+int nBins = 40;
+double binWidth = 0.05;
 
 #define NWAVES 8
 
@@ -206,9 +209,10 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
   double sum = 0;
   double c = 0;
   int countRejected = 0;
-  for (size_t i = 0; i < nmcevents /*MCevents.size()*/; i++)
+  for (size_t i = 0; i < nmcevents; i++)
     {
-      if (!flatMC && (MCevents[i].mass < massLow || MCevents[i].mass > massHigh))
+      if (!flatMC
+	  && (MCevents[i].mass < massLow || MCevents[i].mass > massHigh))
 	{
 	  //cout << "rejected " << MCevents[i].mass << " not in [" << massLow << ", " << massHigh << "]" << endl;
 	  countRejected++;
@@ -222,8 +226,13 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
       c = (t - sum) - y;  // compensation term.
       sum = t;
     }
-
-  //cout << "calculated MCweight " << sum / (nmcevents - countRejected) << " from " << (nmcevents - countRejected) << " MC events." << endl;
+  /*
+  cout << "calculated MCweight " << sum / (nmcevents - countRejected)
+       << " from " << (nmcevents - countRejected) << " MC events for "
+       << "(l1,m1,l2,m2) = "
+       << "(" << w1.l << "," << w1.m << "," << w2.l << "," << w2.m << ")"
+       << endl;
+  */
   return (weights[id] = sum / (nmcevents - countRejected));
 }
 
@@ -388,12 +397,12 @@ myFit()
     }
   else
     {
-      for (int iMC = 0; iMC < 100000; iMC++)
+      for (int iMC = 0; iMC < NFLATMCEVENTS; iMC++)
 	{
-	  event e(gRandom->Uniform(-1,1), gRandom->Uniform(0, 2*M_PI));
+	  event e(acos(gRandom->Uniform(-1,1)), gRandom->Uniform(-M_PI, M_PI));
 	  MCevents[iMC] = e;
 	}
-      nmcevents = 100000;
+      nmcevents = NFLATMCEVENTS;
     }
 
   likelihood myL(ws); //, RDevents, MCevents);
@@ -405,6 +414,8 @@ myFit()
 
   double lower = threshold;
   double upper = threshold + nBins*binWidth;
+  TH1* hSwave = new TH1D("hSwave", "S wave intensity (#epsilon = -1)",
+			 nBins, lower, upper);
   TH1* hDwave = new TH1D("hDwave", "D wave intensity",
 			 nBins, lower, upper);
   TH1* hPwave = new TH1D("hPwave", "P wave intensity",
@@ -417,7 +428,7 @@ myFit()
 			 nBins, lower, upper);
   TH1* hIntensity = new TH1D("hIntensity", "total intensity as predicted",
 			     nBins, lower, upper);
-  TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
+  //TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
   TStopwatch fulltime;
   fulltime.Start();
   for (iBin = 0; iBin < nBins; iBin++)
@@ -430,6 +441,8 @@ myFit()
 
       minuit->Clear();
       if (!flatMC)
+	// MCweights are the same in different mass bins for the
+	// two-body amplitudes.
 	weights.clear();
 
       for (int j= 0; j < 2*NWAVES; j++)
@@ -455,6 +468,8 @@ myFit()
 				 startingValues[3].value);
 	  complex<double> aFwave(startingValues[4].value,
 				 startingValues[5].value);
+	  complex<double> aSwave(startingValues[6].value,
+				 startingValues[7].value);
 
 	  hDwave->SetBinContent(iBin+1,norm(aDwave));
 	  hDwave->SetBinError(iBin+1, 2*abs(aDwave)*minuit->GetParError(0));
@@ -484,6 +499,14 @@ myFit()
 	  hFwave->SetBinContent(iBin+1,norm(aFwave));
 	  hFwave->SetBinError(iBin+1, error);
 
+
+	  error = 2*(sqrt(pow(real(aSwave) * minuit->GetParError(6), 2)
+			       + pow(imag(aSwave) * minuit->GetParError(7), 2)
+			       + (2*real(aSwave)*imag(aSwave)
+				  * minuit->GetCovarianceMatrixElement(6, 7))));
+	  hSwave->SetBinContent(iBin+1,norm(aSwave));
+	  hSwave->SetBinError(iBin+1, error);
+
 	  phase = arg(aDwave / aFwave);
 	  if (iBin > 1)
 	    {
@@ -510,7 +533,7 @@ myFit()
 		{
 		  double y = -M_PI + 2*M_PI/100*iy;
 		  intensity += myL.probabilityDensity(result, acos(x), y);
-		  hPredict->SetBinContent(iBin+1, ix + 1, iy + 1, myL.probabilityDensity(result, acos(x), y));
+		  //hPredict->SetBinContent(iBin+1, ix + 1, iy + 1, myL.probabilityDensity(result, acos(x), y));
 		}
 	    }
 	  hIntensity->SetBinContent(iBin + 1, intensity / 10000);
