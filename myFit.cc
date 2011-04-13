@@ -706,9 +706,9 @@ myFit()
 	  if (iBin > 1)
 	    {
 	      double oldPhase = hPhaseDP->GetBinContent(iBin);
-	      if (phase - oldPhase > M_PI)
+	      while (phase - oldPhase > M_PI)
 		phase -= 2*M_PI;
-	      else if (oldPhase - phase > M_PI)
+	      while (oldPhase - phase > M_PI)
 		phase += 2*M_PI;
 	    }
 	  hPhaseDP->SetBinContent(iBin+1,phase);
@@ -740,9 +740,9 @@ myFit()
 	  if (iBin > 1)
 	    {
 	      double oldPhase = hPhaseD0S->GetBinContent(iBin);
-	      if (phase - oldPhase > M_PI)
+	      while (phase - oldPhase > M_PI)
 		phase -= 2*M_PI;
-	      else if (oldPhase - phase > M_PI)
+	      while (oldPhase - phase > M_PI)
 		phase += 2*M_PI;
 	    }
 	  hPhaseD0S->SetBinContent(iBin+1,phase);
