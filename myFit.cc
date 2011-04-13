@@ -17,28 +17,19 @@ using namespace std;
 #include "TStopwatch.h"
 #include "TFile.h"
 
-#define NRDEVENTS 1000000
-size_t nrdevents;
-#define NMCEVENTS 10000000 //(4*NRDEVENTS)
-size_t nmcevents;
-size_t nmcallevents;
-
 bool flatMC = false;
 #define NFLATMCEVENTS 100000
 double massLow = 0;
 double massHigh = 9999;
 int iBin;
 
-//const char dataFile[] = "dataEtaPpi_eta_to_2gamma.txt";
-//const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1Mio_EtaPr_3Pi_flat_m5_tcut/dataMCEtaPr.txt";
-//const char dataFile[] = "dataEtaPpi_eta_to_3pi.txt";
-//const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1Mio_EtaPr_5Pi_falt_m5_tcut/dataMCEtaPr.txt";
 string dataFile;
 string MCFile;
 double threshold = 0.7;
 int nBins = 80;
 double binWidth = 0.025;
 int nFits = 1;
+
 
 static bool
 readString(FILE* fd, string& result)
@@ -50,11 +41,13 @@ readString(FILE* fd, string& result)
   return true;
 }
 
+
 static bool
 readInt(FILE *fd, int& result)
 {
   return fscanf(fd, "%d", &result) == 1;
 }
+
 
 static bool
 readDouble(FILE* fd, double& result)
@@ -214,7 +207,7 @@ public:
   { return MCweight(reflectivity, w1.l, w1.m, w2.l, w2.m); }
   double MCweight(int reflectivity, int l1, int m1, int l2, int m2) const;
 
-  bool accepted() {
+  bool accepted() const {
     return (this->mass >= massLow && this->mass < massHigh
 	    //&& this->tPrime > 0.1 && this->tPrime < 0.3);
 	    //&& this->tPrime > 0.3);
@@ -222,18 +215,18 @@ public:
   }
 };
 
-event RDevents[NRDEVENTS]; // not a vector because of Cint limitations
-event MCevents[NMCEVENTS]; // idem
-event MCallEvents[NMCEVENTS];
 
 class likelihood : public ROOT::Minuit2::FCNBase {
   vector<coherent_waves> ws;
+  vector<event> RDevents;
+  vector<event> MCevents;
+  vector<event> MCallEvents;
 public:
-  likelihood(waveset ws_) /*,
+  likelihood(waveset ws_,
 	     vector<event>& RDevents_,
-	     vector<event>& MCevents_) */
-    : ws(ws_) /*, RDevents(RDevents_), MCevents(MCevents_)*/ {}
-  //double operator() (const std::vector<double>& x) const;
+	     vector<event>& MCevents_,
+	     vector<event>& MCallEvents_);
+
   double Up() const { return 0.5; }
 
 public:
@@ -317,6 +310,20 @@ coherent_waves::sum(const double* x, const event& e) const
   return result;
 }
 
+
+
+likelihood::likelihood(waveset ws_,
+		       vector<event>& RDevents_,
+		       vector<event>& MCevents_,
+		       vector<event>& MCallEvents_)
+  : ws(ws_),
+    RDevents(RDevents_),
+    MCevents(MCevents_),
+    MCallEvents(MCallEvents_)
+{
+}
+
+
 double
 likelihood::probabilityDensity(const vector<double>& x, double theta, double phi) const
 {
@@ -350,7 +357,7 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
 
   // count total number of events in bin
   size_t countGenerated = 0;
-  for (size_t i = 0; i < nmcallevents; i++)
+  for (size_t i = 0; i < MCallEvents.size(); i++)
     {
       if (!flatMC && MCallEvents[i].accepted())
 	countGenerated++;
@@ -362,7 +369,7 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
   double sum = 0;
   double c = 0;
   int countRejected = 0;
-  for (size_t i = 0; i < nmcevents; i++)
+  for (size_t i = 0; i < MCevents.size(); i++)
     {
       if (!flatMC && !MCevents[i].accepted())
 	{
@@ -428,7 +435,7 @@ likelihood::calc_rd_likelihood(const vector<double>& x) const
   // Uses Kahan summation
   double sumRD = 0;
   double c = 0;
-  for (size_t i = 0; i < nrdevents; i++)
+  for (size_t i = 0; i < RDevents.size(); i++)
     {
       if (!RDevents[i].accepted())
 	continue;
@@ -537,7 +544,8 @@ myFit()
       abort();
     }
   char line[99999];
-  nrdevents = 0;
+
+  vector<event> RDevents;
   while (fgets(line, 99999, fd) /*&& nrdevents < 5000*/)
     {
       double m, tPr, theta, phi;
@@ -546,12 +554,14 @@ myFit()
       hMass->Fill(m);
       htprime->Fill(tPr);
       event e(m, tPr, theta, phi);
-      RDevents[nrdevents++] = e;
+      RDevents.push_back(e);
       hRD->Fill(cos(theta), phi);
     }
   fclose(fd);
-  cout << "read " << nrdevents << " RD events" << endl;
+  cout << "read " << RDevents.size() << " RD events" << endl;
 
+  vector<event> MCevents;
+  vector<event> MCallEvents;
   if (!flatMC)
     {
       // Note that Max writes cos(theta) instead of theta
@@ -561,8 +571,6 @@ myFit()
 	  cerr << "Can't open input file '" << dataFile << "'." << endl;
 	  abort();
 	}
-      nmcevents = 0;
-      nmcallevents = 0;
       while (fgets(line, 99999, fd))
 	{
 	  int acc;
@@ -574,24 +582,27 @@ myFit()
 	    {
 	      hMassMC->Fill(m);
 	      htprimeMC->Fill(tPr);
-	      MCevents[nmcevents++] = e;
+	      MCevents.push_back(e);
 	    }
-	  MCallEvents[nmcallevents++] = e;
+	  MCallEvents.push_back(e);
 	}
       fclose(fd);
-      cout << "read " << nmcevents << " MC events" << endl;
+      cout << "read " << MCevents.size() << " accepted MC events out of "
+	   << MCallEvents.size() << " total ("
+	   << 100.*MCevents.size() / MCallEvents.size()
+	   << "% overall acceptance"
+	   << endl;
     }
   else
     {
       for (int iMC = 0; iMC < NFLATMCEVENTS; iMC++)
 	{
 	  event e(acos(gRandom->Uniform(-1,1)), gRandom->Uniform(-M_PI, M_PI));
-	  MCevents[iMC] = e;
+	  MCevents.push_back(e);
 	}
-      nmcevents = NFLATMCEVENTS;
     }
 
-  likelihood myL(ws); //, RDevents, MCevents);
+  likelihood myL(ws, RDevents, MCevents, MCallEvents);
 
   TStopwatch sw;
 
@@ -645,7 +656,7 @@ myFit()
 	  vStartingValues[iSV] = startingValues[iSV].value;
 	}
       size_t nGood = 0;
-      for (size_t iEvent = 0; iEvent < nrdevents; iEvent++)
+      for (size_t iEvent = 0; iEvent < RDevents.size(); iEvent++)
 	{
 	  if (!RDevents[iEvent].accepted())
 	    continue;
