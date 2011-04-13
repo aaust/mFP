@@ -221,11 +221,18 @@ class likelihood : public ROOT::Minuit2::FCNBase {
   vector<event> RDevents;
   vector<event> MCevents;
   vector<event> MCallEvents;
+
+  size_t nBins;
+  double threshold;
+  double binWidth;
+
+  size_t currentBin;
 public:
   likelihood(waveset ws_,
 	     vector<event>& RDevents_,
 	     vector<event>& MCevents_,
-	     vector<event>& MCallEvents_);
+	     vector<event>& MCallEvents_,
+	     size_t nBins_, double threshold_, double binWidth_);
 
   double Up() const { return 0.5; }
 
@@ -251,10 +258,14 @@ public:
   double
   calc_likelihood(const vector<double>& x) const;
 
-public:
   double
   operator()(const vector<double>& x) const;
 
+  void
+  setBin(size_t iBin) { currentBin = iBin;
+    massLow = threshold + iBin*binWidth;
+    massHigh = threshold + (iBin+1)*binWidth;
+  }
 };
 
 
@@ -315,11 +326,16 @@ coherent_waves::sum(const double* x, const event& e) const
 likelihood::likelihood(waveset ws_,
 		       vector<event>& RDevents_,
 		       vector<event>& MCevents_,
-		       vector<event>& MCallEvents_)
+		       vector<event>& MCallEvents_,
+		       size_t nBins_, double threshold_, double binWidth_)
   : ws(ws_),
     RDevents(RDevents_),
     MCevents(MCevents_),
-    MCallEvents(MCallEvents_)
+    MCallEvents(MCallEvents_),
+    nBins(nBins_),
+    threshold(threshold_),
+    binWidth(binWidth_),
+    currentBin(0)
 {
 }
 
@@ -602,7 +618,8 @@ myFit()
 	}
     }
 
-  likelihood myL(ws, RDevents, MCevents, MCallEvents);
+  likelihood myL(ws, RDevents, MCevents, MCallEvents,
+		 nBins, threshold, binWidth);
 
   TStopwatch sw;
 
@@ -634,11 +651,9 @@ myFit()
   fulltime.Start();
   for (iBin = 0; iBin < nBins; iBin++)
     {
-      massLow = threshold + iBin*binWidth;
-      massHigh = threshold + (iBin+1)*binWidth;
-
-      cout << "mass bin [" << massLow << ", " << massHigh << "]" << endl;
       sw.Start();
+
+      myL.setBin(iBin);
 
       minuit->Clear();
       if (!flatMC)
