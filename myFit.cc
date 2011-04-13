@@ -25,10 +25,10 @@ int iBin;
 
 string dataFile;
 string MCFile;
-double threshold = 0.7;
-int nBins = 80;
-double binWidth = 0.025;
-int nFits = 1;
+double threshold;
+int nBins;
+double binWidth;
+int nFits;
 
 
 static bool
@@ -222,6 +222,10 @@ class likelihood : public ROOT::Minuit2::FCNBase {
   vector<event> MCevents;
   vector<event> MCallEvents;
 
+  vector<vector<event> > binnedRDevents;
+  vector<vector<event> > binnedMCevents;
+  vector<double> binnedEtaAcc;
+
   size_t nBins;
   double threshold;
   double binWidth;
@@ -337,6 +341,43 @@ likelihood::likelihood(waveset ws_,
     binWidth(binWidth_),
     currentBin(0)
 {
+  // Bin the data, once and for all.
+  binnedRDevents.resize(nBins);
+  binnedMCevents.resize(nBins);
+  binnedEtaAcc.resize(nBins);
+  for (size_t iBin = 0; iBin < nBins; iBin++)
+    {
+      setBin(iBin);
+      for (size_t iEvent = 0; iEvent < RDevents.size(); iEvent++)
+	{
+	  if (!RDevents[iEvent].accepted())
+	    continue;
+	  binnedRDevents[iBin].push_back(RDevents[iEvent]);
+	}
+
+      for (size_t iEvent = 0; iEvent < MCevents.size(); iEvent++)
+	{
+	  if (!flatMC && !MCevents[iEvent].accepted())
+	    continue;
+	  binnedMCevents[iBin].push_back(MCevents[iEvent]);
+	}
+
+      if (!flatMC)
+	{
+	  double countAllMC = 0;
+	  for (size_t iEvent = 0; iEvent < MCallEvents.size(); iEvent++)
+	    {
+	      if (!MCallEvents[iEvent].accepted())
+		continue;
+	      countAllMC += 1;
+	    }
+	  binnedEtaAcc[iBin] = binnedMCevents[iBin].size() / countAllMC;
+	}
+      else
+	{
+	  binnedEtaAcc[iBin] = 1;  // No acceptance effects -> All accepted.
+	}
+    }
 }
 
 
@@ -371,32 +412,17 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
   if (weights.find(id) != weights.end())
     return weights[id];
 
-  // count total number of events in bin
-  size_t countGenerated = 0;
-  for (size_t i = 0; i < MCallEvents.size(); i++)
-    {
-      if (!flatMC && MCallEvents[i].accepted())
-	countGenerated++;
-      else if (flatMC && MCevents[i].accepted())
-	countGenerated++;
-    }
-
   // Uses Kahan's summation
   double sum = 0;
   double c = 0;
-  int countRejected = 0;
-  for (size_t i = 0; i < MCevents.size(); i++)
+  const vector<event>& pMCevents
+    = flatMC ? MCevents : binnedMCevents[currentBin];
+  for (size_t i = 0; i < pMCevents.size(); i++)
     {
-      if (!flatMC && !MCevents[i].accepted())
-	{
-	  //cout << "rejected " << MCevents[i].mass << " not in [" << massLow << ", " << massHigh << "]" << endl;
-	  countRejected++;
-	  continue;
-	}
       // Forming this sum as REAL sum and with no conjugate, because
       // the form of the decay amplitudes allows this.  This is not
       // the most general form!
-      double y = MCevents[i].MCweight(reflectivity,w1,w2) - c;
+      double y = pMCevents[i].MCweight(reflectivity,w1,w2) - c;
       double t = sum + y;
       c = (t - sum) - y;  // compensation term.
       sum = t;
@@ -411,7 +437,7 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
        << endl;
   */
 
-  return (weights[id] = sum / countGenerated);
+  return weights[id] = sum / pMCevents.size();
 }
 
 double
@@ -442,7 +468,7 @@ likelihood::calc_mc_likelihood(const vector<double>& x) const
       waveset_base = idx1;
     }
 
-  return sumMC;
+  return sumMC * binnedEtaAcc[currentBin];
 }
 
 double
@@ -451,11 +477,10 @@ likelihood::calc_rd_likelihood(const vector<double>& x) const
   // Uses Kahan summation
   double sumRD = 0;
   double c = 0;
-  for (size_t i = 0; i < RDevents.size(); i++)
+  const vector<event>& events = binnedRDevents[currentBin];
+  for (size_t i = 0; i < events.size(); i++)
     {
-      if (!RDevents[i].accepted())
-	continue;
-      double y = log(probabilityDensity(x, RDevents[i])) - c;
+      double y = log(probabilityDensity(x, events[i])) - c;
       double t = sumRD + y;
       c = (t - sumRD) - y;
       sumRD = t;
@@ -538,7 +563,8 @@ myFit()
       { "Rea(-,2,0)", gRandom->Uniform(5), false },
       { "Ima(-,2,0)", gRandom->Uniform(5), false },
       { "Rea(-,2,1)", gRandom->Uniform(5), false },
-      { "Ima(-,2,1)", gRandom->Uniform(5), false } };
+      { "Ima(-,2,1)", gRandom->Uniform(5), false },
+    };
 
   TH2* hRD = new TH2D("hRD", "RD", 10, -1, 1, 10, -M_PI, M_PI);
   TH2* hMC = new TH2D("hMC", "MC", 10, -1, 1, 10, -M_PI, M_PI);
@@ -606,7 +632,7 @@ myFit()
       cout << "read " << MCevents.size() << " accepted MC events out of "
 	   << MCallEvents.size() << " total ("
 	   << 100.*MCevents.size() / MCallEvents.size()
-	   << "% overall acceptance"
+	   << "% overall acceptance)"
 	   << endl;
     }
   else
