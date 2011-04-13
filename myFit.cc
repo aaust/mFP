@@ -4,6 +4,7 @@
 
 using namespace std;
 
+#include <string>
 #include <stdio.h>
 
 #include "TH2.h"
@@ -20,6 +21,7 @@ using namespace std;
 size_t nrdevents;
 #define NMCEVENTS 10000000 //(4*NRDEVENTS)
 size_t nmcevents;
+size_t nmcallevents;
 
 bool flatMC = false;
 #define NFLATMCEVENTS 100000
@@ -32,20 +34,21 @@ int iBin;
 //const char dataFile[] = "dataEtaPpi_eta_to_3pi.txt";
 //const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1Mio_EtaPr_5Pi_falt_m5_tcut/dataMCEtaPr.txt";
 const char dataFile[] = "dataEtaPi.txt";
-const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1Mio_Eta_3Pi_flat_m5_tcut/dataMCEta.txt";
+const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1,5Mio_Eta_3Pi_flat_m5_1,2_0,2_1,5_tcut/dataMCEta.txt";
 double threshold = 0.7;
-int nBins = 40;
-double binWidth = 0.05;
+int nBins = 80;
+double binWidth = 0.025;
 
 #define NWAVES 8
 
 struct wave {
+  string name;
   int l, m;
   std::complex<double> a;
 
   wave() { }
   wave(int ll, int mm) { l = ll; m = mm; a = 0; }
-  wave(const wave& o) { l = o.l; m = o.m; a = o.a; }
+  wave(const wave& o) { l = o.l; m = o.m; a = o.a; name = o.name; }
 };
 
 class event;
@@ -97,6 +100,7 @@ public:
 
 event RDevents[NRDEVENTS]; // not a vector because of Cint limitations
 event MCevents[NMCEVENTS]; // idem
+event MCallEvents[NMCEVENTS];
 
 class likelihood : public ROOT::Minuit2::FCNBase {
   vector<coherent_waves> ws;
@@ -220,6 +224,16 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
   if (weights.find(id) != weights.end())
     return weights[id];
 
+  // count total number of events in bin
+  size_t countGenerated = 0;
+  for (size_t i = 0; i < nmcallevents; i++)
+    {
+      if (!flatMC && MCallEvents[i].accepted())
+	countGenerated++;
+      else if (flatMC && MCevents[i].accepted())
+	countGenerated++;
+    }
+
   // Uses Kahan's summation
   double sum = 0;
   double c = 0;
@@ -240,14 +254,17 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
       c = (t - sum) - y;  // compensation term.
       sum = t;
     }
+
   /*
   cout << "calculated MCweight " << sum / (nmcevents - countRejected)
-       << " from " << (nmcevents - countRejected) << " MC events for "
+       << " from " << (nmcevents - countRejected) << " MC events "
+       << "out of " << countGenerated << " for "
        << "(l1,m1,l2,m2) = "
        << "(" << w1.l << "," << w1.m << "," << w2.l << "," << w2.m << ")"
        << endl;
   */
-  return (weights[id] = sum / (nmcevents - countRejected));
+
+  return (weights[id] = sum / countGenerated);
 }
 
 double
@@ -390,6 +407,11 @@ myFit()
   //vector<event> RDevents(2500, event(0,0));
 
   FILE* fd = fopen(dataFile, "r");
+  if (!fd)
+    {
+      cerr << "Can't open input file '" << dataFile << "'." << endl;
+      abort();
+    }
   char line[99999];
   nrdevents = 0;
   while (fgets(line, 99999, fd) /*&& nrdevents < 5000*/)
@@ -410,16 +432,27 @@ myFit()
     {
       // Note that Max writes cos(theta) instead of theta
       fd = fopen(MCFile, "r");
+      if (!fd)
+	{
+	  cerr << "Can't open input file '" << dataFile << "'." << endl;
+	  abort();
+	}
       nmcevents = 0;
+      nmcallevents = 0;
       while (fgets(line, 99999, fd))
 	{
+	  int acc;
 	  double m, tPr, theta, phi;
-	  sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
+	  sscanf(line, "%d %lf %lf %lf %lf", &acc, &m, &tPr, &theta, &phi);
 
-	  hMassMC->Fill(m);
-	  htprimeMC->Fill(tPr);
 	  event e(m, tPr, acos(theta), phi);
-	  MCevents[nmcevents++] = e;
+	  if (acc)
+	    {
+	      hMassMC->Fill(m);
+	      htprimeMC->Fill(tPr);
+	      MCevents[nmcevents++] = e;
+	    }
+	  MCallEvents[nmcallevents++] = e;
 	}
       fclose(fd);
       cout << "read " << nmcevents << " MC events" << endl;
@@ -652,7 +685,7 @@ myFit()
 
 int main()
 {
-  for (int i = 0; i < 240; i++)
+  for (int i = 0; i < 1; i++)
     {
       char outFileName[999];
       snprintf(outFileName, 999, "out%2.2d.root", i);
