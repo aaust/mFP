@@ -1,0 +1,6 @@
+dataFile dataEtaPi.txt
+MCFile /data/zup/diefenbach/ToyMC/MCfit/1,5Mio_Eta_3Pi_flat_m5_1,2_0,2_1,5_tcut/dataMCEta.txt
+threshold 0.7
+nbins 80
+binWidth 0.025
+nFits 1

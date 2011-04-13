@@ -33,11 +33,135 @@ int iBin;
 //const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1Mio_EtaPr_3Pi_flat_m5_tcut/dataMCEtaPr.txt";
 //const char dataFile[] = "dataEtaPpi_eta_to_3pi.txt";
 //const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1Mio_EtaPr_5Pi_falt_m5_tcut/dataMCEtaPr.txt";
-const char dataFile[] = "dataEtaPi.txt";
-const char MCFile[] = "/data/zup/diefenbach/ToyMC/MCfit/1,5Mio_Eta_3Pi_flat_m5_1,2_0,2_1,5_tcut/dataMCEta.txt";
+string dataFile;
+string MCFile;
 double threshold = 0.7;
 int nBins = 80;
 double binWidth = 0.025;
+int nFits = 1;
+
+static bool
+readString(FILE* fd, string& result)
+{
+  char text[999];
+  if (fscanf(fd, "%s", text) != 1) // possible overflow
+    return false;
+  result = string(text);
+  return true;
+}
+
+static bool
+readInt(FILE *fd, int& result)
+{
+  return fscanf(fd, "%d", &result) == 1;
+}
+
+static bool
+readDouble(FILE* fd, double& result)
+{
+  return fscanf(fd, "%lf", &result) == 1;
+}
+
+
+static bool
+readControlFile(string fileName)
+{
+  FILE* fd = fopen(fileName.c_str(), "r");
+  if (!fd)
+    {
+      cerr << "Can't open input file '" << fileName << "'" << endl;
+      return false;
+    }
+
+  bool haveDataFile = false;
+  bool haveMCFile = false;
+  bool haveNFits = false;
+  bool haveThreshold = false;
+  bool haveNBins = false;
+  bool haveBinWidth = false;
+  while(!feof(fd))
+    {
+      char key[999];
+      if (fscanf(fd, "%s", key) != 1)  // possible overflow here
+	break;
+
+      if (!strcasecmp(key, "datafile"))
+	{
+	  if (!readString(fd, dataFile))
+	    break;
+	  haveDataFile = true;
+	}
+      else if (!strcasecmp(key, "mcfile"))
+	{
+	  if (!readString(fd, MCFile))
+	    break;
+	  haveMCFile = true;
+	}
+      else if (!strcasecmp(key, "threshold"))
+	{
+	  if (!readDouble(fd, threshold))
+	    break;
+	  haveThreshold = true;
+	}
+      else if (!strcasecmp(key, "nfits"))
+	{
+	  if (!readInt(fd, nFits))
+	    break;
+	  haveNFits = true;
+	}
+      else if (!strcasecmp(key, "nbins"))
+	{
+	  if (!readInt(fd, nBins))
+	    break;
+	  haveNBins = true;
+	}
+      else if (!strcasecmp(key, "binwidth"))
+	{
+	  if (!readDouble(fd, binWidth))
+	    break;
+	  haveBinWidth = true;
+	}
+      else
+	{
+	  cerr << "unknown key '" << key << "' encountered" << endl;
+	  return false;
+	}
+    }
+
+  bool good = true;
+  if (!haveDataFile)
+    {
+      cerr << "No data file given." << endl;
+      good = false;
+    }
+  if (!haveMCFile)
+    {
+      cerr << "No MC file given." << endl;
+      good = false;
+    }
+  if (!haveThreshold)
+    {
+      cerr << "No threshold given." << endl;
+      good = false;
+    }
+  if (!haveNFits)
+    {
+      cerr << "No number of fits given." << endl;
+      good = false;
+    }
+  if (!haveNBins)
+    {
+      cerr << "No number of bins given." << endl;
+      good = false;
+    }
+  if (!haveBinWidth)
+    {
+      cerr << "No bin width given." << endl;
+      good = false;
+    }
+  return good;
+}
+
 
 #define NWAVES 8
 
@@ -406,7 +530,7 @@ myFit()
 
   //vector<event> RDevents(2500, event(0,0));
 
-  FILE* fd = fopen(dataFile, "r");
+  FILE* fd = fopen(dataFile.c_str(), "r");
   if (!fd)
     {
       cerr << "Can't open input file '" << dataFile << "'." << endl;
@@ -431,7 +555,7 @@ myFit()
   if (!flatMC)
     {
       // Note that Max writes cos(theta) instead of theta
-      fd = fopen(MCFile, "r");
+      fd = fopen(MCFile.c_str(), "r");
       if (!fd)
 	{
 	  cerr << "Can't open input file '" << dataFile << "'." << endl;
@@ -685,7 +809,12 @@ myFit()
 
 int main()
 {
-  for (int i = 0; i < 1; i++)
+  if (!readControlFile("control.txt"))
+    {
+      return 1;
+    }
+
+  for (int i = 0; i < nFits; i++)
     {
       char outFileName[999];
       snprintf(outFileName, 999, "out%2.2d.root", i);
