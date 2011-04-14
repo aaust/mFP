@@ -17,143 +17,13 @@ using namespace std;
 #include "TStopwatch.h"
 #include "TFile.h"
 
+#include "control.h"
+
 bool flatMC = false;
 #define NFLATMCEVENTS 100000
 double massLow = 0;
 double massHigh = 9999;
 int iBin;
-
-string dataFile;
-string MCFile;
-double threshold;
-int nBins;
-double binWidth;
-int nFits;
-
-
-static bool
-readString(FILE* fd, string& result)
-{
-  char text[999];
-  if (fscanf(fd, "%s", text) != 1) // possible overflow
-    return false;
-  result = string(text);
-  return true;
-}
-
-
-static bool
-readInt(FILE *fd, int& result)
-{
-  return fscanf(fd, "%d", &result) == 1;
-}
-
-
-static bool
-readDouble(FILE* fd, double& result)
-{
-  return fscanf(fd, "%lf", &result) == 1;
-}
-
-
-static bool
-readControlFile(string fileName)
-{
-  FILE* fd = fopen(fileName.c_str(), "r");
-  if (!fd)
-    {
-      cerr << "Can't open input file '" << fileName << "'" << endl;
-      return false;
-    }
-
-  bool haveDataFile = false;
-  bool haveMCFile = false;
-  bool haveNFits = false;
-  bool haveThreshold = false;
-  bool haveNBins = false;
-  bool haveBinWidth = false;
-  while(!feof(fd))
-    {
-      char key[999];
-      if (fscanf(fd, "%s", key) != 1)  // possible overflow here
-	break;
-
-      if (!strcasecmp(key, "datafile"))
-	{
-	  if (!readString(fd, dataFile))
-	    break;
-	  haveDataFile = true;
-	}
-      else if (!strcasecmp(key, "mcfile"))
-	{
-	  if (!readString(fd, MCFile))
-	    break;
-	  haveMCFile = true;
-	}
-      else if (!strcasecmp(key, "threshold"))
-	{
-	  if (!readDouble(fd, threshold))
-	    break;
-	  haveThreshold = true;
-	}
-      else if (!strcasecmp(key, "nfits"))
-	{
-	  if (!readInt(fd, nFits))
-	    break;
-	  haveNFits = true;
-	}
-      else if (!strcasecmp(key, "nbins"))
-	{
-	  if (!readInt(fd, nBins))
-	    break;
-	  haveNBins = true;
-	}
-      else if (!strcasecmp(key, "binwidth"))
-	{
-	  if (!readDouble(fd, binWidth))
-	    break;
-	  haveBinWidth = true;
-	}
-      else
-	{
-	  cerr << "unknown key '" << key << "' encountered" << endl;
-	  return false;
-	}
-    }
-
-  bool good = true;
-  if (!haveDataFile)
-    {
-      cerr << "No data file given." << endl;
-      good = false;
-    }
-  if (!haveMCFile)
-    {
-      cerr << "No MC file given." << endl;
-      good = false;
-    }
-  if (!haveThreshold)
-    {
-      cerr << "No threshold given." << endl;
-      good = false;
-    }
-  if (!haveNFits)
-    {
-      cerr << "No number of fits given." << endl;
-      good = false;
-    }
-  if (!haveNBins)
-    {
-      cerr << "No number of bins given." << endl;
-      good = false;
-    }
-  if (!haveBinWidth)
-    {
-      cerr << "No bin width given." << endl;
-      good = false;
-    }
-  return good;
-}
 
 
 #define NWAVES 8
@@ -161,11 +31,11 @@ readControlFile(string fileName)
 struct wave {
   string name;
   int l, m;
-  std::complex<double> a;
 
   wave() { }
-  wave(int ll, int mm) { l = ll; m = mm; a = 0; }
-  wave(const wave& o) { l = o.l; m = o.m; a = o.a; name = o.name; }
+  wave(int ll, int mm) { l = ll; m = mm; }
+  wave(const char* name_, int ll, int mm) : name(name_), l(ll), m(mm) {}
+  wave(const wave& o) { l = o.l; m = o.m; name = o.name; }
 };
 
 class event;
@@ -516,16 +386,16 @@ myFit()
   gRandom = new TRandom1;
 
   vector<wave> positive;
-  positive.push_back(wave(2, 1));
-  positive.push_back(wave(1, 1));
-  positive.push_back(wave(4, 1));
+  positive.push_back(wave("D+", 2, 1));
+  positive.push_back(wave("P+", 1, 1));
+  positive.push_back(wave("F+", 4, 1));
 
   vector<wave> negative;
-  negative.push_back(wave(0,0));
-  negative.push_back(wave(1,0));
-  negative.push_back(wave(1,1));
-  negative.push_back(wave(2,0));
-  negative.push_back(wave(2,1));
+  negative.push_back(wave("S0", 0, 0));
+  negative.push_back(wave("P0", 1, 0));
+  negative.push_back(wave("P-", 1, 1));
+  negative.push_back(wave("D0", 2, 0));
+  negative.push_back(wave("D-", 2, 1));
 
   coherent_waves wsPos, wsNeg;
   wsPos.reflectivity = +1;
