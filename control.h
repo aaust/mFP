@@ -4,6 +4,7 @@
 #include <string>
 
 extern std::string dataFile;
+extern bool flatMC;
 extern std::string MCFile;
 extern double threshold;
 extern int nBins;

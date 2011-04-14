@@ -1,0 +1,4 @@
+The fit is controlled via a file control.txt.  For an example see
+controlExample.txt.  If the keyword 'flatMC' is given, normalization
+integrals are calculated from a flat distribution and the 'MCfile'
+keyword is ignored.

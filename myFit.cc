@@ -19,7 +19,6 @@ using namespace std;
 
 #include "control.h"
 
-bool flatMC = false;
 #define NFLATMCEVENTS 100000
 double massLow = 0;
 double massHigh = 9999;
@@ -81,7 +80,7 @@ public:
     return (this->mass >= massLow && this->mass < massHigh
 	    //&& this->tPrime > 0.1 && this->tPrime < 0.3);
 	    //&& this->tPrime > 0.3);
-            && 1);
+	    && 1);
   }
 };
 
@@ -148,8 +147,8 @@ public:
 
 // The amplitude is:  Ylm(theta, phi) - epsilon (-)^m Yl-m(theta, phi)
 //                  = Ylm(theta, phi) - epsilon Ylm(theta, phi)*
-//                  = N Plm(theta) (e^(i m phi) - epsilon e^(-i m phi))
-//                  = N' Plm(theta) {cos,sin}(m phi)
+//                  = Ylm(theta, 0) (e^(i m phi) - epsilon e^(-i m phi))
+//                  = 2 Ylm(theta, 0) {i sin, cos}(m phi)
 
 // NOTE the phase is ignored, as different reflectivities don't interfere
 
@@ -178,6 +177,7 @@ event::MCweight(int reflectivity, int l1, int m1, int l2, int m2) const
   return (this->decayAmplitude(reflectivity,l1,m1)
 	  * this->decayAmplitude(reflectivity,l2,m2));
 }
+
 
 complex<double>
 coherent_waves::sum(const double* x, const event& e) const
@@ -234,14 +234,14 @@ likelihood::likelihood(waveset ws_,
 
       if (!flatMC)
 	{
-	  double countAllMC = 0;
+	  double countAllMC = 0;  // no of MC events generated in bin
 	  for (size_t iEvent = 0; iEvent < MCallEvents.size(); iEvent++)
 	    {
 	      if (!MCallEvents[iEvent].accepted())
 		continue;
-	      countAllMC += 1;
+	      countAllMC++;
 	    }
-	  binnedEtaAcc[iBin] = binnedMCevents[iBin].size() / countAllMC;
+	  binnedEtaAcc[iBin] = 1.*binnedMCevents[iBin].size() / countAllMC;
 	}
       else
 	{
@@ -299,9 +299,8 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
     }
 
   /*
-  cout << "calculated MCweight " << sum / (nmcevents - countRejected)
-       << " from " << (nmcevents - countRejected) << " MC events "
-       << "out of " << countGenerated << " for "
+  cout << "calculated MCweight " << sum / pMCevents.size()
+       << " from " << pMCevents.size() << " MC events for "
        << "(l1,m1,l2,m2) = "
        << "(" << w1.l << "," << w1.m << "," << w2.l << "," << w2.m << ")"
        << endl;
@@ -437,7 +436,6 @@ myFit()
     };
 
   TH2* hRD = new TH2D("hRD", "RD", 10, -1, 1, 10, -M_PI, M_PI);
-  TH2* hMC = new TH2D("hMC", "MC", 10, -1, 1, 10, -M_PI, M_PI);
   TH1* hMass = new TH1D("hMass", "mass distribution",
 			250, 0.5, 3);
   TH1* htprime = new TH1D("htprime", "t' distribution",
@@ -543,6 +541,7 @@ myFit()
   TH1* hIntensity = new TH1D("hIntensity", "total intensity as predicted",
 			     nBins, lower, upper);
   //TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
+
   TStopwatch fulltime;
   fulltime.Start();
   for (iBin = 0; iBin < nBins; iBin++)
@@ -553,7 +552,7 @@ myFit()
 
       minuit->Clear();
       if (!flatMC)
-	// MCweights are the same in different mass bins for the
+	// flat MCweights are the same in different mass bins for the
 	// two-body amplitudes.
 	weights.clear();
 

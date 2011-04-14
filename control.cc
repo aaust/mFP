@@ -7,6 +7,7 @@
 using namespace std;
 
 string dataFile;
+bool flatMC;
 string MCFile;
 double threshold;
 int nBins;
@@ -50,6 +51,7 @@ readControlFile(string fileName)
     }
 
   bool haveDataFile = false;
+  bool flatMC = false;
   bool haveMCFile = false;
   bool haveNFits = false;
   bool haveThreshold = false;
@@ -66,6 +68,10 @@ readControlFile(string fileName)
 	  if (!readString(fd, dataFile))
 	    break;
 	  haveDataFile = true;
+	}
+      else if (!strcasecmp(key, "flatMC"))
+	{
+	  flatMC = true;
 	}
       else if (!strcasecmp(key, "mcfile"))
 	{
@@ -110,7 +116,7 @@ readControlFile(string fileName)
       cerr << "No data file given." << endl;
       good = false;
     }
-  if (!haveMCFile)
+  if (!flatMC && !haveMCFile)
     {
       cerr << "No MC file given." << endl;
       good = false;
