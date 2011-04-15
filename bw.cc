@@ -3,10 +3,12 @@
 
 using namespace std;
 
+const double hbarc = 0.1973269631; // MeV fm
+
 double
 blattWeisskopf(int L, double p)
 {
-  double z = p / 0.1973;  // 1fm interaction radius
+  double z = p / hbarc;  // 1fm interaction radius
   double result;
   switch (L) {
   case 0:
