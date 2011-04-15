@@ -11,7 +11,6 @@ using namespace std;
 #include "TH3.h"
 #include "TCanvas.h"
 #include "TRandom1.h"
-#include "Math/SpecFunc.h"
 #include "Minuit2/FCNBase.h"
 #include "TFitterMinuit.h"
 #include "TStopwatch.h"
