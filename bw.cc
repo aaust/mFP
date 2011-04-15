@@ -58,6 +58,12 @@ BW_a2_pietap(double s)
   return BW(s, .139, .958, 2, 1.3183, 0.107);
 }
 
+complex<double>
+BW_exotic_pietap(double s)
+{
+  return BW(s, .139, .958, 1, 1.579, 0.340);
+}
+
 #if 0
 void
 bw()
@@ -66,8 +72,11 @@ bw()
     {
       double m = .139 + .958 + i*0.001;
       complex<double> z = BW_a2_pietap(m*m);
+      complex<double> z2 = BW_exotic_pietap(m*m);
       cout << m << " "
-	   << real(z) << " " << imag(z) << " " << abs(z) << " " << arg(z)
+	   << real(z) << " " << imag(z) << " " << abs(z) << " " << arg(z) << " "
+	   << real(z2) << " " << imag(z2) << " " << abs(z2) << " " << arg(z2) << " "
+	   << arg(z / z2)
 	   << endl;
     }
 }
