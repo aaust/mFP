@@ -18,72 +18,15 @@ using namespace std;
 #include "TFile.h"
 
 #include "control.h"
+#include "wave.h"
+#include "event.h"
 
 #define NFLATMCEVENTS 100000
 double massLow = 0;
 double massHigh = 9999;
 int iBin;
 
-
 #define NWAVES 8
-
-struct wave {
-  string name;
-  int l, m;
-
-  wave() { }
-  wave(int ll, int mm) { l = ll; m = mm; }
-  wave(const char* name_, int ll, int mm) : name(name_), l(ll), m(mm) {}
-  wave(const wave& o) { l = o.l; m = o.m; name = o.name; }
-};
-
-class event;
-
-struct coherent_waves {
-  int reflectivity;
-  int spinflip;
-  vector<wave> waves;
-
-  coherent_waves() {}
-  coherent_waves(const coherent_waves& o) { reflectivity = o.reflectivity; spinflip = o.spinflip; waves = o.waves; }
-
-  complex<double> sum(const double* x, const event& e) const;
-  size_t getNwaves() { return waves.size(); }
-};
-
-typedef vector<coherent_waves> waveset;
-
-class event {
-public:
-  double mass;
-  double tPrime;
-  double theta;
-  double phi;
-
-  event() { mass = tPrime = theta = phi = 0; }
-  /*
-  event(const event& other) { theta = other.theta; phi = other.phi; }
-  */
-  event(double th, double ph) { mass = tPrime = 0; theta = th; phi = ph; }
-  event(double mass_, double tPrime_, double th, double ph)
-  { mass = mass_; tPrime = tPrime_; theta = th; phi = ph; }
-  event(const event& o) { mass = o.mass; tPrime = o.tPrime; theta = o.theta; phi = o.phi; }
-
-  double decayAmplitude(int reflectivity, const wave& w) const
-  { return decayAmplitude(reflectivity, w.l, w.m); };
-  double decayAmplitude(int reflectivity, int l, int m) const;
-  double MCweight(int reflectivity, const wave& w1, const wave& w2) const
-  { return MCweight(reflectivity, w1.l, w1.m, w2.l, w2.m); }
-  double MCweight(int reflectivity, int l1, int m1, int l2, int m2) const;
-
-  bool accepted() const {
-    return (this->mass >= massLow && this->mass < massHigh
-	    //&& this->tPrime > 0.1 && this->tPrime < 0.3
-	    //&& this->tPrime > 0.3
-	    //&& cos(theta) > -0.9 && cos(theta) < 0.9
-	    && 1);
-  }
-};
 
 
 class likelihood : public ROOT::Minuit2::FCNBase {
@@ -143,60 +86,6 @@ public:
 };
 
 
-// Returns the real / imaginary part of the amplitude, depending on which one
-// is non-zero.
-
-// The amplitude is:  Ylm(theta, phi) - epsilon (-)^m Yl-m(theta, phi)
-//                  = Ylm(theta, phi) - epsilon Ylm(theta, phi)*
-//                  = Ylm(theta, 0) (e^(i m phi) - epsilon e^(-i m phi))
-//                  = 2 Ylm(theta, 0) {i sin, cos}(m phi)
-
-// NOTE the phase is ignored, as different reflectivities don't interfere
-
-double
-event::decayAmplitude(int reflectivity, int l, int m) const
-{
-  double spherical = ROOT::Math::sph_legendre(l, m, this->theta);
-
-  // This absorbs the factor 2 from e^i \pm e^-i = 2 {i sin, cos}
-  double factor = 1; //sqrt(nrdevents);
-  if (m != 0)
-    factor *= sqrt(2.);    
-
-  if (reflectivity == +1)
-    return factor*spherical*sin(m*this->phi);
-  else
-    return factor*spherical*cos(m*this->phi);
-}
-
-
-double
-event::MCweight(int reflectivity, int l1, int m1, int l2, int m2) const
-{
-  // This is real and no conjugate is employed because of the special
-  // form of the two-pseudoscalar decay amplitudes.
-  return (this->decayAmplitude(reflectivity,l1,m1)
-	  * this->decayAmplitude(reflectivity,l2,m2));
-}
-
-
-complex<double>
-coherent_waves::sum(const double* x, const event& e) const
-{
-  complex<double> result = 0;
-  size_t idx = 0;
-  vector<wave>::const_iterator it;
-  for (it = this->waves.begin(); it != this->waves.end(); it++)
-    {
-      complex<double> a(x[idx], x[idx+1]);
-      result += a * e.decayAmplitude(this->reflectivity,*it);
-      idx += 2;
-    }
-
-  return result;
-}
-
-
 
 likelihood::likelihood(waveset ws_,
 		       vector<event>& RDevents_,
@@ -215,6 +104,9 @@ likelihood::likelihood(waveset ws_,
   // Bin the data, once and for all.
   TH1* hMass = new TH1D("hMass", "mass distribution as used in fit",
 			nBins, threshold, threshold + nBins*binWidth);
+
+  TStopwatch sw;
+  sw.Start();
 
   binnedRDevents.resize(nBins);
   binnedMCevents.resize(nBins);
@@ -253,6 +145,9 @@ likelihood::likelihood(waveset ws_,
 	  binnedEtaAcc[iBin] = 1;  // No acceptance effects -> All accepted.
 	}
     }
+
+  sw.Stop();
+  cout << "data binned after " << sw.CpuTime() << " s." << endl;
 }
 
 
