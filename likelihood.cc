@@ -26,9 +26,6 @@ likelihood::likelihood(waveset ws_,
     currentBin(0)
 {
   // Bin the data, once and for all.
-  TH1* hMass = new TH1D("hMass", "mass distribution as used in fit",
-			nBins, threshold, threshold + nBins*binWidth);
-
   TStopwatch sw;
   sw.Start();
 
@@ -43,7 +40,6 @@ likelihood::likelihood(waveset ws_,
 	  if (!RDevents[iEvent].accepted())
 	    continue;
 	  binnedRDevents[iBin].push_back(RDevents[iEvent]);
-	  hMass->Fill(RDevents[iEvent].mass);
 	}
 
       for (size_t iEvent = 0; iEvent < MCevents.size(); iEvent++)
