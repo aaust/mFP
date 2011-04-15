@@ -67,6 +67,9 @@ public:
     massHigh = threshold + (iBin+1)*binWidth;
   }
 
+  size_t
+  eventsInBin() const { return binnedRDevents[currentBin].size(); }
+
   void
   clearWeights() { weights.clear(); }
 };

@@ -6,9 +6,9 @@
 
 using namespace std;
 
-string dataFile;
+vector<string> dataFiles;
 bool flatMC;
-string MCFile;
+vector<string> MCFiles;
 double threshold;
 int nBins;
 double binWidth;
@@ -65,8 +65,10 @@ readControlFile(string fileName)
 
       if (!strcasecmp(key, "datafile"))
 	{
-	  if (!readString(fd, dataFile))
+	  string s;
+	  if (!readString(fd, s))
 	    break;
+	  dataFiles.push_back(s);
 	  haveDataFile = true;
 	}
       else if (!strcasecmp(key, "flatMC"))
@@ -75,8 +77,10 @@ readControlFile(string fileName)
 	}
       else if (!strcasecmp(key, "mcfile"))
 	{
-	  if (!readString(fd, MCFile))
+	  string s;
+	  if (!readString(fd, s))
 	    break;
+	  MCFiles.push_back(s);
 	  haveMCFile = true;
 	}
       else if (!strcasecmp(key, "threshold"))
@@ -119,6 +123,11 @@ readControlFile(string fileName)
   if (!flatMC && !haveMCFile)
     {
       cerr << "No MC file given." << endl;
+      good = false;
+    }
+  if (!flatMC && MCFiles.size() != dataFiles.size())
+    {
+      cerr << "different number of MC files and data files." << endl;
       good = false;
     }
   if (!haveThreshold)

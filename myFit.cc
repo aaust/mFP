@@ -27,6 +27,60 @@ int iBin;
 
 #define NWAVES 8
 
+class combinedLikelihood : public ROOT::Minuit2::FCNBase {
+private:
+  vector<likelihood> myLs;
+  waveset ws;
+  size_t nBins;
+  double threshold;
+  double binWidth;
+public:
+  combinedLikelihood(waveset ws_,
+		     size_t nBins_, double threshold_, double binWidth_)
+    : ws(ws_), nBins(nBins_), threshold(threshold_), binWidth(binWidth_)
+  {
+  }
+
+  void
+  addChannel(vector<event>& RDevents,
+	     vector<event>& MCevents,
+	     vector<event>& MCallEvents)
+  {
+    myLs.push_back(likelihood(ws, RDevents, MCevents, MCallEvents, nBins, threshold, binWidth));
+  }
+
+
+  double Up() const { return 0.5; }
+
+  void setBin(size_t iBin) { for (size_t i = 0; i < myLs.size(); i++) myLs[i].setBin(iBin); }
+  size_t eventsInBin() const {
+    size_t sum = 0;
+    for (size_t i = 0; i < myLs.size(); i++) sum += myLs[i].eventsInBin(); 
+    return sum;
+  }
+  void clearWeights() { for (size_t i = 0; i < myLs.size(); i++) myLs[i].clearWeights(); }
+
+  double
+  calc_mc_likelihood(const vector<double>& x) const
+  {
+    double result = 0;
+    for (size_t i = 0; i < myLs.size(); i++)
+      result += myLs[i].calc_mc_likelihood(x);
+    return result;
+  }
+
+  double
+  operator()(const vector<double>& x) const
+  {
+    double result = 0;
+    for (size_t i = 0; i < myLs.size(); i++)
+      result -= myLs[i].calc_likelihood(x);
+    return result;
+  }
+
+  size_t getNChannels() { return myLs.size(); }
+};
+
 
 
 void
@@ -95,75 +149,84 @@ myFit()
   TH1* htprimeMC = new TH1D("htprimeMC", "t' distribution",
 			  250, 0, 1);
 
-  //vector<event> RDevents(2500, event(0,0));
+  combinedLikelihood myL(ws, nBins, threshold, binWidth);
 
-  FILE* fd = fopen(dataFile.c_str(), "r");
-  if (!fd)
+  for (size_t iFile = 0; iFile < dataFiles.size(); iFile++)
     {
-      cerr << "Can't open input file '" << dataFile << "'." << endl;
-      abort();
-    }
-  char line[99999];
-
-  vector<event> RDevents;
-  while (fgets(line, 99999, fd) /*&& nrdevents < 5000*/)
-    {
-      double m, tPr, theta, phi;
-      sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
-
-      hMassFine->Fill(m);
-      htprime->Fill(tPr);
-      event e(m, tPr, theta, phi);
-      RDevents.push_back(e);
-      hRD->Fill(cos(theta), phi);
-    }
-  fclose(fd);
-  cout << "read " << RDevents.size() << " RD events" << endl;
-
-  vector<event> MCevents;
-  vector<event> MCallEvents;
-  if (!flatMC)
-    {
-      // Note that Max writes cos(theta) instead of theta
-      fd = fopen(MCFile.c_str(), "r");
+      FILE* fd = fopen(dataFiles[iFile].c_str(), "r");
       if (!fd)
 	{
-	  cerr << "Can't open input file '" << MCFile << "'." << endl;
+	  cerr << "Can't open input file '" << dataFiles[iFile] << "'." << endl;
 	  abort();
 	}
-      while (fgets(line, 99999, fd))
-	{
-	  int acc;
-	  double m, tPr, theta, phi;
-	  sscanf(line, "%d %lf %lf %lf %lf", &acc, &m, &tPr, &theta, &phi);
+      char line[99999];
 
-	  event e(m, tPr, acos(theta), phi);
-	  if (acc)
-	    {
-	      hMassMC->Fill(m);
-	      htprimeMC->Fill(tPr);
-	      MCevents.push_back(e);
-	    }
-	  MCallEvents.push_back(e);
+      vector<event> RDevents;
+      while (fgets(line, 99999, fd) /*&& nrdevents < 5000*/)
+	{
+	  double m, tPr, theta, phi;
+	  sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
+
+	  hMassFine->Fill(m);
+	  htprime->Fill(tPr);
+	  event e(m, tPr, theta, phi);
+	  RDevents.push_back(e);
+	  hRD->Fill(cos(theta), phi);
 	}
       fclose(fd);
-      cout << "read " << MCevents.size() << " accepted MC events out of "
-	   << MCallEvents.size() << " total ("
-	   << 100.*MCevents.size() / MCallEvents.size()
-	   << "% overall acceptance)"
-	   << endl;
-    }
-  else
-    {
-      for (int iMC = 0; iMC < NFLATMCEVENTS; iMC++)
+      cout << "read " << RDevents.size() << " RD events" << endl;
+
+      vector<event> MCevents;
+      vector<event> MCallEvents;
+      if (!flatMC)
 	{
-	  event e(acos(gRandom->Uniform(-1,1)), gRandom->Uniform(-M_PI, M_PI));
-	  MCevents.push_back(e);
+	  // Note that Max writes cos(theta) instead of theta
+	  fd = fopen(MCFiles[iFile].c_str(), "r");
+	  if (!fd)
+	    {
+	      cerr << "Can't open input file '" << MCFiles[iFile] << "'." << endl;
+	      abort();
+	    }
+	  while (fgets(line, 99999, fd))
+	    {
+	      int acc;
+	      double m, tPr, theta, phi;
+	      sscanf(line, "%d %lf %lf %lf %lf", &acc, &m, &tPr, &theta, &phi);
+
+	      event e(m, tPr, acos(theta), phi);
+	      if (acc)
+		{
+		  hMassMC->Fill(m);
+		  htprimeMC->Fill(tPr);
+		  MCevents.push_back(e);
+		}
+	      MCallEvents.push_back(e);
+	    }
+	  fclose(fd);
+	  cout << "read " << MCevents.size() << " accepted MC events out of "
+	       << MCallEvents.size() << " total ("
+	       << 100.*MCevents.size() / MCallEvents.size()
+	       << "% overall acceptance)"
+	       << endl;
 	}
+      else
+	{
+	  for (int iMC = 0; iMC < NFLATMCEVENTS; iMC++)
+	    {
+	      event e(acos(gRandom->Uniform(-1,1)), gRandom->Uniform(-M_PI, M_PI));
+	      MCevents.push_back(e);
+	    }
+	}
+
+      myL.addChannel(RDevents, MCevents, MCallEvents);
     }
 
-  likelihood myL(ws, RDevents, MCevents, MCallEvents,
-		 nBins, threshold, binWidth);
+  if (myL.getNChannels() == 0)
+    {
+      cerr << "no data." << endl;
+      abort();
+    }
+  cout << "combined fit of " << myL.getNChannels() << " channels." << endl;
 
   TStopwatch sw;
 
@@ -215,13 +278,7 @@ myFit()
 	{
 	  vStartingValues[iSV] = startingValues[iSV].value;
 	}
-      size_t nGood = 0;
-      for (size_t iEvent = 0; iEvent < RDevents.size(); iEvent++)
-	{
-	  if (!RDevents[iEvent].accepted())
-	    continue;
-	  nGood++;
-	}
+      size_t nGood = myL.eventsInBin();
       if (nGood == 0)
 	continue;
       double ratio = sqrt(nGood / myL.calc_mc_likelihood(vStartingValues));
@@ -337,6 +394,7 @@ myFit()
 	      result.push_back(minuit->GetParameter(iPar));
 	    }
 
+#if 0
 	  double intensity = 0;
 	  for (int ix = 0; ix < 100; ix++)
 	    {
@@ -349,6 +407,7 @@ myFit()
 		}
 	    }
 	  hIntensity->SetBinContent(iBin + 1, intensity / 10000);
+#endif
 	}
     }
 
