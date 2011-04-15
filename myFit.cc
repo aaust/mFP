@@ -78,8 +78,9 @@ public:
 
   bool accepted() const {
     return (this->mass >= massLow && this->mass < massHigh
-	    //&& this->tPrime > 0.1 && this->tPrime < 0.3);
-	    //&& this->tPrime > 0.3);
+	    //&& this->tPrime > 0.1 && this->tPrime < 0.3
+	    //&& this->tPrime > 0.3
+	    //&& cos(theta) > -0.9 && cos(theta) < 0.9
 	    && 1);
   }
 };
@@ -212,6 +213,9 @@ likelihood::likelihood(waveset ws_,
     currentBin(0)
 {
   // Bin the data, once and for all.
+  TH1* hMass = new TH1D("hMass", "mass distribution as used in fit",
+			nBins, threshold, threshold + nBins*binWidth);
+
   binnedRDevents.resize(nBins);
   binnedMCevents.resize(nBins);
   binnedEtaAcc.resize(nBins);
@@ -223,6 +227,7 @@ likelihood::likelihood(waveset ws_,
 	  if (!RDevents[iEvent].accepted())
 	    continue;
 	  binnedRDevents[iBin].push_back(RDevents[iEvent]);
+	  hMass->Fill(RDevents[iEvent].mass);
 	}
 
       for (size_t iEvent = 0; iEvent < MCevents.size(); iEvent++)
@@ -436,8 +441,8 @@ myFit()
     };
 
   TH2* hRD = new TH2D("hRD", "RD", 10, -1, 1, 10, -M_PI, M_PI);
-  TH1* hMass = new TH1D("hMass", "mass distribution",
-			250, 0.5, 3);
+  TH1* hMassFine = new TH1D("hMassFine", "mass distribution",
+			    250, 0.5, 3);
   TH1* htprime = new TH1D("htprime", "t' distribution",
 			  250, 0, 1);
   TH1* hMassMC = new TH1D("hMassMC", "MC mass distribution",
@@ -461,7 +466,7 @@ myFit()
       double m, tPr, theta, phi;
       sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
 
-      hMass->Fill(m);
+      hMassFine->Fill(m);
       htprime->Fill(tPr);
       event e(m, tPr, theta, phi);
       RDevents.push_back(e);
@@ -478,7 +483,7 @@ myFit()
       fd = fopen(MCFile.c_str(), "r");
       if (!fd)
 	{
-	  cerr << "Can't open input file '" << dataFile << "'." << endl;
+	  cerr << "Can't open input file '" << MCFile << "'." << endl;
 	  abort();
 	}
       while (fgets(line, 99999, fd))
