@@ -27,6 +27,7 @@ public:
   double MCweight(int reflectivity, const wave& w1, const wave& w2) const
   { return MCweight(reflectivity, w1.l, w1.m, w2.l, w2.m); }
   double MCweight(int reflectivity, int l1, int m1, int l2, int m2) const;
+  std::complex<double> momentWeight(int L, int M) const;
 
   bool accepted() const {
     return (this->mass >= massLow && this->mass < massHigh

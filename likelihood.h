@@ -23,6 +23,8 @@ class likelihood : public ROOT::Minuit2::FCNBase {
   double threshold;
   double binWidth;
 
+  size_t idxBranching;
+
   size_t currentBin;
 
   mutable std::map<int, double> weights;
@@ -32,7 +34,8 @@ public:
 	     std::vector<event>& RDevents_,
 	     std::vector<event>& MCevents_,
 	     std::vector<event>& MCallEvents_,
-	     size_t nBins_, double threshold_, double binWidth_);
+	     size_t nBins_, double threshold_, double binWidth_,
+	     size_t idxBranching);
 
   double Up() const { return 0.5; }
 
@@ -60,6 +63,9 @@ public:
 
   double
   operator()(const std::vector<double>& x) const;
+
+  std::complex<double>
+  calcMoment(int L, int M) const;
 
   void
   setBin(size_t iBin) { currentBin = iBin;

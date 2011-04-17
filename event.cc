@@ -40,3 +40,11 @@ event::MCweight(int reflectivity, int l1, int m1, int l2, int m2) const
 	  * this->decayAmplitude(reflectivity,l2,m2));
 }
 
+// Contribution of this event to the momement H_x(LM)
+// this is D^L_{M0}(theta, phi, 0) = conjug(Y^L_M(theta, phi))
+complex<double>
+event::momentWeight(int L, int M) const
+{
+  double spherical = ROOT::Math::sph_legendre(L, M, this->theta);
+  return spherical * complex<double>(cos(M*this->phi), -sin(M*this->phi));
+}

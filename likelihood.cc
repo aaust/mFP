@@ -15,7 +15,8 @@ likelihood::likelihood(waveset ws_,
 		       vector<event>& RDevents_,
 		       vector<event>& MCevents_,
 		       vector<event>& MCallEvents_,
-		       size_t nBins_, double threshold_, double binWidth_)
+		       size_t nBins_, double threshold_, double binWidth_,
+		       size_t idxBranching_)
   : ws(ws_),
     RDevents(RDevents_),
     MCevents(MCevents_),
@@ -23,6 +24,7 @@ likelihood::likelihood(waveset ws_,
     nBins(nBins_),
     threshold(threshold_),
     binWidth(binWidth_),
+    idxBranching(idxBranching_),
     currentBin(0)
 {
   // Bin the data, once and for all.
@@ -89,7 +91,7 @@ likelihood::probabilityDensity(const vector<double>& x, const event& e) const
       sum += norm(it->sum(&x[idx_base], e));
       idx_base += 2*it->waves.size();
     }
-  return sum;
+  return x[idxBranching]*sum;
 }
 
 double
@@ -155,7 +157,7 @@ likelihood::calc_mc_likelihood(const vector<double>& x) const
       waveset_base = idx1;
     }
 
-  return sumMC * binnedEtaAcc[currentBin];
+  return x[idxBranching] * sumMC * binnedEtaAcc[currentBin];
 }
 
 double
@@ -184,7 +186,7 @@ likelihood::calc_likelihood(const vector<double>& x) const
   double lhMC = calc_mc_likelihood(x);
   double lhRD = calc_rd_likelihood(x);
 
-  //cout << "likelihood = " << lhRD << " - " << lhMC << endl;
+  //cout << "nevents = " << binnedRDevents[currentBin].size() << " likelihood = " << lhRD << " - " << lhMC << endl;
   return lhRD - lhMC;
 }
 
@@ -193,4 +195,22 @@ double
 likelihood::operator()(const vector<double>& x) const
 {
   return -this->calc_likelihood(x);
+}
+
+
+complex<double>
+likelihood::calcMoment(int L, int M) const
+{
+  // Uses Kahan's summation
+  complex<double> sum = 0;
+  complex<double> c = 0;
+  const vector<event>& pEvents = binnedRDevents[currentBin];
+  for (size_t i = 0; i < pEvents.size(); i++)
+    {
+      complex<double> y = pEvents[i].momentWeight(L, M) - c;
+      complex<double> t = sum + y;
+      c = (t - sum) - y;  // compensation term.
+      sum = t;
+    }
+  return sum;
 }
