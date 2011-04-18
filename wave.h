@@ -3,17 +3,38 @@
 
 #include <complex>
 #include <vector>
+#include <map>
+
+#include "TH1.h"
+#include "TFitterMinuit.h"
 
 using namespace std;
 
 struct wave {
   string name;
   int l, m;
+  size_t idx;   // Index into the fit variables.
+  TH1* histIntensity;
+  map<string, TH1*> mHistPhase;
 
-  wave() { }
-  wave(int ll, int mm) { l = ll; m = mm; }
-  wave(const char* name_, int ll, int mm) : name(name_), l(ll), m(mm) {}
-  wave(const wave& o) { l = o.l; m = o.m; name = o.name; }
+  wave() { histIntensity = 0; }
+  wave(int ll, int mm) { l = ll; m = mm; histIntensity = 0; }
+  wave(const char* name_, int ll, int mm) : name(name_), l(ll), m(mm) { histIntensity = 0; }
+  wave(const char* name_, int ll, int mm, int nBins, double lower, double upper)
+    : name(name_), l(ll), m(mm)
+  { buildHists(nBins, lower, upper); }
+  wave(const wave& o);
+
+  ~wave() {} // histograms are owned by ROOT
+
+  void setIndex(int idx_) { idx = idx_; }
+  size_t getIndex() const { return idx; }
+
+  void buildHists(int nBins, double lower, double upper);
+  TH1* getHistIntensity() const { return histIntensity; }
+  TH1* getHistPhase(const wave& other);
+  void fillHistIntensity(int iBin, const TFitterMinuit* minuit);
+  void fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit);
 };
 
 class event;
@@ -26,8 +47,10 @@ struct coherent_waves {
   coherent_waves() {}
   coherent_waves(const coherent_waves& o) { reflectivity = o.reflectivity; spinflip = o.spinflip; waves = o.waves; }
 
-  std::complex<double> sum(const double* x, const event& e) const;
-  size_t getNwaves() { return waves.size(); }
+  std::complex<double> sum(const std::vector<double>& x, const event& e) const;
+  std::vector<wave>& getWaves() { return waves; }
+  const std::vector<wave>& getWaves() const { return waves; }
+  size_t getNwaves() const { return waves.size(); }
 };
 
 typedef std::vector<coherent_waves> waveset;

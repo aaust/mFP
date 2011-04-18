@@ -27,6 +27,18 @@ likelihood::likelihood(waveset ws_,
     idxBranching(idxBranching_),
     currentBin(0)
 {
+  // Set the indices for the respective waves.
+  size_t idx = 0;
+  for (waveset::iterator it = ws.begin(); it != ws.end(); it++)
+    {
+      for (vector<wave>::iterator itWave = it->getWaves().begin();
+	   itWave != it->getWaves().end(); itWave++)
+	{
+	  itWave->setIndex(idx);
+	  idx += 2;
+	}
+    }
+
   // Bin the data, once and for all.
   TStopwatch sw;
   sw.Start();
@@ -84,12 +96,10 @@ likelihood::probabilityDensity(const vector<double>& x, const event& e) const
 {
   double sum = 0;
   waveset::const_iterator it;
-  size_t idx_base = 0;
   for (it = ws.begin(); it != ws.end(); it++)
     {
       // norm = abs^2
-      sum += norm(it->sum(&x[idx_base], e));
-      idx_base += 2*it->waves.size();
+      sum += norm(it->sum(x, e));
     }
   return x[idxBranching]*sum;
 }

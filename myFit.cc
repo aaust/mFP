@@ -25,8 +25,6 @@ double massLow = 0;
 double massHigh = 9999;
 int iBin;
 
-#define NWAVES 8
-
 class combinedLikelihood : public ROOT::Minuit2::FCNBase {
 public:
   vector<likelihood> myLs;
@@ -46,7 +44,7 @@ public:
 	     vector<event>& MCevents,
 	     vector<event>& MCallEvents)
   {
-    size_t idxBranching = 2*NWAVES + this->getNChannels();
+    size_t idxBranching = /*2*NWAVES*/ 16 + this->getNChannels();
     myLs.push_back(likelihood(ws, RDevents, MCevents, MCallEvents, nBins, threshold, binWidth, idxBranching));
   }
 
@@ -84,22 +82,26 @@ public:
 
 
 
-void
+void __attribute((noinline))
 myFit()
 {
   gRandom = new TRandom1;
 
+  double lower = threshold;
+  double upper = threshold + nBins*binWidth;
+
   vector<wave> positive;
-  positive.push_back(wave("D+", 2, 1));
-  positive.push_back(wave("P+", 1, 1));
-  positive.push_back(wave("G+", 4, 1));
+  positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
+  positive.push_back(wave("D++", 2, 2, nBins, lower, upper));
+  positive.push_back(wave("P+", 1, 1, nBins, lower, upper));
+  positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
 
   vector<wave> negative;
-  negative.push_back(wave("S0", 0, 0));
-  negative.push_back(wave("P0", 1, 0));
-  negative.push_back(wave("P-", 1, 1));
-  negative.push_back(wave("D0", 2, 0));
-  negative.push_back(wave("D-", 2, 1));
+  negative.push_back(wave("S0", 0, 0, nBins, lower, upper));
+  negative.push_back(wave("P0", 1, 0, nBins, lower, upper));
+  negative.push_back(wave("P-", 1, 1, nBins, lower, upper));
+  negative.push_back(wave("D0", 2, 0, nBins, lower, upper));
+  negative.push_back(wave("D-", 2, 1, nBins, lower, upper));
 
   coherent_waves wsPos, wsNeg;
   wsPos.reflectivity = +1;
@@ -114,14 +116,17 @@ myFit()
   ws.push_back(wsPos);
   ws.push_back(wsNeg);
 
-  assert(NWAVES == negative.size() + positive.size());
+  size_t lastIdx = 0;
+  for (size_t i = 0; i < ws.size(); i++)
+    for (size_t j = 0; j < ws[i].waves.size(); j++, lastIdx += 2)
+      ws[i].waves[j].setIndex(lastIdx);
 
   struct {
     const char* name;
     double value;
     bool fixed;
   }
-  startingValues[2 * NWAVES + 2] =
+  startingValues[16 + 2] =
     { { "Rea(+,2,1)", gRandom->Uniform(5), false },
       { "Ima(+,2,1)", 0, true },
       { "Rea(+,1,1)", gRandom->Uniform(5), false },
@@ -236,26 +241,6 @@ myFit()
   TFitterMinuit* minuit = new TFitterMinuit();
   minuit->SetMinuitFCN(&myL);
 
-  double lower = threshold;
-  double upper = threshold + nBins*binWidth;
-  TH1* hSwave = new TH1D("hSwave", "S wave intensity (#epsilon = -1)",
-			 nBins, lower, upper);
-  TH1* hD0wave = new TH1D("hD0wave", "D0 wave intensity (#epsilon = -1)",
-			  nBins, lower, upper);
-  TH1* hDwave = new TH1D("hDwave", "D wave intensity",
-			 nBins, lower, upper);
-  TH1* hPwave = new TH1D("hPwave", "P wave intensity",
-			 nBins, lower, upper);
-  TH1* hGwave = new TH1D("hGwave", "G wave intensity",
-			 nBins, lower, upper);
-  TH1* hPhaseDP = new TH1D("hPhaseDP", "D - P phase",
-			 nBins, lower, upper);
-  TH1* hPhaseDG = new TH1D("hPhaseDG", "D - G phase",
-			 nBins, lower, upper);
-  TH1* hPhaseD0S = new TH1D("hPhaseD0S", "D0 - S phase",
-			    nBins, lower, upper);
-  TH1* hIntensity = new TH1D("hIntensity", "total intensity as predicted",
-			     nBins, lower, upper);
   //TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
 
   TH1* hBR = new TH1D("hBR", "relative Branching Ratio",
@@ -296,7 +281,7 @@ myFit()
       hMomentsPWA[i] = new TH1D(name, title, nBins, lower, upper);
     }
 
-  const size_t nParams = 2*NWAVES + myL.getNChannels();
+  const size_t nParams = lastIdx + myL.getNChannels();
   TStopwatch fulltime;
   fulltime.Start();
   for (iBin = 0; iBin < nBins; iBin++)
@@ -374,89 +359,19 @@ myFit()
 	  for (int j = 0; j < minuit->GetNumberTotalParameters(); j++)
 	    startingValues[j].value = minuit->GetParameter(j);
 
-	  complex<double> aDwave(minuit->GetParameter(0),
-				 minuit->GetParameter(1));
-	  complex<double> aPwave(minuit->GetParameter(2),
-				 minuit->GetParameter(3));
-	  complex<double> aGwave(minuit->GetParameter(4),
-				 minuit->GetParameter(5));
-	  complex<double> aSwave(minuit->GetParameter(6),
-				 minuit->GetParameter(7));
-	  complex<double> aP0wave(minuit->GetParameter(8),
-				  minuit->GetParameter(9));
-	  complex<double> aPmwave(minuit->GetParameter(10),
-				  minuit->GetParameter(11));
-	  complex<double> aD0wave(minuit->GetParameter(12),
-				  minuit->GetParameter(13));
-	  complex<double> aDmwave(minuit->GetParameter(14),
-				  minuit->GetParameter(15));
-
-	  hDwave->SetBinContent(iBin+1,norm(aDwave));
-	  hDwave->SetBinError(iBin+1, 2*abs(aDwave)*minuit->GetParError(0));
-	  hPwave->SetBinContent(iBin+1,norm(aPwave));
-	  double error = 2*(sqrt(pow(real(aPwave) * minuit->GetParError(2), 2)
-			       + pow(imag(aPwave) * minuit->GetParError(3), 2)
-			       + (2*real(aPwave)*imag(aPwave)
-				  * minuit->GetCovarianceMatrixElement(2, 3))));
-	  hPwave->SetBinError(iBin+1, error);
-
-	  double phase = arg(aDwave / aPwave);
-	  if (iBin > 1)
+	  for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
 	    {
-	      double oldPhase = hPhaseDP->GetBinContent(iBin);
-	      while (phase - oldPhase > M_PI)
-		phase -= 2*M_PI;
-	      while (oldPhase - phase > M_PI)
-		phase += 2*M_PI;
+	      vector<wave>& waves = ws[iCoherent].getWaves();
+	      for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
+		{
+		  waves[iWave1].fillHistIntensity(iBin, minuit);
+		  if (iWave1 != waves.size()-1)
+		    {
+		      for (size_t iWave2 = iWave1 + 1; iWave2 < waves.size(); iWave2++)
+			waves[iWave1].fillHistPhase(iBin, waves[iWave2], minuit);
+		    }
+		}
 	    }
-	  hPhaseDP->SetBinContent(iBin+1,phase);
-	  hPhaseDP->SetBinError(iBin+1, .2);
-
-	  error = 2*(sqrt(pow(real(aGwave) * minuit->GetParError(4), 2)
-			       + pow(imag(aGwave) * minuit->GetParError(5), 2)
-			       + (2*real(aGwave)*imag(aGwave)
-				  * minuit->GetCovarianceMatrixElement(4, 5))));
-	  hGwave->SetBinContent(iBin+1,norm(aGwave));
-	  hGwave->SetBinError(iBin+1, error);
-
-
-	  error = 2*(sqrt(pow(real(aSwave) * minuit->GetParError(6), 2)
-			       + pow(imag(aSwave) * minuit->GetParError(7), 2)
-			       + (2*real(aSwave)*imag(aSwave)
-				  * minuit->GetCovarianceMatrixElement(6, 7))));
-	  hSwave->SetBinContent(iBin+1,norm(aSwave));
-	  hSwave->SetBinError(iBin+1, error);
-
-	  error = 2*(sqrt(pow(real(aD0wave) * minuit->GetParError(12), 2)
-			       + pow(imag(aD0wave) * minuit->GetParError(13), 2)
-			       + (2*real(aD0wave)*imag(aD0wave)
-				  * minuit->GetCovarianceMatrixElement(12, 13))));
-	  hD0wave->SetBinContent(iBin+1,norm(aD0wave));
-	  hD0wave->SetBinError(iBin+1, error);
-
-	  phase = arg(aD0wave / aSwave);
-	  if (iBin > 1)
-	    {
-	      double oldPhase = hPhaseD0S->GetBinContent(iBin);
-	      while (phase - oldPhase > M_PI)
-		phase -= 2*M_PI;
-	      while (oldPhase - phase > M_PI)
-		phase += 2*M_PI;
-	    }
-	  hPhaseD0S->SetBinContent(iBin+1,phase);
-	  hPhaseD0S->SetBinError(iBin+1, .2);
-
-	  phase = arg(aDwave / aGwave);
-	  if (iBin > 1)
-	    {
-	      double oldPhase = hPhaseDG->GetBinContent(iBin);
-	      if (phase - oldPhase > M_PI)
-		phase -= 2*M_PI;
-	      else if (oldPhase - phase > M_PI)
-		phase += 2*M_PI;
-	    }
-	  hPhaseDG->SetBinContent(iBin+1,phase);
-	  hPhaseDG->SetBinError(iBin+1, .2);
 
 	  //hBR->SetBinContent(iBin+1, minuit->GetParameter(2*NWAVES + 1));
 	  //hBR->SetBinError(iBin+1, minuit->GetParError(2*NWAVES + 1));
@@ -467,6 +382,7 @@ myFit()
 	      result.push_back(minuit->GetParameter(iPar));
 	    }
 
+#if 0
 	  const double s2 = sqrt(2);
 	  const double s3 = sqrt(3);
 	  const double s5 = sqrt(5);
@@ -519,6 +435,7 @@ myFit()
 	      hMomentsPWA[iMom]->SetBinContent(iBin+1, vH[iMom]);
 	      hMomentsPWA[iMom]->SetBinError(iBin+1, .1);
 	    }	  
+#endif
 
 #if 0
 	  double intensity = 0;
