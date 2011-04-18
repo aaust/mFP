@@ -92,7 +92,6 @@ myFit()
 
   vector<wave> positive;
   positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
-  positive.push_back(wave("D++", 2, 2, nBins, lower, upper));
   positive.push_back(wave("P+", 1, 1, nBins, lower, upper));
   positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
 
