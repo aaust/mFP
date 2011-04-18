@@ -13,7 +13,7 @@ const double hbarc = 0.1973269631; // MeV fm
 double
 blattWeisskopf(int L, double p)
 {
-  double z = p / hbarc;  // 1fm interaction radius
+  double z = pow(p / hbarc, 2);  // 1fm interaction radius
   double result;
   switch (L) {
   case 0:
@@ -78,7 +78,7 @@ BW_a2_pieta(double s)
 complex<double>
 BW_exotic_pieta(double s)
 {
-  return BW(s, mPi, mEta, 1, 1.579, 0.340);
+  return BW(s, mPi, mEta, 1, 1.597, 0.340);
 }
 
 #if 0
@@ -92,7 +92,7 @@ bw()
       complex<double> z2 = BW_exotic_pietap(m*m);
       cout << m << " "
 	   << real(z) << " " << imag(z) << " " << norm(z)*breakupMomentum(m*m, mPi, mEtaP) << " " << arg(z) << " "
-	   << real(z2) << " " << imag(z2) << " " << norm(z2)*breakupMomentum(m*m, mPi, mEtaP) << " " << arg(z2) << " "
+	   << real(z2) << " " << imag(z2) << " " << norm(z2) << " " << arg(z2) << " "
 	   << arg(z / z2)
 	   << endl;
     }
