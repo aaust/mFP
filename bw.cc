@@ -3,6 +3,11 @@
 
 using namespace std;
 
+const double mPi = .13957018;
+const double mPi0 = .1349766;
+const double mEta = .547853;
+const double mEtaP = .95778;
+
 const double hbarc = 0.1973269631; // MeV fm
 
 double
@@ -55,13 +60,25 @@ BW(double s, double m1, double m2,
 complex<double>
 BW_a2_pietap(double s)
 {
-  return BW(s, .139, .958, 2, 1.3183, 0.107);
+  return BW(s, mPi, mEtaP, 2, 1.3183, 0.107);
 }
 
 complex<double>
 BW_exotic_pietap(double s)
 {
-  return BW(s, .139, .958, 1, 1.579, 0.340);
+  return BW(s, mPi, mEtaP, 1, 1.579, 0.340);
+}
+
+complex<double>
+BW_a2_pieta(double s)
+{
+  return BW(s, mPi, mEta, 2, 1.3183, 0.107);
+}
+
+complex<double>
+BW_exotic_pieta(double s)
+{
+  return BW(s, mPi, mEta, 1, 1.579, 0.340);
 }
 
 #if 0
@@ -70,12 +87,12 @@ bw()
 {
   for (int i = 0; i < 2000; i++)
     {
-      double m = .139 + .958 + i*0.001;
+      double m = mPi + mEtaP + i*0.001;
       complex<double> z = BW_a2_pietap(m*m);
       complex<double> z2 = BW_exotic_pietap(m*m);
       cout << m << " "
-	   << real(z) << " " << imag(z) << " " << abs(z) << " " << arg(z) << " "
-	   << real(z2) << " " << imag(z2) << " " << abs(z2) << " " << arg(z2) << " "
+	   << real(z) << " " << imag(z) << " " << norm(z)*breakupMomentum(m*m, mPi, mEtaP) << " " << arg(z) << " "
+	   << real(z2) << " " << imag(z2) << " " << norm(z2)*breakupMomentum(m*m, mPi, mEtaP) << " " << arg(z2) << " "
 	   << arg(z / z2)
 	   << endl;
     }
