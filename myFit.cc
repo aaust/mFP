@@ -148,11 +148,11 @@ myFit()
 
   TH2* hRD = new TH2D("hRD", "RD", 10, -1, 1, 10, -M_PI, M_PI);
   TH1* hMassFine = new TH1D("hMassFine", "mass distribution",
-			    250, 0.5, 3);
+			    250, threshold, 3);
   TH1* htprime = new TH1D("htprime", "t' distribution",
 			  250, 0, 1);
   TH1* hMassMC = new TH1D("hMassMC", "MC mass distribution",
-			250, 0.5, 3);
+			250, threshold, 3);
   TH1* htprimeMC = new TH1D("htprimeMC", "t' distribution",
 			  250, 0, 1);
 
@@ -310,6 +310,13 @@ myFit()
       // calculation we scale the starting values such that this
       // condition obtains.
       vector<double> vStartingValues(nParams);
+#if 0
+      for (size_t iSV = 0; iSV < nParams; iSV++)
+	{
+	  if (!startingValues[iSV].fixed)
+	    startingValues[iSV].value = gRandom->Uniform(1);
+	}
+#endif
       for (size_t iSV = 0; iSV < nParams; iSV++)
 	{
 	  vStartingValues[iSV] = startingValues[iSV].value;

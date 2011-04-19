@@ -6,6 +6,10 @@ LIBS=`root-config --libs --cflags` -lMinuit2 -lMathMore
 myFit: ${OBJECTS}
 	g++ -o $@ ${LDFLAGS} ${OBJECTS} ${LIBS}
 
+clean:
+	rm -f ${OBJECTS}
+	rm -f myFit
+
 .cc.o:
 	g++ -c ${CXXFLAGS} $< -o $@
 
