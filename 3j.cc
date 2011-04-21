@@ -7,6 +7,8 @@
 
 #include <iostream>
 #include <math.h>
+#include <string.h>
+#include <stdlib.h>
 
 using namespace std;
 
@@ -61,14 +63,14 @@ static const int primes[] = { 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,
 static const int nPrimes = sizeof(primes) / sizeof(int);
 
 class factoredInteger {
-  int value;
+  long long value;
   int powerDecomposition[nPrimes];
   int sign;
 
 public:
-  factoredInteger(int number)
+  factoredInteger(long long number)
   {
-    int i = value = number;
+    long long i = value = number;
 
     memset (powerDecomposition, 0, sizeof(int)*nPrimes);
 
@@ -76,7 +78,7 @@ public:
     if (i == 0)
       return;
 
-    sign = i / abs(i);
+    sign = i > 0 ? 1 : -1;
     i = i*sign;
 
     for (int n = nPrimes - 1; n >= 0 && i != 1; n--)
@@ -107,7 +109,7 @@ public:
   }
 
   factoredInteger
-  operator*(int i) const
+  operator*(long long i) const
   {
     return (*this)*factoredInteger(i);
   }
@@ -126,8 +128,38 @@ public:
   factoredInteger
   operator+(const factoredInteger& o) const
   {
+    if (o.value == 0)
+      return *this;
+    if (this->value == 0)
+      return o;
+
     return factoredInteger(this->value + o.value);
+    factoredInteger gcd = findGCD(*this, o);
+    factoredInteger first = *this;
+    factoredInteger second = o;
+
+    first.divideByGCD(second);
+    //cout << this->value << " + " << o.value << endl;
+    //gcd.write();
+    //cout << "*(" << first.getValue() << " + " << second.getValue() << ")" << endl;
+    return gcd * (first.getValue() + second.getValue());
   }
+
+  static factoredInteger
+  findGCD(const factoredInteger& a, const factoredInteger& b)
+  {
+    if (a.sign == 0 || b.sign == 0)
+      return factoredInteger(0LL);
+
+    int decomp[nPrimes];
+    for (int i = 0; i < nPrimes; i++)
+      {
+	decomp[i] = std::min(a.powerDecomposition[i], b.powerDecomposition[i]);
+      }
+
+    return factoredInteger(decomp, 1);
+  }
+    
 
   // this modifies both the argument and this.
   void
@@ -166,7 +198,7 @@ public:
       }
   }
 
-  int
+  long long
   getValue() const
   {
     return value;
@@ -210,7 +242,7 @@ class fraction {
   factoredInteger numerator, denominator;
 
 public:
-  fraction(int num, int denom)
+  fraction(long long num, long denom)
     : numerator(num), denominator(denom)
   {
     this->reduce();
@@ -265,16 +297,31 @@ public:
   {
     cout << numerator.getValue() << " / " << denominator.getValue() << endl;
   }
+
+  bool
+  isZero() const
+  {
+    return numerator.getValue() == 0;
+  }
+
+  friend ostream& operator<<(ostream& out, const fraction& fr);
 };
 
 
+ostream&
+operator<<(ostream& out, const fraction& fr)
+{
+  return (out << fr.numerator.getValue() << "/" << fr.denominator.getValue());
+}
+
+
 namespace {
-  long
-  fac(long n)
+  long long
+  fac(long long n)
   {
-    long result = 1;
+    long long result = 1;
     if (n > 1)
-      for (long i = 1; i <= n; i++)
+      for (int i = 1; i <= n; i++)
 	result *= i;
     return result;
   }
@@ -409,11 +456,72 @@ threeJalgebraically(long j1, long j2, long j3, long m1, long m2, long m3)
   fraction sum(0, 1);
   for (int s = minS; s <= maxS; s++)
     {
+      int sign = pow(-1,s);
       fraction add((fraction(1, fac(s)) * fraction(1, fac(j1+j2-j3-s))
 		   * fraction(1, fac(j1-m1-s)) * fraction(1, fac(j2+m2-s))
-		    * fraction(1, fac(j3-j2+m1+s)) * fraction(1, fac(j3-j1-m2+s)))*pow(-1,s));
+		    * fraction(1, fac(j3-j2+m1+s)) * fraction(1, fac(j3-j1-m2+s)))*sign);
       sum = sum + add;
     }
 
   return prefactor_square(j1,j2,j3,m1,m2,m3)*sum*sum*sum.getSign();
+}
+
+
+
+fraction
+theta_square(int m)
+{
+  if (m == 0)
+    return fraction(1, 4);
+  else
+    return fraction(1, 2);
+}
+
+
+void
+decompose(int lmax, int mmax)
+{
+  for (int L = 0; L <= 2*lmax; L++)
+    {
+      for (int M = 0; M <= L; M++)
+	{
+	  cout << "H(" << L << "," << M << ") = " << flush;
+	  for (int eps = -1; eps <= 1; eps += 2)
+	    {
+	      for (int l1 = 0; l1 <= lmax; l1++)
+		{
+		  for (int m1 = 0; m1 <= std::min(l1, mmax); m1++)
+		    {
+		      for (int l2 = 0; l2 <= lmax; l2++)
+			{
+			  for (int m2 = 0; m2 < l2; m2++)
+			    {
+			      fraction threeJ1 = threeJalgebraically(L, l1, l2, 0, 0, 0);
+			      if (threeJ1.isZero())
+				continue;
+			      fraction parentheses(0, 0);
+
+			      int sign = pow(-1,m1+M);
+			      int sign1 = pow(-1,m1+1);
+			      int sign2 = pow(-1,m2+1);
+			      int sign12 = pow(-1,m1+m2);
+			      parentheses = (threeJalgebraically(L, l1, l2, -M, -m1, m2)
+					     + threeJalgebraically(L, l1, l2, -M, m1, m2) * eps * sign1
+					     + threeJalgebraically(L, l1, l2, -M, -m1, -m2) * eps * sign2
+					     + threeJalgebraically(L, l1, l2, -M, m1, m2) * sign12) * sign;
+			      if (parentheses.isZero())
+				continue;
+
+			      cout << " + "
+				   << (theta_square(m1)*theta_square(m2)*fraction((2*L+1)*(2*l1+1)*(2*l2+1), 1)
+				       *threeJ1*parentheses)
+				   << "*rho(eps = " << eps << ", " << l1 << ", " << m1 << ", " << l2 << ", " << m2 << ")/4pi";
+			    }
+			}
+		    }
+		}
+	    }
+	  cout << endl;
+	}
+    }
 }
