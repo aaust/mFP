@@ -1,3 +1,10 @@
+// This is of course absurdely inefficient, giving each factorized
+// number a vector of powers would immediately give the multiplication
+// etc routines all they need to not scan through all nPrime elements
+// everytime an operation is performed.  Also, the sign belongs in the
+// fraction, the current handling is more than awkward.  Anyway, it
+// works.
+
 #include <iostream>
 #include <math.h>
 
