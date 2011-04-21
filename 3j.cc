@@ -560,6 +560,7 @@ decomposeMoment(int L, int M, const waveset& ws)
 	      if (threeJ1.isZero())
 		continue;
 
+	      // This is wrong because I can't just simply add the squares of the 3j symbols ...
 	      int sign = pow(-1,w1.m+M);
 	      int sign1 = pow(-1,w1.m+1);
 	      int sign2 = pow(-1,w2.m+1);
