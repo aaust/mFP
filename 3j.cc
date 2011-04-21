@@ -499,13 +499,12 @@ decompose(int lmax, int mmax)
 			      fraction threeJ1 = threeJalgebraically(L, l1, l2, 0, 0, 0);
 			      if (threeJ1.isZero())
 				continue;
-			      fraction parentheses(0, 0);
 
 			      int sign = pow(-1,m1+M);
 			      int sign1 = pow(-1,m1+1);
 			      int sign2 = pow(-1,m2+1);
 			      int sign12 = pow(-1,m1+m2);
-			      parentheses = (threeJalgebraically(L, l1, l2, -M, -m1, m2)
+			      fraction parentheses = (threeJalgebraically(L, l1, l2, -M, -m1, m2)
 					     + threeJalgebraically(L, l1, l2, -M, m1, m2) * eps * sign1
 					     + threeJalgebraically(L, l1, l2, -M, -m1, -m2) * eps * sign2
 					     + threeJalgebraically(L, l1, l2, -M, m1, m2) * sign12) * sign;
@@ -513,9 +512,9 @@ decompose(int lmax, int mmax)
 				continue;
 
 			      cout << " + "
-				   << (theta_square(m1)*theta_square(m2)*fraction((2*L+1)*(2*l1+1)*(2*l2+1), 1)
+				   << (theta_square(m1)*theta_square(m2)*fraction((2*l1+1)*(2*l2+1), 1)
 				       *threeJ1*parentheses)
-				   << "*rho(eps = " << eps << ", " << l1 << ", " << m1 << ", " << l2 << ", " << m2 << ")/4pi";
+				   << "*rho(eps = " << eps << ", " << l1 << ", " << m1 << ", " << l2 << ", " << m2 << ")";
 			    }
 			}
 		    }
