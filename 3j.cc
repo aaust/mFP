@@ -490,12 +490,25 @@ decompose(int lmax, int mmax)
 	    {
 	      for (int l1 = 0; l1 <= lmax; l1++)
 		{
+		  if (l1 == 3)
+		    continue;
+		  if (l1 == 4 && eps == -1)
+		    continue;
 		  for (int m1 = 0; m1 <= std::min(l1, mmax); m1++)
 		    {
+		      if (eps == +1 && m1 == 0)
+			continue;
 		      for (int l2 = 0; l2 <= lmax; l2++)
 			{
-			  for (int m2 = 0; m2 < l2; m2++)
+			  if (l2 == 3)
+			    continue;
+			  if (l2 == 4 && eps == -1)
+			    continue;
+
+			  for (int m2 = 0; m2 <= std::min(l2, mmax); m2++)
 			    {
+			      if (eps == +1 && m2 == 0)
+				continue;
 			      fraction threeJ1 = threeJalgebraically(L, l1, l2, 0, 0, 0);
 			      if (threeJ1.isZero())
 				continue;
@@ -507,7 +520,7 @@ decompose(int lmax, int mmax)
 			      fraction parentheses = (threeJalgebraically(L, l1, l2, -M, -m1, m2)
 					     + threeJalgebraically(L, l1, l2, -M, m1, m2) * eps * sign1
 					     + threeJalgebraically(L, l1, l2, -M, -m1, -m2) * eps * sign2
-					     + threeJalgebraically(L, l1, l2, -M, m1, m2) * sign12) * sign;
+					     + threeJalgebraically(L, l1, l2, -M, m1, -m2) * sign12) * sign;
 			      if (parentheses.isZero())
 				continue;
 
