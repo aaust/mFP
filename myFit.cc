@@ -73,8 +73,8 @@ public:
   {
     double result = 0;
     for (size_t i = 0; i < myLs.size(); i++)
-      result -= myLs[i].calc_likelihood(x);
-    return result;
+      result += myLs[i].calc_likelihood(x);
+    return -result;
   }
 
   size_t getNChannels() { return myLs.size(); }
@@ -155,6 +155,8 @@ myFit()
 			250, threshold, 3);
   TH1* htprimeMC = new TH1D("htprimeMC", "t' distribution",
 			  250, 0, 1);
+  TH1* hMClikelihood = new TH1D("hMClikelihood", "MC likelihood of result", nBins, lower, upper);
+
 
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
 
@@ -365,6 +367,8 @@ myFit()
 	  for (int j = 0; j < minuit->GetNumberTotalParameters(); j++)
 	    startingValues[j].value = minuit->GetParameter(j);
 
+	  hMClikelihood->SetBinContent(iBin+1, myL.calc_mc_likelihood(vStartingValues));
+
 	  for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
 	    {
 	      vector<wave>& waves = ws[iCoherent].getWaves();
@@ -379,8 +383,11 @@ myFit()
 		}
 	    }
 
-	  //hBR->SetBinContent(iBin+1, minuit->GetParameter(2*NWAVES + 1));
-	  //hBR->SetBinError(iBin+1, minuit->GetParError(2*NWAVES + 1));
+	  if (myL.getNChannels() == 2)
+	    {
+	      hBR->SetBinContent(iBin+1, minuit->GetParameter(16 + 1));
+	      hBR->SetBinError(iBin+1, minuit->GetParError(16 + 1));
+	    }
 
 	  vector<double> result;
 	  for (int iPar = 0; iPar < minuit->GetNumberTotalParameters(); iPar++)
