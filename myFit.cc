@@ -80,6 +80,8 @@ public:
   size_t getNChannels() { return myLs.size(); }
 };
 
+void
+decomposeMoment(int L, int M, const waveset& ws);
 
 
 void __attribute((noinline))
@@ -114,6 +116,9 @@ myFit()
   vector<coherent_waves> ws;
   ws.push_back(wsPos);
   ws.push_back(wsNeg);
+
+  //  decomposeMoment(0, 0, ws);
+  //  return;
 
   size_t lastIdx = 0;
   for (size_t i = 0; i < ws.size(); i++)
@@ -157,6 +162,14 @@ myFit()
 			  250, 0, 1);
   TH1* hMClikelihood = new TH1D("hMClikelihood", "MC likelihood of result", nBins, lower, upper);
 
+  TH2* hThVsMgen = new TH2D("hThVsMgen", "generated cos(#theta) vs M", 100, -1, 1, nBins, lower, upper);
+  TH2* hThVsMacc = new TH2D("hThVsMacc", "accepted cos(#theta) vs M", 100, -1, 1, nBins, lower, upper);
+
+  TH2* hPhiVsMgen = new TH2D("hPhiVsMgen", "generated #phi vs M", 40, -M_PI, M_PI, nBins, lower, upper);
+  TH2* hPhiVsMacc = new TH2D("hPhiVsMacc", "accepted #phi vs M", 40, -M_PI, M_PI, nBins, lower, upper);
+
+  TH2* hMVsTgen = new TH2D("hMVsTgen", "generated M vs t'", nBins, lower, upper, 40, 0.05, 0.45);
+  TH2* hMVsTacc = new TH2D("hMVsTacc", "accepted M vs t'", nBins, lower, upper, 40, 0.05, 0.45);
 
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
 
@@ -203,8 +216,33 @@ myFit()
 	      sscanf(line, "%d %lf %lf %lf %lf", &acc, &m, &tPr, &theta, &phi);
 
 	      event e(m, tPr, acos(theta), phi);
+#if 0
+hPhiVsMacc->Sumw2()                      
+hPhiVsMgen->Sumw2()
+hThVsMgen->Sumw2() 
+hThVsMacc->Sumw2()
+hMVsTgen->Sumw2()
+hMVsTacc->Sumw2()
+h = (TH1*)hPhiVsMacc->Clone()
+h2 = (TH1*)hThVsMacc->Clone()
+h3 = (TH1*)hMVsTacc->Clone()
+h->Divide(hPhiVsMgen)
+h2->Divide(hThVsMgen)
+h3->Divide(hMVsTgen)
+h->Draw("colz")
+new TCanvas
+h2->Draw("colz")
+new TCanvas
+h3->Draw("colz")
+#endif
+	      hThVsMgen->Fill(theta, m);
+	      hPhiVsMgen->Fill(phi, m);
+	      hMVsTgen->Fill(m, tPr);
 	      if (acc)
 		{
+		  hThVsMacc->Fill(theta, m);
+		  hPhiVsMacc->Fill(phi, m);
+		  hMVsTacc->Fill(m, tPr);
 		  hMassMC->Fill(m);
 		  htprimeMC->Fill(tPr);
 		  MCevents.push_back(e);

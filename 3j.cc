@@ -62,7 +62,7 @@ static const int primes[] = { 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,
 			      5297,5303,5309,5323,5333,5347,5351,5381,5387,5393,5399,5407,5413,5417,5419,
 			      5431,5437,5441,5443,5449,5471,5477,5479,5483,5501,5503,5507,5519,5521,5527,
 			      5531,5557,5563,5569,5573,5581,5591,5623,5639,5641,5647,5651,5653,5657,5659, };
-static const int nPrimes = sizeof(primes) / sizeof(int);
+static const size_t nPrimes = sizeof(primes) / sizeof(int);
 
 class factoredInteger {
   long long value;
@@ -101,10 +101,10 @@ public:
     : sign(sgn)
   {
     value = sgn;
-    for (int i = 0; i < nPrimes; i++)
+    for (size_t i = 0; i < nPrimes; i++)
       {
 	powerDecomposition[i] = decomp[i];
-	value *= pow(primes[i], powerDecomposition[i]);
+	value *= pow((double)primes[i], powerDecomposition[i]);
       }
     if (sign == 0)
       value =0;
@@ -120,7 +120,7 @@ public:
   operator*(const factoredInteger& o) const
   {
     int decomp[nPrimes];
-    for (int i = 0; i < nPrimes; i++)
+    for (size_t i = 0; i < nPrimes; i++)
       {
 	decomp[i] = o.powerDecomposition[i] + powerDecomposition[i];
       }
@@ -154,7 +154,7 @@ public:
       return factoredInteger(0LL);
 
     int decomp[nPrimes];
-    for (int i = 0; i < nPrimes; i++)
+    for (size_t i = 0; i < nPrimes; i++)
       {
 	decomp[i] = std::min(a.powerDecomposition[i], b.powerDecomposition[i]);
       }
@@ -179,7 +179,7 @@ public:
       {
 	this->sign = o.sign = 1;
       }
-    for (int i = 0; i < nPrimes; i++)
+    for (size_t i = 0; i < nPrimes; i++)
       {
 	int pow = std::min(powerDecomposition[i], o.powerDecomposition[i]);
 	powerDecomposition[i] -= pow;
@@ -194,9 +194,9 @@ public:
   fixValue()
   {
     value = sign;
-    for (int i = 0; i < nPrimes; i++)
+    for (size_t i = 0; i < nPrimes; i++)
       {
-	value *= pow(primes[i], powerDecomposition[i]);
+	value *= pow((double)primes[i], powerDecomposition[i]);
       }
   }
 
@@ -223,7 +223,7 @@ public:
 	return;
       }
     bool first = true;
-    for (int i = 0; i < nPrimes; i++)
+    for (size_t i = 0; i < nPrimes; i++)
       {
 	if (powerDecomposition[i] != 0)
 	  {
@@ -244,7 +244,7 @@ class fraction {
   factoredInteger numerator, denominator;
 
 public:
-  fraction(long long num, long denom)
+  fraction(long long num, long long denom)
     : numerator(num), denominator(denom)
   {
     this->reduce();
@@ -305,6 +305,12 @@ public:
   {
     return numerator.getValue() == 0;
   }
+
+  factoredInteger&
+  getNumerator() { return numerator; }
+
+  factoredInteger&
+  getDenominator() { return denominator; }
 
   friend ostream& operator<<(ostream& out, const fraction& fr);
 };
@@ -407,7 +413,7 @@ threeJ(long j1, long j2, long j3, long m1, long m2, long m3)
   double sum = 0;
   for (int s = minS; s <= maxS; s++)
     {
-      double add = (pow(-1,s)
+      double add = ((s & 0x1 ? -1 : 1)
 	      / fac(s) / fac(j1+j2-j3-s)
 	      / fac(j1-m1-s) / fac(j2+m2-s)
 	      / fac(j3-j2+m1+s) / fac(j3-j1-m2+s));
@@ -458,7 +464,7 @@ threeJalgebraically(long j1, long j2, long j3, long m1, long m2, long m3)
   fraction sum(0, 1);
   for (int s = minS; s <= maxS; s++)
     {
-      int sign = pow(-1,s);
+      int sign = (s & 0x1 ? -1 : 1);
       fraction add((fraction(1, fac(s)) * fraction(1, fac(j1+j2-j3-s))
 		   * fraction(1, fac(j1-m1-s)) * fraction(1, fac(j2+m2-s))
 		    * fraction(1, fac(j3-j2+m1+s)) * fraction(1, fac(j3-j1-m2+s)))*sign);
@@ -515,10 +521,10 @@ decompose(int lmax, int mmax)
 			      if (threeJ1.isZero())
 				continue;
 
-			      int sign = pow(-1,m1+M);
-			      int sign1 = pow(-1,m1+1);
-			      int sign2 = pow(-1,m2+1);
-			      int sign12 = pow(-1,m1+m2);
+			      int sign = (m1 + M & 0x1 ? -1 : 1);
+			      int sign1 = (m1 + 1 & 0x1 ? -1 : 1);
+			      int sign2 = (m2 + 1 & 0x1 ? -1 : 1);
+			      int sign12 = (m1 + m2 & 0x1 ? -1 : 1);
 			      fraction parentheses = (threeJalgebraically(L, l1, l2, -M, -m1, m2)
 					     + threeJalgebraically(L, l1, l2, -M, m1, m2) * eps * sign1
 					     + threeJalgebraically(L, l1, l2, -M, -m1, -m2) * eps * sign2
@@ -561,10 +567,10 @@ decomposeMoment(int L, int M, const waveset& ws)
 		continue;
 
 	      // This is wrong because I can't just simply add the squares of the 3j symbols ...
-	      int sign = pow(-1,w1.m+M);
-	      int sign1 = pow(-1,w1.m+1);
-	      int sign2 = pow(-1,w2.m+1);
-	      int sign12 = pow(-1,w1.m+w2.m);
+	      int sign = (w1.m + M & 0x1 ? -1 : 1);
+	      int sign1 = (w1.m + 1 & 0x1 ? -1 : 1);
+	      int sign2 = (w1.m + 1 & 0x1 ? -1 : 1);
+	      int sign12 = (w1.m + w2.m & 0x1 ? -1 : 1);
 	      fraction parentheses = (threeJalgebraically(L, w1.l, w2.l, -M, -w1.m, w2.m)
 				      + threeJalgebraically(L, w1.l, w2.l, -M, w1.m, w2.m) * eps * sign1
 				      + threeJalgebraically(L, w1.l, w2.l, -M, -w1.m, -w2.m) * eps * sign2
