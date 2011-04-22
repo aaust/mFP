@@ -1,6 +1,6 @@
 OBJECTS=myFit.o control.o wave.o event.o likelihood.o 3j.o
 LDFLAGS=-g
-CXXFLAGS=-Wall -g -O2
+CXXFLAGS=-Wall -g -O2 `root-config --cflags`
 LIBS=`root-config --libs --cflags` -lMinuit2 -lMathMore
 
 myFit: ${OBJECTS}
