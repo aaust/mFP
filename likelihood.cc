@@ -144,27 +144,23 @@ likelihood::calc_mc_likelihood(const vector<double>& x) const
 {
   double sumMC = 0;
   waveset::const_iterator it;
-  size_t waveset_base = 0;
   for (it = ws.begin(); it != ws.end(); it++)
     {
       vector<wave>::const_iterator wave1, wave2;
-      size_t idx1;
-      for (wave1 = it->waves.begin(), idx1 = waveset_base;
+      for (wave1 = it->waves.begin();
 	   wave1 != it->waves.end();
-	   wave1++, idx1 += 2)
+	   wave1++)
 	{
-	  complex<double> a1(x[idx1], x[idx1+1]);
-	  size_t idx2;
-	  for (wave2 = it->waves.begin(), idx2 = waveset_base;
+	  complex<double> a1(x[wave1->getIndex()], x[wave1->getIndex()+1]);
+	  for (wave2 = it->waves.begin();
 	       wave2 != it->waves.end();
-	       wave2++, idx2 += 2)
+	       wave2++)
 	    {
-	      complex<double> conj_a2(x[idx2], -x[idx2+1]);
+	      complex<double> conj_a2(x[wave2->getIndex()], -x[wave2->getIndex()+1]);
 	      sumMC +=  real(a1*conj_a2
 			     *MCweight(it->reflectivity, *wave1, *wave2));
 	    }
 	}
-      waveset_base = idx1;
     }
 
   return x[idxBranching] * sumMC * binnedEtaAcc[currentBin];
