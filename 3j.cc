@@ -42,64 +42,82 @@ namespace {
     //cout << "prefactor = " << result << endl;
     return result;
   }
-}
 
 
-double
-threeJ(long j1, long j2, long j3, long m1, long m2, long m3)
-{
-  if (j1 < 0 || j2 < 0 || j3 < 0)
-    return 0;
-  if (j1 > j2 + j3)
-    return 0;
-  if (j2 > j3 + j1)
-    return 0;
-  if (j3 > j1 + j2)
-    return 0;
-  if (abs(j1 - j2) > j3)
-    return 0;
-  if (abs(j2 - j3) > j1)
-    return 0;
-  if (abs(j3 - j1) > j2)
-    return 0;
-  if (m1 + m2 + m3 != 0)
-    return 0;
-  if (abs(m1) > j1 || abs(m2) > j2 || abs(m3) > j3)
-    return 0;
+  double
+  threeJ(long j1, long j2, long j3, long m1, long m2, long m3)
+  {
+    if (j1 < 0 || j2 < 0 || j3 < 0)
+      return 0;
+    if (j1 > j2 + j3)
+      return 0;
+    if (j2 > j3 + j1)
+      return 0;
+    if (j3 > j1 + j2)
+      return 0;
+    if (abs(j1 - j2) > j3)
+      return 0;
+    if (abs(j2 - j3) > j1)
+      return 0;
+    if (abs(j3 - j1) > j2)
+      return 0;
+    if (m1 + m2 + m3 != 0)
+      return 0;
+    if (abs(m1) > j1 || abs(m2) > j2 || abs(m3) > j3)
+      return 0;
 
-  // The 3j-symbol is != 0.  Find the valid range for the summation in loc.cit. (34.2.4)
-  long minS = 0;
-  minS = max(minS, -(j3 - j2 + m1));
-  minS = max(minS, -(j3 - j1 - m2));
-  long maxS = j1 + j2 - j3;  // needs refinement
-  maxS = min(maxS, j1 - m1);
-  maxS = min(maxS, j2 + m2);
+    // The 3j-symbol is != 0.  Find the valid range for the summation in loc.cit. (34.2.4)
+    long minS = 0;
+    minS = max(minS, -(j3 - j2 + m1));
+    minS = max(minS, -(j3 - j1 - m2));
+    long maxS = j1 + j2 - j3;  // needs refinement
+    maxS = min(maxS, j1 - m1);
+    maxS = min(maxS, j2 + m2);
 
-  if (minS > maxS)
-    return 0;
+    if (minS > maxS)
+      return 0;
 
-  double sum = 0;
-  for (int s = minS; s <= maxS; s++)
-    {
-      double add = ((s & 0x1 ? -1. : 1.)
-		    / fac(s) / fac(j1+j2-j3-s)
-		    / fac(j1-m1-s) / fac(j2+m2-s)
-		    / fac(j3-j2+m1+s) / fac(j3-j1-m2+s));
-      //cout << add << endl;
-      sum+=add;
-    }
+    double sum = 0;
+    for (int s = minS; s <= maxS; s++)
+      {
+	double add = ((s & 0x1 ? -1. : 1.)
+		      / fac(s) / fac(j1+j2-j3-s)
+		      / fac(j1-m1-s) / fac(j2+m2-s)
+		      / fac(j3-j2+m1+s) / fac(j3-j1-m2+s));
+	//cout << add << endl;
+	sum+=add;
+      }
 
-  return prefactor(j1,j2,j3,m1,m2,m3)*sum;
-}
+    return prefactor(j1,j2,j3,m1,m2,m3)*sum;
+  }
 
 
-double
-theta(int m)
-{
-  if (m == 0)
-    return .5;
-  else
-    return sqrt(.5);
+  double
+  theta(int m)
+  {
+    if (m == 0)
+      return .5;
+    else
+      return sqrt(.5);
+  }
+
+  double
+  getCoefficient(int eps, int L, int M, int l1, int m1, int l2, int m2)
+  {
+    double threeJ1 = threeJ(L, l1, l2, 0, 0, 0);
+
+    int sign = (m1 + M & 0x1 ? -1 : 1);
+    int sign1 = (m1 + 1 & 0x1 ? -1 : 1);
+    int sign2 = (m2 + 1 & 0x1 ? -1 : 1);
+    int sign12 = (m1 + m2 & 0x1 ? -1 : 1);
+    double parentheses = (threeJ(L, l1, l2, -M, -m1, m2)
+			  + threeJ(L, l1, l2, -M, m1, m2) * eps * sign1
+			  + threeJ(L, l1, l2, -M, -m1, -m2) * eps * sign2
+			  + threeJ(L, l1, l2, -M, m1, -m2) * sign12) * sign;
+
+    return(theta(m1)*theta(m2)*sqrt((2*l1+1)*(2*l2+1))
+	   *threeJ1*parentheses);
+  }
 }
 
 
@@ -118,24 +136,10 @@ decomposeMoment(int L, int M, const waveset& ws)
 	  for (size_t iW2 = 0; iW2 < w.size(); iW2++)
 	    {
 	      const wave& w2 = w[iW2];
-	      double threeJ1 = threeJ(L, w1.l, w2.l, 0, 0, 0);
-	      if (threeJ1 == 0)
-		continue;
-
-	      int sign = (w1.m + M & 0x1 ? -1 : 1);
-	      int sign1 = (w1.m + 1 & 0x1 ? -1 : 1);
-	      int sign2 = (w2.m + 1 & 0x1 ? -1 : 1);
-	      int sign12 = (w1.m + w2.m & 0x1 ? -1 : 1);
-	      double parentheses = (threeJ(L, w1.l, w2.l, -M, -w1.m, w2.m)
-				      + threeJ(L, w1.l, w2.l, -M, w1.m, w2.m) * eps * sign1
-				      + threeJ(L, w1.l, w2.l, -M, -w1.m, -w2.m) * eps * sign2
-				      + threeJ(L, w1.l, w2.l, -M, w1.m, -w2.m) * sign12) * sign;
-	      if (parentheses == 0)
-		continue;
-
+	      double coeff = getCoefficient(eps, L, M, w1.l, w1.m, w2.l, w2.m);
+	      if (coeff != 0)
 	      cout << " + "
-		   << (theta(w1.m)*theta(w2.m)*sqrt((2*w1.l+1)*(2*w2.l+1))
-		       *threeJ1*parentheses)
+		   << coeff
 		   << "*rho(eps = " << eps << ", " << w1.l << ", " << w1.m << ", " << w2.l << ", " << w2.m
 		   << ")";
 	    }

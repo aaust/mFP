@@ -95,7 +95,7 @@ myFit()
   vector<wave> positive;
   positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
   positive.push_back(wave("P+", 1, 1, nBins, lower, upper));
-  positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
+  //positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
 
   vector<wave> negative;
   negative.push_back(wave("S0", 0, 0, nBins, lower, upper));
@@ -117,7 +117,7 @@ myFit()
   ws.push_back(wsPos);
   ws.push_back(wsNeg);
 
-  for (int L = 0; L <= 8; L++)
+  for (int L = 0; L <= 4; L++)
     for (int M = 0; M <= L; M++)
       {
 	cout << "H(" << L << ", " << M << ") = " << flush;
