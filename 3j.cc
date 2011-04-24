@@ -70,6 +70,12 @@ class factoredInteger {
   int sign;
 
 public:
+  factoredInteger()
+  {
+    value = sign = 0;
+    memset (powerDecomposition, 0, sizeof(int)*nPrimes);
+  }
+
   factoredInteger(long long number)
   {
     long long i = value = number;
@@ -135,6 +141,7 @@ public:
     if (this->value == 0)
       return o;
 
+    // Non-trivial to avoid overflows.
     return factoredInteger(this->value + o.value);
     factoredInteger gcd = findGCD(*this, o);
     factoredInteger first = *this;
@@ -145,6 +152,12 @@ public:
     //gcd.write();
     //cout << "*(" << first.getValue() << " + " << second.getValue() << ")" << endl;
     return gcd * (first.getValue() + second.getValue());
+  }
+
+  bool
+  operator==(const factoredInteger& o) const
+  {
+    return o.value == value;
   }
 
   static factoredInteger
@@ -238,7 +251,74 @@ public:
       cout << "1";
     cout << endl;
   }
+
+  const int*
+  getPowerDecomposition() const
+  {
+    return this->powerDecomposition;
+  }
+
 };
+
+
+class sqrtFactored {
+  // In order to represent something like sqrt(2) + sqrt(3) I need several terms.
+  std::vector<factoredInteger> value;
+public:
+  sqrtFactored(const factoredInteger& source)
+  {
+    int decompA[nPrimes], decompB[nPrimes];
+    for (size_t i = 0; i < nPrimes; i++)
+      {
+	decompA[i] = source.getPowerDecomposition()[i] % 2;
+	decompB[i] = source.getPowerDecomposition()[i] / 2;
+      }
+
+    value.push_back(factoredInteger(decompB, source.getSign()));
+    value.push_back(factoredInteger(decompA, 1));
+  }
+
+  sqrtFactored(std::vector<factoredInteger>& v)
+    : value(v)
+  {}
+
+  sqrtFactored
+  operator+(const sqrtFactored other)
+  {
+    bool compatible = other.value.size() == value.size();
+    if (compatible)
+      for (size_t i = 1; i < value.size(); i++)
+	{
+	  if (!(other.value[i] == value[i]))
+	    compatible = false;
+	}
+
+    if (compatible)
+      {
+	vector<factoredInteger> res;
+	res.push_back(value[0] + other.value[0]);
+	for (size_t i = 1; i < value.size(); i++)
+	  res.push_back(value[i]);
+	return sqrtFactored(res);
+      }
+
+
+  }
+
+  void
+  write()
+  {
+    cout << value[0].getValue() << " sqrt(";
+    for (size_t i = 1; i < value.size(); i++)
+      {
+	cout << value[i].getValue();
+	if (i != value.size() - 1)
+	  cout << " + ";
+      }
+    cout << ")" << endl;
+  }
+};
+
 
 class fraction {
   factoredInteger numerator, denominator;
@@ -413,10 +493,11 @@ threeJ(long j1, long j2, long j3, long m1, long m2, long m3)
   double sum = 0;
   for (int s = minS; s <= maxS; s++)
     {
-      double add = ((s & 0x1 ? -1 : 1)
-	      / fac(s) / fac(j1+j2-j3-s)
-	      / fac(j1-m1-s) / fac(j2+m2-s)
-	      / fac(j3-j2+m1+s) / fac(j3-j1-m2+s));
+      double add = ((s & 0x1 ? -1. : 1.)
+		    / fac(s) / fac(j1+j2-j3-s)
+		    / fac(j1-m1-s) / fac(j2+m2-s)
+		    / fac(j3-j2+m1+s) / fac(j3-j1-m2+s));
+      //cout << add << endl;
       sum+=add;
     }
 
@@ -475,6 +556,15 @@ threeJalgebraically(long j1, long j2, long j3, long m1, long m2, long m3)
 }
 
 
+double
+theta(int m)
+{
+  if (m == 0)
+    return .5;
+  else
+    return sqrt(.5);
+}
+
 
 fraction
 theta_square(int m)
@@ -483,67 +573,6 @@ theta_square(int m)
     return fraction(1, 4);
   else
     return fraction(1, 2);
-}
-
-
-void
-decompose(int lmax, int mmax)
-{
-  for (int L = 0; L <= 2*lmax; L++)
-    {
-      for (int M = 0; M <= L; M++)
-	{
-	  cout << "H(" << L << "," << M << ") = " << flush;
-	  for (int eps = -1; eps <= 1; eps += 2)
-	    {
-	      for (int l1 = 0; l1 <= lmax; l1++)
-		{
-		  if (l1 == 3)
-		    continue;
-		  if (l1 == 4 && eps == -1)
-		    continue;
-		  for (int m1 = 0; m1 <= std::min(l1, mmax); m1++)
-		    {
-		      if (eps == +1 && m1 == 0)
-			continue;
-		      for (int l2 = 0; l2 <= lmax; l2++)
-			{
-			  if (l2 == 3)
-			    continue;
-			  if (l2 == 4 && eps == -1)
-			    continue;
-
-			  for (int m2 = 0; m2 <= std::min(l2, mmax); m2++)
-			    {
-			      if (eps == +1 && m2 == 0)
-				continue;
-			      fraction threeJ1 = threeJalgebraically(L, l1, l2, 0, 0, 0);
-			      if (threeJ1.isZero())
-				continue;
-
-			      int sign = (m1 + M & 0x1 ? -1 : 1);
-			      int sign1 = (m1 + 1 & 0x1 ? -1 : 1);
-			      int sign2 = (m2 + 1 & 0x1 ? -1 : 1);
-			      int sign12 = (m1 + m2 & 0x1 ? -1 : 1);
-			      fraction parentheses = (threeJalgebraically(L, l1, l2, -M, -m1, m2)
-					     + threeJalgebraically(L, l1, l2, -M, m1, m2) * eps * sign1
-					     + threeJalgebraically(L, l1, l2, -M, -m1, -m2) * eps * sign2
-					     + threeJalgebraically(L, l1, l2, -M, m1, -m2) * sign12) * sign;
-			      if (parentheses.isZero())
-				continue;
-
-			      cout << " + "
-				   << (theta_square(m1)*theta_square(m2)*fraction((2*l1+1)*(2*l2+1), 1)
-				       *threeJ1*parentheses)
-				   << "*rho(eps = " << eps << ", " << l1 << ", " << m1 << ", " << l2 << ", " << m2 << ")";
-			    }
-			}
-		    }
-		}
-	    }
-	  cout << endl;
-	}
-    }
 }
 
 
@@ -562,28 +591,28 @@ decomposeMoment(int L, int M, const waveset& ws)
 	  for (size_t iW2 = 0; iW2 < w.size(); iW2++)
 	    {
 	      const wave& w2 = w[iW2];
-	      fraction threeJ1 = threeJalgebraically(L, w1.l, w2.l, 0, 0, 0);
-	      if (threeJ1.isZero())
+	      double threeJ1 = threeJ(L, w1.l, w2.l, 0, 0, 0);
+	      if (threeJ1 == 0)
 		continue;
 
-	      // This is wrong because I can't just simply add the squares of the 3j symbols ...
 	      int sign = (w1.m + M & 0x1 ? -1 : 1);
 	      int sign1 = (w1.m + 1 & 0x1 ? -1 : 1);
-	      int sign2 = (w1.m + 1 & 0x1 ? -1 : 1);
+	      int sign2 = (w2.m + 1 & 0x1 ? -1 : 1);
 	      int sign12 = (w1.m + w2.m & 0x1 ? -1 : 1);
-	      fraction parentheses = (threeJalgebraically(L, w1.l, w2.l, -M, -w1.m, w2.m)
-				      + threeJalgebraically(L, w1.l, w2.l, -M, w1.m, w2.m) * eps * sign1
-				      + threeJalgebraically(L, w1.l, w2.l, -M, -w1.m, -w2.m) * eps * sign2
-				      + threeJalgebraically(L, w1.l, w2.l, -M, w1.m, -w2.m) * sign12) * sign;
-	      if (parentheses.isZero())
+	      double parentheses = (threeJ(L, w1.l, w2.l, -M, -w1.m, w2.m)
+				      + threeJ(L, w1.l, w2.l, -M, w1.m, w2.m) * eps * sign1
+				      + threeJ(L, w1.l, w2.l, -M, -w1.m, -w2.m) * eps * sign2
+				      + threeJ(L, w1.l, w2.l, -M, w1.m, -w2.m) * sign12) * sign;
+	      if (parentheses == 0)
 		continue;
 
 	      cout << " + "
-		   << (theta_square(w1.m)*theta_square(w2.m)*fraction((2*w1.l+1)*(2*w2.l+1), 1)
+		   << (theta(w1.m)*theta(w2.m)*sqrt((2*w1.l+1)*(2*w2.l+1))
 		       *threeJ1*parentheses)
 		   << "*rho(eps = " << eps << ", " << w1.l << ", " << w1.m << ", " << w2.l << ", " << w2.m
 		   << ")";
 	    }
 	}
     }
+  cout << endl;
 }

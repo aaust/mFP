@@ -117,8 +117,13 @@ myFit()
   ws.push_back(wsPos);
   ws.push_back(wsNeg);
 
-  //  decomposeMoment(0, 0, ws);
-  //  return;
+  for (int L = 0; L <= 8; L++)
+    for (int M = 0; M <= L; M++)
+      {
+	cout << "H(" << L << ", " << M << ") = " << flush;
+	decomposeMoment(L, M, ws);
+      }
+  return;
 
   size_t lastIdx = 0;
   for (size_t i = 0; i < ws.size(); i++)
