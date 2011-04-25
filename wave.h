@@ -12,7 +12,7 @@ using namespace std;
 
 struct wave {
   string name;
-  int l, m;
+  size_t l, m;
   size_t idx;   // Index into the fit variables.
   TH1* histIntensity;
   map<string, TH1*> mHistPhase;
@@ -29,6 +29,10 @@ struct wave {
 
   void setIndex(int idx_) { idx = idx_; }
   size_t getIndex() const { return idx; }
+  // Thanks to the brilliance of Minuit2, the covariance matrix doesn't
+  // contain the fixed parameters, making the mapping of fit parameters
+  // to covariance matrix elements awkward.  This should help.
+  size_t idxInCovariance(const TFitterMinuit* minuit) const;
 
   void buildHists(int nBins, double lower, double upper);
   TH1* getHistIntensity() const { return histIntensity; }

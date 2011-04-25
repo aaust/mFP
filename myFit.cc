@@ -17,6 +17,7 @@ using namespace std;
 
 #include "control.h"
 #include "wave.h"
+#include "3j.h"
 #include "event.h"
 #include "likelihood.h"
 
@@ -80,9 +81,6 @@ public:
   size_t getNChannels() { return myLs.size(); }
 };
 
-void
-decomposeMoment(int L, int M, const waveset& ws);
-
 
 void __attribute((noinline))
 myFit()
@@ -95,7 +93,7 @@ myFit()
   vector<wave> positive;
   positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
   positive.push_back(wave("P+", 1, 1, nBins, lower, upper));
-  //positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
+  positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
 
   vector<wave> negative;
   negative.push_back(wave("S0", 0, 0, nBins, lower, upper));
@@ -117,18 +115,25 @@ myFit()
   ws.push_back(wsPos);
   ws.push_back(wsNeg);
 
-  for (int L = 0; L <= 4; L++)
-    for (int M = 0; M <= L; M++)
-      {
-	cout << "H(" << L << ", " << M << ") = " << flush;
-	decomposeMoment(L, M, ws);
-      }
-  return;
-
   size_t lastIdx = 0;
   for (size_t i = 0; i < ws.size(); i++)
     for (size_t j = 0; j < ws[i].waves.size(); j++, lastIdx += 2)
       ws[i].waves[j].setIndex(lastIdx);
+
+  // Find the non-zero moments for the given waveset.
+  std::vector<std::pair<size_t, size_t> > vecMom = listOfMoments(ws);
+
+  // Prepare the moment histograms
+  map<std::pair<size_t,size_t>, TH1*> mhMoments;
+  for (std::vector<std::pair<size_t, size_t> >::const_iterator it = vecMom.begin();
+       it != vecMom.end(); it++)
+    {
+      char name[999];
+      char title[999];
+      snprintf(name, 999, "hMoment%zd%zd", it->first, it->second);
+      snprintf(title, 999, "Moment H(%zd,%zd)", it->first, it->second);
+      mhMoments[*it] = new TH1D(name, title, nBins, lower, upper);
+    }
 
   struct {
     const char* name;
@@ -290,41 +295,6 @@ h3->Draw("colz")
   TH1* hBR = new TH1D("hBR", "relative Branching Ratio",
 		      nBins, lower, upper);
 
-  int listOfMoments[][2] = { { 0, 0 },
-			     { 1, 0 },
-			     { 1, 1 },
-			     { 2, 0 },
-			     { 2, 1 },
-			     { 2, 2 },
-			     { 3, 0 },
-			     { 3, 1 },
-			     { 3, 2 },
-			     { 4, 0 },
-			     { 4, 1 },
-			     { 4, 2 } };
-  size_t nMoments = 12;
-  vector<TH1D*> hMomentsRe(nMoments);
-  vector<TH1D*> hMomentsIm(nMoments);
-  vector<TH1D*> hMomentsPWA(nMoments);
-  for (size_t i = 0; i < nMoments; i++)
-    {
-      int L = listOfMoments[i][0];
-      int M = listOfMoments[i][1];
-
-      char name[999], title[999];
-      snprintf(name, 999, "hH%d%dRe", L, M);
-      snprintf(title, 999, "Re(H(%d%d)) from experiment", L, M);
-      hMomentsRe[i] = new TH1D(name, title, nBins, lower, upper);
-
-      snprintf(name, 999, "hH%d%dIm", L, M);
-      snprintf(title, 999, "Im(H(%d%d)) from experiment", L, M);
-      hMomentsIm[i] = new TH1D(name, title, nBins, lower, upper);
-
-      snprintf(name, 999, "hH%d%dPWA", L, M);
-      snprintf(title, 999, "hH%d%d from PWA", L, M);
-      hMomentsPWA[i] = new TH1D(name, title, nBins, lower, upper);
-    }
-
   const size_t nParams = lastIdx + myL.getNChannels();
   TStopwatch fulltime;
   fulltime.Start();
@@ -333,16 +303,6 @@ h3->Draw("colz")
       sw.Start();
 
       myL.setBin(iBin);
-
-      // Calculate moments, fill in hist.
-      for (size_t i = 0; i < nMoments; i++)
-	{
-	  int L = listOfMoments[i][0];
-	  int M = listOfMoments[i][1];
-	  complex<double> mom = myL.myLs[0].calcMoment(L, M);
-	  hMomentsRe[i]->SetBinContent(iBin+1, real(mom));
-	  hMomentsIm[i]->SetBinContent(iBin+1, imag(mom));
-	}
 
       minuit->Clear();
       if (!flatMC)
@@ -438,60 +398,13 @@ h3->Draw("colz")
 	      result.push_back(minuit->GetParameter(iPar));
 	    }
 
-#if 0
-	  const double s2 = sqrt(2);
-	  const double s3 = sqrt(3);
-	  const double s5 = sqrt(5);
-	  const double s6 = sqrt(6);
-	  const double s10 = sqrt(10);
-	  const double s15 = sqrt(15);
-	  const double s21 = sqrt(21);
-	  const double s30 = sqrt(30);
-	  double H00 = (norm(aSwave) + norm(aP0wave) + norm(aPmwave)
-			+ norm(aD0wave) + norm(aDmwave) + norm(aPwave)
-			+ norm(aDwave));
-	  double H10 = real(2/s3*aSwave*conj(aP0wave)
-			    + 4/s15*aP0wave*conj(aD0wave)
-			    + 2/s5*aPmwave*conj(aDmwave)
-			    + 2/s5*aPwave*conj(aDwave));
-	  double H11 = real(2/s6*aSwave*conj(aPmwave)
-			    + 2/s10*aP0wave*conj(aDmwave)
-			    - 2/s30*aPmwave*conj(aD0wave));
-	  double H20 = (2/s5*real(aSwave*conj(aD0wave))
-			+ .4*norm(aP0wave)
-			- .2*norm(aPmwave)
-			- .2*norm(aPwave)
-			+ 2./7.*norm(aD0wave)
-			+ 1./7.*norm(aDmwave)
-			+ 1./7.*norm(aDwave));
-	  double H21 = real(2/s10*aSwave*conj(aDmwave)
-			    + .4*s3/s2*aP0wave*conj(aPmwave)
-			    + 2./7./s2*aD0wave*conj(aDmwave));
-	  double H22 = (.2*s3/s2*norm(aPmwave)
-			+ .2*s3/s2*norm(aPwave)
-			+ 1./7.*s3/s2*norm(aDmwave)
-			- 1./7.*s3/s2*norm(aDwave));
-	  double H30 = real(6./7.*s3/s5*aP0wave*conj(aD0wave)
-			    - 6./7./s5*aPmwave*conj(aDmwave)
-			    - 6./7./s5*aPwave*conj(aDwave));
-	  double H31 = real(4./7.*s3/s5*aP0wave*conj(aDmwave)
-			    + 6./7./s5*aPmwave*conj(aD0wave));
-	  double H32 = real(2./7.*s3/s2*aPmwave*conj(aDmwave)
-			    - 2./7.*s3/s2*aPwave*conj(aDwave));
-	  double H40 = (2./7.*norm(aD0wave)
-			- 4./21.*norm(aDmwave)
-			- 4./21.*norm(aDwave));
-	  double H41 = 2./7.*s5/s3*real(aD0wave*conj(aDmwave));
-	  double H42 = s10/s21*norm(aDmwave) - s10/s21*norm(aDwave);
 
-	  double vH[] = { H00, H10, H11, H20, H21, H22,
-			  H30, H31, H32, H40, H41, H42, };
-	  for (size_t iMom = 0; iMom < 12; iMom++)
+	  for (std::vector<std::pair<size_t, size_t> >::const_iterator it = vecMom.begin();
+	       it != vecMom.end(); it++)
 	    {
-	      hMomentsPWA[iMom]->SetBinContent(iBin+1, vH[iMom]);
-	      hMomentsPWA[iMom]->SetBinError(iBin+1, .1);
-	    }	  
-#endif
+	      mhMoments[*it]->SetBinContent(iBin + 1, decomposeMoment(*it, ws, vStartingValues));
+	      mhMoments[*it]->SetBinError(iBin + 1, decomposeMomentError(*it, ws, minuit));
+	    }
 
 #if 0
 	  double intensity = 0;

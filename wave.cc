@@ -40,6 +40,16 @@ wave::getHistPhase(const wave& other)
 }
 
 
+size_t
+wave::idxInCovariance(const TFitterMinuit* minuit) const
+{
+  size_t countFixedBelow = 0;
+  for (size_t i = 0; i < idx; i++)
+    countFixedBelow += minuit->IsFixed(i);
+  return idx - countFixedBelow;
+}
+
+  
 void
 wave::fillHistIntensity(int iBin, const TFitterMinuit* minuit)
 {

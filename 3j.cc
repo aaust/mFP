@@ -5,7 +5,10 @@
 
 using namespace std;
 
+#include "TFitterMinuit.h"
+
 #include "wave.h"
+#include "3j.h"
 
 namespace {
   long long
@@ -45,54 +48,6 @@ namespace {
 
 
   double
-  threeJ(long j1, long j2, long j3, long m1, long m2, long m3)
-  {
-    if (j1 < 0 || j2 < 0 || j3 < 0)
-      return 0;
-    if (j1 > j2 + j3)
-      return 0;
-    if (j2 > j3 + j1)
-      return 0;
-    if (j3 > j1 + j2)
-      return 0;
-    if (abs(j1 - j2) > j3)
-      return 0;
-    if (abs(j2 - j3) > j1)
-      return 0;
-    if (abs(j3 - j1) > j2)
-      return 0;
-    if (m1 + m2 + m3 != 0)
-      return 0;
-    if (abs(m1) > j1 || abs(m2) > j2 || abs(m3) > j3)
-      return 0;
-
-    // The 3j-symbol is != 0.  Find the valid range for the summation in loc.cit. (34.2.4)
-    long minS = 0;
-    minS = max(minS, -(j3 - j2 + m1));
-    minS = max(minS, -(j3 - j1 - m2));
-    long maxS = j1 + j2 - j3;  // needs refinement
-    maxS = min(maxS, j1 - m1);
-    maxS = min(maxS, j2 + m2);
-
-    if (minS > maxS)
-      return 0;
-
-    double sum = 0;
-    for (int s = minS; s <= maxS; s++)
-      {
-	double add = ((s & 0x1 ? -1. : 1.)
-		      / fac(s) / fac(j1+j2-j3-s)
-		      / fac(j1-m1-s) / fac(j2+m2-s)
-		      / fac(j3-j2+m1+s) / fac(j3-j1-m2+s));
-	//cout << add << endl;
-	sum+=add;
-      }
-
-    return prefactor(j1,j2,j3,m1,m2,m3)*sum;
-  }
-
-
-  double
   theta(int m)
   {
     if (m == 0)
@@ -100,6 +55,7 @@ namespace {
     else
       return sqrt(.5);
   }
+
 
   double
   getCoefficient(int eps, int L, int M, int l1, int m1, int l2, int m2)
@@ -121,10 +77,112 @@ namespace {
 }
 
 
-// Get decomposition of H(LM) in terms of the waveset ws.
-void
-decomposeMoment(int L, int M, const waveset& ws)
+double
+threeJ(long j1, long j2, long j3, long m1, long m2, long m3)
 {
+  if (j1 < 0 || j2 < 0 || j3 < 0)
+    return 0;
+  if (j1 > j2 + j3)
+    return 0;
+  if (j2 > j3 + j1)
+    return 0;
+  if (j3 > j1 + j2)
+    return 0;
+  if (abs(j1 - j2) > j3)
+    return 0;
+  if (abs(j2 - j3) > j1)
+    return 0;
+  if (abs(j3 - j1) > j2)
+    return 0;
+  if (m1 + m2 + m3 != 0)
+    return 0;
+  if (abs(m1) > j1 || abs(m2) > j2 || abs(m3) > j3)
+    return 0;
+
+  // The 3j-symbol is != 0.  Find the valid range for the summation in loc.cit. (34.2.4)
+  long minS = 0;
+  minS = max(minS, -(j3 - j2 + m1));
+  minS = max(minS, -(j3 - j1 - m2));
+  long maxS = j1 + j2 - j3;  // needs refinement
+  maxS = min(maxS, j1 - m1);
+  maxS = min(maxS, j2 + m2);
+
+  if (minS > maxS)
+    return 0;
+
+  double sum = 0;
+  for (int s = minS; s <= maxS; s++)
+    {
+      double add = ((s & 0x1 ? -1. : 1.)
+		    / fac(s) / fac(j1+j2-j3-s)
+		    / fac(j1-m1-s) / fac(j2+m2-s)
+		    / fac(j3-j2+m1+s) / fac(j3-j1-m2+s));
+      //cout << add << endl;
+      sum+=add;
+    }
+
+  return prefactor(j1,j2,j3,m1,m2,m3)*sum;
+}
+
+
+// Returns the llist of non-zero moments for the given waveset.
+std::vector<std::pair<size_t, size_t> >
+listOfMoments(const waveset& ws)
+{
+  // Find maximum L, M.
+  size_t maxL = 0, maxM = 0;
+  for (size_t iWs = 0; iWs < ws.size(); iWs++)
+    {
+      const vector<wave>& w = ws[iWs].waves;
+      for (size_t iW = 0; iW < w.size(); iW++)
+	{
+	  maxL = std::max(w[iW].l, maxL);
+	  maxM = std::max(w[iW].m, maxM);
+	}
+    }
+
+  std::vector<std::pair<size_t, size_t> > result;
+  for (size_t L = 0; L <= 2*maxL; L++)
+    for (size_t M = 0; M <= 2*maxM; M++)
+      {
+	for (size_t iWs = 0; iWs < ws.size(); iWs++)
+	  {
+	    int eps = ws[iWs].reflectivity;
+
+	    const vector<wave>& w = ws[iWs].waves;
+	    for (size_t iW1 = 0; iW1 < w.size(); iW1++)
+	      {
+		const wave& w1 = w[iW1];
+		for (size_t iW2 = 0; iW2 < w.size(); iW2++)
+		  {
+		    const wave& w2 = w[iW2];
+		    double coeff = getCoefficient(eps, L, M, w1.l, w1.m, w2.l, w2.m);
+		    if (coeff != 0)
+		      {
+			result.push_back(std::pair<size_t,size_t>(L, M));
+			goto nextM;
+		      }
+		  }
+	      }
+	  }
+      nextM: ;
+      }
+  return result;
+}
+
+
+double
+decomposeMoment(const std::pair<size_t, size_t>& LM, const waveset& ws, const vector<double>& x)
+{
+  return decomposeMoment(LM.first, LM.second, ws, x);
+}
+
+
+// Calculates moment H(LM) from the waveset ws with corresponding fit results x.
+double
+decomposeMoment(int L, int M, const waveset& ws, const vector<double>& x)
+{
+  double result = 0;
   for (size_t iWs = 0; iWs < ws.size(); iWs++)
     {
       int eps = ws[iWs].reflectivity;
@@ -137,13 +195,72 @@ decomposeMoment(int L, int M, const waveset& ws)
 	    {
 	      const wave& w2 = w[iW2];
 	      double coeff = getCoefficient(eps, L, M, w1.l, w1.m, w2.l, w2.m);
-	      if (coeff != 0)
-	      cout << " + "
-		   << coeff
-		   << "*rho(eps = " << eps << ", " << w1.l << ", " << w1.m << ", " << w2.l << ", " << w2.m
-		   << ")";
+	      result += coeff*(x[w1.getIndex()]*x[w2.getIndex()] + x[w1.getIndex()+1]*x[w2.getIndex()+1]);
+	      //result[wavePair(w1.getIndex(), w2.getIndex())] = coeff;
 	    }
 	}
     }
-  cout << endl;
+
+  return result;
+}
+
+double
+decomposeMomentError(const std::pair<size_t, size_t>& LM,
+		     const waveset& ws, const TFitterMinuit* minuit)
+{
+  return decomposeMomentError(LM.first, LM.second, ws, minuit);
+}
+
+double
+decomposeMomentError(int L, int M, const waveset& ws, const TFitterMinuit* minuit)
+{
+  double resultSquare = 0;
+  for (size_t iWs = 0; iWs < ws.size(); iWs++)
+    {
+      int eps = ws[iWs].reflectivity;
+
+      const vector<wave>& w = ws[iWs].waves;
+      for (size_t iW1 = 0; iW1 < w.size(); iW1++)
+	{
+	  const wave& w1 = w[iW1];
+	  for (size_t iW2 = 0; iW2 < w.size(); iW2++)
+	    {
+	      const wave& w2 = w[iW2];
+	      double coeff = getCoefficient(eps, L, M, w1.l, w1.m, w2.l, w2.m);
+
+	      double re1 = minuit->GetParameter(w1.getIndex());
+	      double im1 = minuit->GetParameter(w1.getIndex() + 1);
+	      double re2 = minuit->GetParameter(w2.getIndex());
+	      double im2 = minuit->GetParameter(w2.getIndex() + 1);
+
+	      double errRe1 = minuit->GetParError(w1.getIndex());
+	      double errIm1 = minuit->GetParError(w1.getIndex() + 1);
+	      double errRe2 = minuit->GetParError(w2.getIndex());
+	      double errIm2 = minuit->GetParError(w2.getIndex() + 1);
+
+	      double covReRe = minuit->GetCovarianceMatrixElement(w1.idxInCovariance(minuit),
+								  w2.idxInCovariance(minuit));
+
+	      // The covariance between the imaginary parts is only
+	      // non-zero if neither is fixed.
+	      double covImIm = 0;
+	      if (!minuit->IsFixed(w1.getIndex() + 1)
+		  && !minuit->IsFixed(w2.getIndex() + 1))
+		{
+		  covImIm = minuit->GetCovarianceMatrixElement(w1.idxInCovariance(minuit) + 1,
+							       w2.idxInCovariance(minuit) + 1);
+		}
+
+	      // value += coeff*(x[w1.getIndex()]*x[w2.getIndex()] - x[w1.getIndex()+1]*x[w1.getIndex()+1]);
+	      resultSquare += fabs(coeff)*(re2*re2*errRe1*errRe1
+					   + re1*re1*errRe2*errRe2
+					   + im2*im2*errIm1*errIm1
+					   + im1*im1*errIm2*errIm2
+					   + 2*re1*re2*covReRe
+					   + 2*im1*im2*covImIm);
+	    }
+	}
+    }
+
+  return sqrt(resultSquare);
 }
