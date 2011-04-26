@@ -104,7 +104,16 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
   complex<double> a1(minuit->GetParameter(idx), minuit->GetParameter(idx + 1));
   complex<double> a2(minuit->GetParameter(other.getIndex()), minuit->GetParameter(other.getIndex()+1));
 
-  h->SetBinContent(iBin+1, arg(a1 / a2));
+  double phi = arg(a1 / a2);
+  if (iBin > 0)
+    {
+      double oldPhase = h->GetBinContent(iBin);
+      while (oldPhase - phi > M_PI)
+	phi += 2*M_PI;
+      while (phi - oldPhase > M_PI)
+	phi -= 2*M_PI;
+    }
+  h->SetBinContent(iBin+1, phi);
   h->SetBinError(iBin+1, 0.2);
 }
 

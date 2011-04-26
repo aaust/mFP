@@ -32,8 +32,8 @@ public:
   bool accepted() const {
     return (this->mass >= massLow && this->mass < massHigh
 	    //&& this->tPrime > 0.1 && this->tPrime < 0.3
-	    && this->tPrime > 0.1
-	    //&& cos(theta) > -0.9 && cos(theta) < 0.9
+	    //&& this->tPrime > 0.1
+	    //&& cos(theta) > -0.7
 	    && 1);
   }
 };

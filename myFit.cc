@@ -172,14 +172,19 @@ myFit()
 			  250, 0, 1);
   TH1* hMClikelihood = new TH1D("hMClikelihood", "MC likelihood of result", nBins, lower, upper);
 
-  TH2* hThVsMgen = new TH2D("hThVsMgen", "generated cos(#theta) vs M", 100, -1, 1, nBins, lower, upper);
-  TH2* hThVsMacc = new TH2D("hThVsMacc", "accepted cos(#theta) vs M", 100, -1, 1, nBins, lower, upper);
+  TH2* hThVsMgen = new TH2D("hThVsMgen", "generated cos(#theta_{#eta')) vs M;cos(#theta);M/GeV", 100, -1, 1, nBins, lower, upper);
+  TH2* hThVsMacc = new TH2D("hThVsMacc", "accepted cos(#theta_{#eta'}) vs M;cos(#theta);M/GeV", 100, -1, 1, nBins, lower, upper);
 
-  TH2* hPhiVsMgen = new TH2D("hPhiVsMgen", "generated #phi vs M", 40, -M_PI, M_PI, nBins, lower, upper);
-  TH2* hPhiVsMacc = new TH2D("hPhiVsMacc", "accepted #phi vs M", 40, -M_PI, M_PI, nBins, lower, upper);
+  TH2* hPhiVsMgen = new TH2D("hPhiVsMgen", "generated #phi vs M;#phi;M/GeV", 40, -M_PI, M_PI, nBins, lower, upper);
+  TH2* hPhiVsMacc = new TH2D("hPhiVsMacc", "accepted #phi vs M;#phi;M/GeV", 40, -M_PI, M_PI, nBins, lower, upper);
 
-  TH2* hMVsTgen = new TH2D("hMVsTgen", "generated M vs t'", nBins, lower, upper, 40, 0.05, 0.45);
-  TH2* hMVsTacc = new TH2D("hMVsTacc", "accepted M vs t'", nBins, lower, upper, 40, 0.05, 0.45);
+  TH2* hMVsTgen = new TH2D("hMVsTgen", "generated M vs t';M/GeV;t'/GeV^{2}", nBins, lower, upper, 40, 0.05, 0.45);
+  TH2* hMVsTacc = new TH2D("hMVsTacc", "accepted M vs t';M/GeV;t'/GeV^{2}", nBins, lower, upper, 40, 0.05, 0.45);
+
+  TH2* hCosThVsPhiLow = new TH2D("hCosThVsPhiLow", "cos(#theta) vs. #phi for low mass;cos(#theta);#phi",
+				 20, -1, 1, 20, -M_PI, M_PI);
+  TH2* hCosThVsPhiHigh = new TH2D("hCosThVsPhiHigh", "cos(#theta) vs. #phi for high mass;cos(#theta);#phi",
+				 20, -1, 1, 20, -M_PI, M_PI);
 
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
 
@@ -204,6 +209,10 @@ myFit()
 	  event e(m, tPr, theta, phi);
 	  RDevents.push_back(e);
 	  hRD->Fill(cos(theta), phi);
+	  if (m < 1.5)
+	    hCosThVsPhiLow->Fill(cos(theta), phi);
+	  if (m > 2.2)
+	    hCosThVsPhiHigh->Fill(cos(theta), phi);
 	}
       fclose(fd);
       cout << "read " << RDevents.size() << " RD events" << endl;
