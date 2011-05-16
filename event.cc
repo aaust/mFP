@@ -17,6 +17,10 @@
 double
 event::decayAmplitude(int reflectivity, int l, int m) const
 {
+  //int id = (reflectivity + 1) + ((l << 3) | (m << 2));
+  //if (lookupTable[id] != -1)
+  //return lookupTable[id];
+
   double spherical = ROOT::Math::sph_legendre(l, m, this->theta);
 
   // This absorbs the factor 2 from e^i \pm e^-i = 2 {i sin, cos}
@@ -24,10 +28,14 @@ event::decayAmplitude(int reflectivity, int l, int m) const
   if (m != 0)
     factor *= sqrt(2.);    
 
+  double result;
   if (reflectivity == +1)
-    return factor*spherical*sin(m*this->phi);
+    result = factor*spherical*sin(m*this->phi);
   else
-    return factor*spherical*cos(m*this->phi);
+    result = factor*spherical*cos(m*this->phi);
+
+  //lookupTable[id] = result;
+  return result;
 }
 
 

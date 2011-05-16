@@ -101,7 +101,8 @@ likelihood::probabilityDensity(const vector<double>& x, const event& e) const
       // norm = abs^2
       sum += norm(it->sum(x, e));
     }
-  return x[idxBranching]*sum;
+
+  return (idxBranching == 16 ? 1-x[idxBranching+1]:x[idxBranching])*sum;
 }
 
 double
@@ -139,6 +140,38 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
   return weights[id] = sum / pMCevents.size();
 }
 
+#if 0
+complex<double>
+likelihood::MCmomentWeight(int L1, int M1, int L2, int M2)
+{
+
+  double spherical = ROOT::Math::sph_legendre(l, m, this->theta);
+
+  // Uses Kahan summation
+  complex<double> sum = 0;
+  complex<double> comp = 0;
+  const vector<event>& events = binnedMCevents[currentBin];
+  for (size_t i = 0; i < events.size(); i++)
+    {
+      double YL1M1 = ROOT::Math::sph_legendre(L1, M1, events[i].theta);
+      double YL2M2 = ROOT::Math::sph_legendre(L2, M2, events[i].theta);
+
+      double phi = events[i].phi;
+      double c = cos((M2-M1)*phi);
+      double s = sin((M2-M1)*phi);
+     
+      complex<double> y = YL1M1*YL2M2*complex<double>(c,s) - comp;
+      complex<double> t = sum + y;
+      comp = (t - sum) - y;
+      sum = t;
+      //sumRD += y;
+    }
+
+  return (2*L2+1) / (4*M_PI) * binnedEtaAcc[currentBin] / events.size() * sum;
+}
+#endif
+
+
 double
 likelihood::calc_mc_likelihood(const vector<double>& x) const
 {
@@ -163,7 +196,7 @@ likelihood::calc_mc_likelihood(const vector<double>& x) const
 	}
     }
 
-  return x[idxBranching] * sumMC * binnedEtaAcc[currentBin];
+  return  (idxBranching == 16 ? 1-x[idxBranching+1]:x[idxBranching]) * sumMC * binnedEtaAcc[currentBin];
 }
 
 double

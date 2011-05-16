@@ -93,6 +93,7 @@ myFit()
   vector<wave> positive;
   positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
   positive.push_back(wave("P+", 1, 1, nBins, lower, upper));
+  //positive.push_back(wave("F+", 3, 1, nBins, lower, upper));
   positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
 
   vector<wave> negative;
@@ -147,6 +148,7 @@ myFit()
       { "Ima(+,1,1)", gRandom->Uniform(5), false },
       { "Rea(+,4,1)", gRandom->Uniform(1), false },
       { "Ima(+,4,1)", gRandom->Uniform(1), false },
+
       { "Rea(-,0,0)", gRandom->Uniform(5), false },
       { "Ima(-,0,0)", 0, true },
       { "Rea(-,1,0)", gRandom->Uniform(5), false },
@@ -157,8 +159,9 @@ myFit()
       { "Ima(-,2,0)", gRandom->Uniform(5), false },
       { "Rea(-,2,1)", gRandom->Uniform(5), false },
       { "Ima(-,2,1)", gRandom->Uniform(5), false },
+
       { "BR1", 1, true },
-      { "BR2", 0.6, false },
+      { "BR2", 0.57, false },
     };
 
   TH2* hRD = new TH2D("hRD", "RD", 10, -1, 1, 10, -M_PI, M_PI);
@@ -172,7 +175,7 @@ myFit()
 			  250, 0, 1);
   TH1* hMClikelihood = new TH1D("hMClikelihood", "MC likelihood of result", nBins, lower, upper);
 
-  TH2* hThVsMgen = new TH2D("hThVsMgen", "generated cos(#theta_{#eta')) vs M;cos(#theta);M/GeV", 100, -1, 1, nBins, lower, upper);
+  TH2* hThVsMgen = new TH2D("hThVsMgen", "generated cos(#theta_{#eta'}) vs M;cos(#theta);M/GeV", 100, -1, 1, nBins, lower, upper);
   TH2* hThVsMacc = new TH2D("hThVsMacc", "accepted cos(#theta_{#eta'}) vs M;cos(#theta);M/GeV", 100, -1, 1, nBins, lower, upper);
 
   TH2* hPhiVsMgen = new TH2D("hPhiVsMgen", "generated #phi vs M;#phi;M/GeV", 40, -M_PI, M_PI, nBins, lower, upper);
@@ -303,6 +306,7 @@ h3->Draw("colz")
 
   TH1* hBR = new TH1D("hBR", "relative Branching Ratio",
 		      nBins, lower, upper);
+  hBR->SetMinimum(0);
 
   const size_t nParams = lastIdx + myL.getNChannels();
   TStopwatch fulltime;
