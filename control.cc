@@ -51,7 +51,7 @@ readControlFile(string fileName)
     }
 
   bool haveDataFile = false;
-  bool flatMC = false;
+  bool haveFlatMC = false;
   bool haveMCFile = false;
   bool haveNFits = false;
   bool haveThreshold = false;
@@ -73,7 +73,7 @@ readControlFile(string fileName)
 	}
       else if (!strcasecmp(key, "flatMC"))
 	{
-	  flatMC = true;
+	  haveFlatMC = true;
 	}
       else if (!strcasecmp(key, "mcfile"))
 	{
@@ -120,16 +120,17 @@ readControlFile(string fileName)
       cerr << "No data file given." << endl;
       good = false;
     }
-  if (!flatMC && !haveMCFile)
+  if (!haveFlatMC && !haveMCFile)
     {
       cerr << "No MC file given." << endl;
       good = false;
     }
-  if (!flatMC && MCFiles.size() != dataFiles.size())
+  if (!haveFlatMC && MCFiles.size() != dataFiles.size())
     {
       cerr << "different number of MC files and data files." << endl;
       good = false;
     }
+  flatMC = haveFlatMC;
   if (!haveThreshold)
     {
       cerr << "No threshold given." << endl;
