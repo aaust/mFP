@@ -13,7 +13,9 @@ using namespace std;
 #include "TRandom1.h"
 #include "TFitterMinuit.h"
 #include "TStopwatch.h"
+#include "TDirectory.h"
 #include "TFile.h"
+#include "TTree.h"
 
 #include "control.h"
 #include "wave.h"
@@ -224,54 +226,97 @@ myFit()
       vector<event> MCallEvents;
       if (!flatMC)
 	{
-	  // Note that Max writes cos(theta) instead of theta
-	  fd = fopen(MCFiles[iFile].c_str(), "r");
-	  if (!fd)
-	    {
-	      cerr << "Can't open input file '" << MCFiles[iFile] << "'." << endl;
-	      abort();
-	    }
-	  while (fgets(line, 99999, fd))
-	    {
-	      int acc;
-	      double m, tPr, theta, phi;
-	      sscanf(line, "%d %lf %lf %lf %lf", &acc, &m, &tPr, &theta, &phi);
+	  const char* fn = MCFiles[iFile].c_str();
+	  size_t len = strlen(fn);
 
-	      event e(m, tPr, acos(theta), phi);
-#if 0
-hPhiVsMacc->Sumw2()                      
-hPhiVsMgen->Sumw2()
-hThVsMgen->Sumw2() 
-hThVsMacc->Sumw2()
-hMVsTgen->Sumw2()
-hMVsTacc->Sumw2()
-h = (TH1*)hPhiVsMacc->Clone()
-h2 = (TH1*)hThVsMacc->Clone()
-h3 = (TH1*)hMVsTacc->Clone()
-h->Divide(hPhiVsMgen)
-h2->Divide(hThVsMgen)
-h3->Divide(hMVsTgen)
-h->Draw("colz")
-new TCanvas
-h2->Draw("colz")
-new TCanvas
-h3->Draw("colz")
-#endif
-	      hThVsMgen->Fill(theta, m);
-	      hPhiVsMgen->Fill(phi, m);
-	      hMVsTgen->Fill(m, tPr);
-	      if (acc)
+	  if (len > 5
+	      && fn[len - 5] == '.' && fn[len - 4] == 'r'
+	      && fn[len - 3] == 'o' && fn[len - 2] == 'o'
+	      && fn[len - 1] == 't')
+	    {
+	      TDirectory *oldDir = gDirectory;
+	      TFile *f = TFile::Open(fn, "READ");
+	      if (!f)
 		{
-		  hThVsMacc->Fill(theta, m);
-		  hPhiVsMacc->Fill(phi, m);
-		  hMVsTacc->Fill(m, tPr);
-		  hMassMC->Fill(m);
-		  htprimeMC->Fill(tPr);
-		  MCevents.push_back(e);
+		  cerr << "Can't open input file '" << fn << "'." << endl;
+		  abort();
 		}
-	      MCallEvents.push_back(e);
+
+	      TTree *t;
+	      f->GetObject("trMC", t);
+	      if (!t)
+		{
+		  cerr << "Can't find tree 'trMC' in file '" << fn << "'." << endl;
+		  abort();
+		}
+
+	      int acc;
+	      float mX;
+	      float tPr;
+	      float costh;
+	      float phi;
+
+	      t->SetBranchAddress("accepted", &acc);
+	      t->SetBranchAddress("mX", &mX);
+	      t->SetBranchAddress("tPrime", &tPr);
+	      t->SetBranchAddress("costhGJ", &costh);
+	      t->SetBranchAddress("phiGJ", &phi);
+
+	      for (Long_t i = 0; i < t->GetEntries(); i++)
+		{
+		  t->GetEntry(i);
+		  event e(mX, tPr, acos(costh), phi);
+
+		  hThVsMgen->Fill(costh, mX);
+		  hPhiVsMgen->Fill(phi, mX);
+		  hMVsTgen->Fill(mX, tPr);
+		  if (acc)
+		    {
+		      hThVsMacc->Fill(costh, mX);
+		      hPhiVsMacc->Fill(phi, mX);
+		      hMVsTacc->Fill(mX, tPr);
+		      hMassMC->Fill(mX);
+		      htprimeMC->Fill(tPr);
+		      MCevents.push_back(e);
+		    }
+		  MCallEvents.push_back(e);
+		}
+	      f->Close();
+	      oldDir->cd();
 	    }
-	  fclose(fd);
+	  else
+	    {
+	      // Note that Max writes cos(theta) instead of theta
+	      fd = fopen(MCFiles[iFile].c_str(), "r");
+	      if (!fd)
+		{
+		  cerr << "Can't open input file '" << MCFiles[iFile] << "'." << endl;
+		  abort();
+		}
+	      while (fgets(line, 99999, fd))
+		{
+		  int acc;
+		  double m, tPr, theta, phi;
+		  sscanf(line, "%d %lf %lf %lf %lf", &acc, &m, &tPr, &theta, &phi);
+
+		  event e(m, tPr, acos(theta), phi);
+
+		  hThVsMgen->Fill(theta, m);
+		  hPhiVsMgen->Fill(phi, m);
+		  hMVsTgen->Fill(m, tPr);
+		  if (acc)
+		    {
+		      hThVsMacc->Fill(theta, m);
+		      hPhiVsMacc->Fill(phi, m);
+		      hMVsTacc->Fill(m, tPr);
+		      hMassMC->Fill(m);
+		      htprimeMC->Fill(tPr);
+		      MCevents.push_back(e);
+		    }
+		  MCallEvents.push_back(e);
+		}
+	      fclose(fd);
+	    }
 	  cout << "read " << MCevents.size() << " accepted MC events out of "
 	       << MCallEvents.size() << " total ("
 	       << 100.*MCevents.size() / MCallEvents.size()
