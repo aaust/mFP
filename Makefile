@@ -1,4 +1,4 @@
-OBJECTS=myFit.o control.o wave.o event.o likelihood.o 3j.o
+OBJECTS=myFit.o control.o wave.o event.o likelihood.o 3j.o eventStream.o
 LDFLAGS=-g
 CXXFLAGS=-Wall -g -O2 `root-config --cflags`
 LIBS=`root-config --libs --cflags` -lMinuit2 -lMathMore
@@ -13,9 +13,10 @@ clean:
 .cc.o:
 	g++ -c ${CXXFLAGS} $< -o $@
 
-myFit.o: myFit.cc control.h wave.h
+myFit.o: myFit.cc control.h wave.h eventStream.h likelihood.h
 control.o: control.cc control.h
 wave.o: wave.cc wave.h event.h
 event.o: event.cc event.h
-likelihood.o: likelihood.cc likelihood.h event.h wave.h
-3j.0: 3j.cc wave.h
+likelihood.o: likelihood.cc likelihood.h event.h wave.h eventStream.h
+3j.o: 3j.cc wave.h
+eventStream.o: eventStream.h event.h

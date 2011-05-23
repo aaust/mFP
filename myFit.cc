@@ -19,6 +19,7 @@ using namespace std;
 #include "wave.h"
 #include "3j.h"
 #include "event.h"
+#include "eventStream.h"
 #include "likelihood.h"
 
 #define NFLATMCEVENTS 100000
@@ -41,21 +42,20 @@ public:
   }
 
   void
-  addChannel(vector<event>& RDevents,
-	     vector<event>& MCevents,
-	     vector<event>& MCallEvents)
+  addChannel(eventStream* RDevents,
+	     eventStream* MCevents)
   {
     size_t idxBranching = /*2*NWAVES*/ 16 + this->getNChannels();
-    myLs.push_back(likelihood(ws, RDevents, MCevents, MCallEvents, nBins, threshold, binWidth, idxBranching));
+    myLs.push_back(likelihood(ws, RDevents, MCevents, nBins, threshold, binWidth, idxBranching));
   }
 
 
   double Up() const { return 0.5; }
 
-  void setBin(size_t iBin) { for (size_t i = 0; i < myLs.size(); i++) myLs[i].setBin(iBin); }
+  void setBin(size_t iBin) { cout << "setting bin " << iBin << " for all likelihood." << endl; for (size_t i = 0; i < myLs.size(); i++) myLs[i].setBin(iBin); }
   size_t eventsInBin() const {
     size_t sum = 0;
-    for (size_t i = 0; i < myLs.size(); i++) sum += myLs[i].eventsInBin(); 
+    for (size_t i = 0; i < myLs.size(); i++) sum += myLs[i].countEventsInBin(); 
     return sum;
   }
   void clearWeights() { for (size_t i = 0; i < myLs.size(); i++) myLs[i].clearWeights(); }
@@ -193,101 +193,26 @@ myFit()
 
   for (size_t iFile = 0; iFile < dataFiles.size(); iFile++)
     {
-      FILE* fd = fopen(dataFiles[iFile].c_str(), "r");
-      if (!fd)
-	{
-	  cerr << "Can't open input file '" << dataFiles[iFile] << "'." << endl;
-	  abort();
-	}
-      char line[99999];
+      eventStream* RDev = new textEventStream(dataFiles[iFile].c_str());
+      cout << "read " << RDev->nEvents() << " RD events" << endl;
 
-      vector<event> RDevents;
-      while (fgets(line, 99999, fd) /*&& nrdevents < 5000*/)
-	{
-	  double m, tPr, theta, phi;
-	  sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
-
-	  hMassFine->Fill(m);
-	  htprime->Fill(tPr);
-	  event e(m, tPr, theta, phi);
-	  RDevents.push_back(e);
-	  hRD->Fill(cos(theta), phi);
-	  if (m < 1.5)
-	    hCosThVsPhiLow->Fill(cos(theta), phi);
-	  if (m > 2.2)
-	    hCosThVsPhiHigh->Fill(cos(theta), phi);
-	}
-      fclose(fd);
-      cout << "read " << RDevents.size() << " RD events" << endl;
-
-      vector<event> MCevents;
-      vector<event> MCallEvents;
+      eventStream* MCev;
       if (!flatMC)
 	{
-	  // Note that Max writes cos(theta) instead of theta
-	  fd = fopen(MCFiles[iFile].c_str(), "r");
-	  if (!fd)
-	    {
-	      cerr << "Can't open input file '" << MCFiles[iFile] << "'." << endl;
-	      abort();
-	    }
-	  while (fgets(line, 99999, fd))
-	    {
-	      int acc;
-	      double m, tPr, theta, phi;
-	      sscanf(line, "%d %lf %lf %lf %lf", &acc, &m, &tPr, &theta, &phi);
-
-	      event e(m, tPr, acos(theta), phi);
-#if 0
-hPhiVsMacc->Sumw2()                      
-hPhiVsMgen->Sumw2()
-hThVsMgen->Sumw2() 
-hThVsMacc->Sumw2()
-hMVsTgen->Sumw2()
-hMVsTacc->Sumw2()
-h = (TH1*)hPhiVsMacc->Clone()
-h2 = (TH1*)hThVsMacc->Clone()
-h3 = (TH1*)hMVsTacc->Clone()
-h->Divide(hPhiVsMgen)
-h2->Divide(hThVsMgen)
-h3->Divide(hMVsTgen)
-h->Draw("colz")
-new TCanvas
-h2->Draw("colz")
-new TCanvas
-h3->Draw("colz")
-#endif
-	      hThVsMgen->Fill(theta, m);
-	      hPhiVsMgen->Fill(phi, m);
-	      hMVsTgen->Fill(m, tPr);
-	      if (acc)
-		{
-		  hThVsMacc->Fill(theta, m);
-		  hPhiVsMacc->Fill(phi, m);
-		  hMVsTacc->Fill(m, tPr);
-		  hMassMC->Fill(m);
-		  htprimeMC->Fill(tPr);
-		  MCevents.push_back(e);
-		}
-	      MCallEvents.push_back(e);
-	    }
-	  fclose(fd);
-	  cout << "read " << MCevents.size() << " accepted MC events out of "
-	       << MCallEvents.size() << " total ("
-	       << 100.*MCevents.size() / MCallEvents.size()
+	  //MCev = new textEventStream(MCFiles[iFile].c_str(), true);
+	  MCev = new rootMCEventStream(MCFiles[iFile].c_str());
+	  cout << "read " << MCev->nAccepted() << " accepted MC events out of "
+	       << MCev->nEvents() << " total ("
+	       << 100.*MCev->nAccepted() / MCev->nEvents()
 	       << "% overall acceptance)"
 	       << endl;
 	}
       else
 	{
-	  for (int iMC = 0; iMC < NFLATMCEVENTS; iMC++)
-	    {
-	      event e(acos(gRandom->Uniform(-1,1)), gRandom->Uniform(-M_PI, M_PI));
-	      MCevents.push_back(e);
-	    }
+	  MCev = new flatEventStream(NFLATMCEVENTS);
 	}
 
-      myL.addChannel(RDevents, MCevents, MCallEvents);
+      myL.addChannel(RDev, MCev);
     }
 
   if (myL.getNChannels() == 0)
@@ -315,13 +240,14 @@ h3->Draw("colz")
     {
       sw.Start();
 
-      myL.setBin(iBin);
-
-      minuit->Clear();
       if (!flatMC)
 	// flat MCweights are the same in different mass bins for the
 	// two-body amplitudes.
 	myL.clearWeights();
+
+      myL.setBin(iBin);
+
+      minuit->Clear();
 
       // The MC part of the likelihood function will evaluate to the
       // number of events in the fit.  In order to speed up the
@@ -438,27 +364,6 @@ h3->Draw("colz")
 
   fulltime.Stop();
   cout << "took " << fulltime.CpuTime() << " s CPU time, " << fulltime.RealTime() << " s wall time" << endl;
-
-#if 0
-  TCanvas* c = new TCanvas();
-  c->Divide(5, 5);
-  for (int i = 1; i <= 25; i++)
-    {
-      hPredict->GetXaxis()->SetRange(i, i);
-      char name[555];
-      sprintf(name, "yz%d", i);
-      TH2* hProjection = (TH2*)hPredict->Project3D(name);
-      c->cd(i);
-      hProjection->Draw("colz");
-    }
-
-  c = new TCanvas();
-  c->Divide(2,2);
-  c->cd(1); hPwave->Draw();
-  c->cd(2); hDwave->Draw();
-  c->cd(3); hFwave->Draw();
-  c->cd(4); hPhaseDP->Draw();
-#endif
 }
 
 

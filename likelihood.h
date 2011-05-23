@@ -5,21 +5,18 @@
 #include <map>
 
 #include "Minuit2/FCNBase.h"
+#include "TMatrixD.h"  // or any other two-index object
 
 #include "wave.h"
 #include "event.h"
+#include "eventStream.h"
 
 class likelihood : public ROOT::Minuit2::FCNBase {
   std::vector<coherent_waves> ws;
-  std::vector<event> RDevents;
-  std::vector<event> MCevents;
-  std::vector<event> MCallEvents;
+  eventStream* RDevents;
+  eventStream* MCevents;
 
-  std::vector<std::vector<event> > binnedRDevents;
-  std::vector<std::vector<event> > binnedMCevents;
-  std::vector<double> binnedEtaAcc;
-
-  size_t nBins;
+  size_t nBins, lastIdx;
   double threshold;
   double binWidth;
 
@@ -28,12 +25,15 @@ class likelihood : public ROOT::Minuit2::FCNBase {
   size_t currentBin;
 
   mutable std::map<int, double> weights;
+  mutable size_t eventsAccepted;
+  mutable size_t eventsInBin;
+
+  TMatrixD MCweights;
 
 public:
-  likelihood(waveset ws_,
-	     std::vector<event>& RDevents_,
-	     std::vector<event>& MCevents_,
-	     std::vector<event>& MCallEvents_,
+  likelihood(const waveset& ws_,
+	     eventStream* RDevents_,
+	     eventStream* MCevents_,
 	     size_t nBins_, double threshold_, double binWidth_,
 	     size_t idxBranching);
 
@@ -48,6 +48,9 @@ public:
 
   double
   probabilityDensity(const std::vector<double>& x, const event& e) const;
+
+  void
+  calcMCweights();
 
   double
   MCweight(int reflectivity, const wave& w1, const wave& w2) const;
@@ -71,13 +74,19 @@ public:
   setBin(size_t iBin) { currentBin = iBin;
     massLow = threshold + iBin*binWidth;
     massHigh = threshold + (iBin+1)*binWidth;
+    RDevents->setBin(iBin);
+    MCevents->setBin(iBin);
+    cout << "setting bin" << endl;
+    calcMCweights();
   }
 
   size_t
-  eventsInBin() const { return binnedRDevents[currentBin].size(); }
+  countEventsInBin() const {
+    return MCevents->countEvents(true, true);
+  }
 
   void
-  clearWeights() { weights.clear(); }
+  clearWeights() { weights.clear(); MCweights.Clear(); cout << "cleared weights." << endl; }
 };
 
 #endif
