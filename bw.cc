@@ -1,5 +1,6 @@
 #include <complex>
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 
@@ -51,8 +52,86 @@ BW(double s, double m1, double m2,
 
   double Gamma = Gamma0 * m0/m * q/q0 * pow(blattWeisskopf(J, q) / blattWeisskopf(J, q0), 2);
 
-  double numerator = blattWeisskopf(J, q);
+  double numerator = blattWeisskopf(J, q) * sqrt(Gamma);
   complex<double> denominator = complex<double>(m0*m0 - s, -m0*Gamma);
+
+  return numerator / denominator;
+}
+
+complex<double>
+BWcoupled(double s, double m1a, double m2a, double m1b, double m2b,
+	  int J, double m0, double Gamma0, double BR)
+{
+  double m = sqrt(s);
+  double q0a = breakupMomentum(m0*m0, m1a, m2a);
+  double qa = breakupMomentum(s, m1a, m2a);
+
+  double Gammaa = Gamma0 * m0/m * qa/q0a * pow(blattWeisskopf(J, qa) / blattWeisskopf(J, q0a), 2);
+
+  double q0b = breakupMomentum(m0*m0, m1b, m2b);
+  double qb = breakupMomentum(s, m1b, m2b);
+
+  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(J, qb) / blattWeisskopf(J, q0b), 2);
+
+  double numerator = blattWeisskopf(J, qa) * sqrt(Gammaa);
+  complex<double> denominator = complex<double>(m0*m0 - s, -m0*(BR*Gammaa + (1-BR)*Gammab));
+
+  return numerator / denominator;
+}
+
+complex<double>
+BWcoupled(double s, double m1a, double m2a, double m1b, double m2b, double m1c, double m2c,
+	  int J, double m0, double Gamma0, double BRb, double BRc)
+{
+  double m = sqrt(s);
+  double q0a = breakupMomentum(m0*m0, m1a, m2a);
+  double qa = breakupMomentum(s, m1a, m2a);
+
+  double Gammaa = Gamma0 * m0/m * qa/q0a * pow(blattWeisskopf(J, qa) / blattWeisskopf(J, q0a), 2);
+
+  double q0b = breakupMomentum(m0*m0, m1b, m2b);
+  double qb = breakupMomentum(s, m1b, m2b);
+
+  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(J, qb) / blattWeisskopf(J, q0b), 2);
+
+  double q0c = breakupMomentum(m0*m0, m1c, m2c);
+  double qc = breakupMomentum(s, m1c, m2c);
+
+  double Gammac = Gamma0 * m0/m * qc/q0c * pow(blattWeisskopf(J, qc) / blattWeisskopf(J, q0c), 2);
+
+  double numerator = blattWeisskopf(J, qa) * sqrt(Gammaa);
+  complex<double> denominator = complex<double>(m0*m0 - s, -m0*((1 - BRb - BRc)*Gammaa + BRb*Gammab + BRc*Gammac));
+
+  return numerator / denominator;
+}
+
+complex<double>
+BWcoupled(double s, double m1a, double m2a, double m1b, double m2b, double m1c, double m2c, double m1d, double m2d,
+	  int J, double m0, double Gamma0, double BRb, double BRc, double BRd)
+{
+  double m = sqrt(s);
+  double q0a = breakupMomentum(m0*m0, m1a, m2a);
+  double qa = breakupMomentum(s, m1a, m2a);
+
+  double Gammaa = Gamma0 * m0/m * qa/q0a * pow(blattWeisskopf(J, qa) / blattWeisskopf(J, q0a), 2);
+
+  double q0b = breakupMomentum(m0*m0, m1b, m2b);
+  double qb = breakupMomentum(s, m1b, m2b);
+
+  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(J, qb) / blattWeisskopf(J, q0b), 2);
+
+  double q0c = breakupMomentum(m0*m0, m1c, m2c);
+  double qc = breakupMomentum(s, m1c, m2c);
+
+  double Gammac = Gamma0 * m0/m * qc/q0c * pow(blattWeisskopf(J, qc) / blattWeisskopf(J, q0c), 2);
+
+  double q0d = breakupMomentum(m0*m0, m1d, m2d);
+  double qd = breakupMomentum(s, m1d, m2d);
+
+  double Gammad = Gamma0 * m0/m * qd/q0d * pow(blattWeisskopf(J, qd) / blattWeisskopf(J, q0d), 2);
+
+  double numerator = blattWeisskopf(J, qa) * sqrt(Gammaa);
+  complex<double> denominator = complex<double>(m0*m0 - s, -m0*((1 - BRb - BRc -BRd)*Gammaa + BRb*Gammab + BRc*Gammac + BRd*Gammad));
 
   return numerator / denominator;
 }
@@ -64,15 +143,45 @@ BW_a2_pietap(double s)
 }
 
 complex<double>
-BW_exotic_pietap(double s)
-{
-  return BW(s, mPi, mEtaP, 1, 1.579, 0.340);
-}
-
-complex<double>
 BW_a2_pieta(double s)
 {
   return BW(s, mPi, mEta, 2, 1.3183, 0.107);
+}
+
+complex<double>
+BW_a2_pieta_coupled(double s)
+{
+  return BWcoupled(s, mPi, mEta, mPi, 0.77, 2, 1.3183, 0.107, 0.2);
+}
+
+complex<double>
+BW_a2_pietap_coupled(double s)
+{
+  return BWcoupled(s, mPi, mEtaP, mPi, 0.77, mPi, mEta, 2, 1.3183, 0.107, 0.70/0.85, 0.15/0.85);
+}
+
+complex<double>
+BW_a2_pirho(double s)
+{
+  return BW(s, mPi, .77, 2, 1.3183, 0.107);
+}
+
+complex<double>
+BW_a4_pieta(double s)
+{
+  return BW(s, mPi, mEta, 4, 2.001, 0.235);
+}
+
+complex<double>
+BW_a4_pietap(double s)
+{
+  return BW(s, mPi, mEtaP, 4, 2.001, 0.235);
+}
+
+complex<double>
+BW_exotic_pietap(double s)
+{
+  return BW(s, mPi, mEtaP, 1, 1.579, 0.340);
 }
 
 complex<double>
@@ -81,19 +190,22 @@ BW_exotic_pieta(double s)
   return BW(s, mPi, mEta, 1, 1.597, 0.340);
 }
 
-#if 0
+#if 1
 void
 bw()
 {
-  for (int i = 0; i < 2000; i++)
+  ofstream of("bw.txt");
+
+  for (int i = 1; i < 2000; i++)
     {
-      double m = mPi + mEtaP + i*0.001;
-      complex<double> z = BW_a2_pietap(m*m);
-      complex<double> z2 = BW_exotic_pietap(m*m);
-      cout << m << " "
-	   << real(z) << " " << imag(z) << " " << norm(z)*breakupMomentum(m*m, mPi, mEtaP) << " " << arg(z) << " "
-	   << real(z2) << " " << imag(z2) << " " << norm(z2) << " " << arg(z2) << " "
-	   << arg(z / z2)
+      double m = mPi + mEtaP + i*0.001; //mPi + 0.77 + i*0.001;
+      complex<double> z = BW_a4_pietap(m*m);
+      complex<double> z2 = BW_a4_pieta(m*m);
+      of << m << " "
+	   << real(z) << " " << imag(z) << " " << norm(z)*breakupMomentum(m*m, mEtaP, mPi) << " " << arg(z)*180/3.142 << " "
+	 << real(z2) << " " << imag(z2) << " " << norm(z2)*breakupMomentum(m*m, mEta, mPi) << " " << arg(z2)*180/3.142 << " "
+	 << arg(z / z2) << " " << breakupMomentum(m*m, mEta, mPi)
+	 << " " << breakupMomentum(m*m, mEtaP, mPi)
 	   << endl;
     }
 }
