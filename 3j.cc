@@ -125,7 +125,7 @@ threeJ(long j1, long j2, long j3, long m1, long m2, long m3)
 }
 
 
-// Returns the llist of non-zero moments for the given waveset.
+// Returns the list of non-zero moments for the given waveset.
 std::vector<std::pair<size_t, size_t> >
 listOfMoments(const waveset& ws)
 {
