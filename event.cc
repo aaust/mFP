@@ -35,7 +35,7 @@ event::decayAmplitude(int reflectivity, int l, int m) const
     result = factor*spherical*cos(m*this->phi);
 
   //lookupTable[id] = result;
-  return result;
+  return result; // * this->tPrime*exp(-7.*this->tPrime);
 }
 
 
