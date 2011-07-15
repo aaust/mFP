@@ -18,4 +18,4 @@ control.o: control.cc control.h
 wave.o: wave.cc wave.h event.h
 event.o: event.cc event.h
 likelihood.o: likelihood.cc likelihood.h event.h wave.h
-3j.0: 3j.cc wave.h
+3j.o: 3j.cc wave.h
