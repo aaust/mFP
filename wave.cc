@@ -127,7 +127,7 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
       TMatrixDSym cov(4);
       size_t idxCov, idxCovOther;
       idxCov = idxInCovariance(minuit);
-      idxCovOther = idxInCovariance(minuit);
+      idxCovOther = other.idxInCovariance(minuit);
       cov(0,0) = minuit->GetCovarianceMatrixElement(idxCov, idxCov);
       cov(1,1) = minuit->GetCovarianceMatrixElement(idxCov + 1, idxCov + 1);
       cov(2,2) = minuit->GetCovarianceMatrixElement(idxCovOther, idxCovOther);
@@ -189,7 +189,7 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
 	  gradient[i] =  1./3.*(4*derivShort - derivFull);
 	}
 
-      h->SetBinError(iBin+1, sqrt(cov.Similarity(gradient)));
+      h->SetBinError(iBin+1, std::min(3.142,sqrt(cov.Similarity(gradient))));
     }
 
 }
