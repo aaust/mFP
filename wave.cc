@@ -16,6 +16,7 @@ wave::wave(const wave& o)
   idx = o.idx;
   histIntensity = o.histIntensity;
   mHistPhase = o.mHistPhase;
+  phaseLocked = o.phaseLocked;
 }
 
 

@@ -83,6 +83,16 @@ public:
   size_t getNChannels() { return myLs.size(); }
 };
 
+struct tStartingValue {
+  string name;
+  Double_t value;
+  bool fixed;
+
+  tStartingValue(const string& n, Double_t v, bool f)
+    : name(n), value(v), fixed(f)
+  {}
+};
+
 
 void __attribute((noinline))
 myFit()
@@ -93,13 +103,14 @@ myFit()
   double upper = threshold + nBins*binWidth;
 
   vector<wave> positive;
-  positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
+  positive.push_back(wave("D+", 2, 1, nBins, lower, upper, true));
   positive.push_back(wave("P+", 1, 1, nBins, lower, upper));
   //positive.push_back(wave("F+", 3, 1, nBins, lower, upper));
   positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
+  //positive.push_back(wave("D++", 2, 2, nBins, lower, upper));
 
   vector<wave> negative;
-  negative.push_back(wave("S0", 0, 0, nBins, lower, upper));
+  negative.push_back(wave("S0", 0, 0, nBins, lower, upper, true));
   negative.push_back(wave("P0", 1, 0, nBins, lower, upper));
   negative.push_back(wave("P-", 1, 1, nBins, lower, upper));
   negative.push_back(wave("D0", 2, 0, nBins, lower, upper));
@@ -138,33 +149,40 @@ myFit()
       mhMoments[*it] = new TH1D(name, title, nBins, lower, upper);
     }
 
-  struct {
-    const char* name;
-    double value;
-    bool fixed;
-  }
-  startingValues[16 + 2] =
-    { { "Rea(+,2,1)", gRandom->Uniform(5), false },
-      { "Ima(+,2,1)", 0, true },
-      { "Rea(+,1,1)", gRandom->Uniform(5), false },
-      { "Ima(+,1,1)", gRandom->Uniform(5), false },
-      { "Rea(+,4,1)", gRandom->Uniform(1), false },
-      { "Ima(+,4,1)", gRandom->Uniform(1), false },
+  vector<tStartingValue> startingValues;
+  for (size_t i = 0; i < positive.size(); i++)
+    {
+      const wave& w = positive[i];
+      startingValues.push_back(tStartingValue((string("Re(") + w.name + string(")")),
+					      gRandom->Uniform(5),
+					      false));
+      if (w.phaseLocked)
+	startingValues.push_back(tStartingValue((string("Im(") + w.name + string(")")),
+						0,
+						true));
+      else
+	startingValues.push_back(tStartingValue((string("Im(") + w.name + string(")")),
+						gRandom->Uniform(5),
+						false));
+    }
+  for (size_t i = 0; i < negative.size(); i++)
+    {
+      const wave& w = negative[i];
+      startingValues.push_back(tStartingValue(tStartingValue((string("Re(") + w.name + string(")")),
+							     gRandom->Uniform(5),
+							     false)));
+      if (w.phaseLocked)
+	startingValues.push_back(tStartingValue((string("Im(") + w.name + string(")")),
+						0,
+						true));
+      else
+	startingValues.push_back(tStartingValue((string("Im(") + w.name + string(")")),
+						gRandom->Uniform(5),
+						false));
+    }
 
-      { "Rea(-,0,0)", gRandom->Uniform(5), false },
-      { "Ima(-,0,0)", 0, true },
-      { "Rea(-,1,0)", gRandom->Uniform(5), false },
-      { "Ima(-,1,0)", gRandom->Uniform(5), false },
-      { "Rea(-,1,1)", gRandom->Uniform(5), false },
-      { "Ima(-,1,1)", gRandom->Uniform(5), false },
-      { "Rea(-,2,0)", gRandom->Uniform(5), false },
-      { "Ima(-,2,0)", gRandom->Uniform(5), false },
-      { "Rea(-,2,1)", gRandom->Uniform(5), false },
-      { "Ima(-,2,1)", gRandom->Uniform(5), false },
-
-      { "BR1", 1, true },
-      { "BR2", 0.57, false },
-    };
+  startingValues.push_back(tStartingValue("BR1", 1, true));
+  startingValues.push_back(tStartingValue("BR2", 0.57, false));
 
   TH2* hRD = new TH2D("hRD", "RD", 10, -1, 1, 10, -M_PI, M_PI);
   TH1* hMassFine = new TH1D("hMassFine", "mass distribution",
@@ -396,19 +414,21 @@ myFit()
       for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
 	{
 	  if (!startingValues[j].fixed)
-	    minuit->SetParameter(j, startingValues[j].name,
-				 startingValues[j].value*ratio, 1, 0, 0);
+	    {
+	      minuit->SetParameter(j, startingValues[j].name.c_str(),
+				   startingValues[j].value*ratio, 1, 0, 0);
+	    }
 	  else
 	    {
-	      minuit->SetParameter(j, startingValues[j].name,
+	      minuit->SetParameter(j, startingValues[j].name.c_str(),
 				   startingValues[j].value, 1, 0, 0);
 	      minuit->FixParameter(j);
 	    }
 	}
       for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
 	{
-	  minuit->SetParameter(j, startingValues[j].name,
-			       startingValues[j].value, .1, 0, 0);
+	  minuit->SetParameter(j, startingValues[j].name.c_str(),
+			       startingValues[j].value, .1, 0, 1);
 	  if (startingValues[j].fixed)
 	    minuit->FixParameter(j);
 	}

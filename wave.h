@@ -16,12 +16,13 @@ struct wave {
   size_t idx;   // Index into the fit variables.
   TH1* histIntensity;
   map<string, TH1*> mHistPhase;
+  bool phaseLocked;
 
   wave() { histIntensity = 0; }
   wave(int ll, int mm) { l = ll; m = mm; histIntensity = 0; }
   wave(const char* name_, int ll, int mm) : name(name_), l(ll), m(mm) { histIntensity = 0; }
-  wave(const char* name_, int ll, int mm, int nBins, double lower, double upper)
-    : name(name_), l(ll), m(mm)
+  wave(const char* name_, int ll, int mm, int nBins, double lower, double upper, bool phaseLocked_ = false)
+    : name(name_), l(ll), m(mm), phaseLocked(phaseLocked_)
   { buildHists(nBins, lower, upper); }
   wave(const wave& o);
 
