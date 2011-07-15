@@ -125,7 +125,7 @@ myFit()
   wsNeg.spinflip = +1;
   wsNeg.waves = negative;
 
-  vector<coherent_waves> ws;
+  waveset ws;
   ws.push_back(wsPos);
   ws.push_back(wsNeg);
 

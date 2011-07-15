@@ -58,6 +58,14 @@ struct coherent_waves {
   size_t getNwaves() const { return waves.size(); }
 };
 
-typedef std::vector<coherent_waves> waveset;
+struct waveset : public std::vector<coherent_waves> {
+public:
+  size_t getNwaves() const {
+    size_t count = 0;
+    for (size_t i = 0; i < this->size(); i++)
+      count += (*this)[i].waves.size();
+    return count;
+  }
+};
 
 #endif
