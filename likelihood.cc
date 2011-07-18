@@ -102,7 +102,7 @@ likelihood::probabilityDensity(const vector<double>& x, const event& e) const
       sum += norm(it->sum(x, e));
     }
 
-  return (idxBranching == 16 ? 1-x[idxBranching+1]:x[idxBranching])*sum;
+  return sum;
 }
 
 double
@@ -196,7 +196,7 @@ likelihood::calc_mc_likelihood(const vector<double>& x) const
 	}
     }
 
-  return  (idxBranching == 16 ? 1-x[idxBranching+1]:x[idxBranching]) * sumMC * binnedEtaAcc[currentBin];
+  return sumMC * binnedEtaAcc[currentBin];
 }
 
 double

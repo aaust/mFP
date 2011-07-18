@@ -76,11 +76,27 @@ public:
   {
     double result = 0;
     for (size_t i = 0; i < myLs.size(); i++)
-      result += myLs[i].calc_likelihood(x);
+      {
+	double BR = 1;
+	if (getNChannels() > 1)
+	  {
+	    if (i == 0)
+	      {
+		for (size_t j = 0; j < getNChannels() - 1; j++)
+		  BR -= x[x.size() - 1 - j];
+	      }
+	    else
+	      {
+		BR = x[x.size() - getNChannels() + i];
+	      }
+	  }
+	result += (myLs[i].eventsInBin()*log(BR) + myLs[i].calc_rd_likelihood(x)
+		   - BR*myLs[i].calc_mc_likelihood(x));
+      }
     return -result;
   }
 
-  size_t getNChannels() { return myLs.size(); }
+  size_t getNChannels() const { return myLs.size(); }
 };
 
 struct tStartingValue {

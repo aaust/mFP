@@ -66,6 +66,22 @@ public:
       count += (*this)[i].waves.size();
     return count;
   }
+
+  size_t getNparams() const {
+    size_t count = 0;
+    for (size_t i = 0; i < this->size(); i++)
+      {
+	const vector<wave>& w = (*this)[i].waves;
+	for (size_t j = 0; j < w.size(); j++)
+	  {
+	    if (w[j].phaseLocked)
+	      count += 1;
+	    else
+	      count += 2;
+	  }
+      }
+    return count;
+  }
 };
 
 #endif
