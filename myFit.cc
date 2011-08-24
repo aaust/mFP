@@ -78,10 +78,15 @@ public:
     for (size_t i = 0; i < myLs.size(); i++)
       {
 	double BR = 1;
+	// We only take the Branching Ratios into account when there's
+	// more than one channel.  It should work with a single
+	// channel as long as the corresponding variable is present,
+	// but who says that it always will?
 	if (getNChannels() > 1)
 	  {
 	    if (i == 0)
 	      {
+		// First channel gets 1 - \sum BR
 		for (size_t j = 0; j < getNChannels() - 1; j++)
 		  BR -= x[x.size() - 1 - j];
 	      }
@@ -90,6 +95,11 @@ public:
 		BR = x[x.size() - getNChannels() + i];
 	      }
 	  }
+	// The BR enters the individual real data events by
+	// multiplying the respective probability density whose
+	// logarithm is then summed to yield the log-likelihood, and
+	// it can thus be taken out of the logarithm contained in the
+	// RD likelihood calculation as follows.
 	result += (myLs[i].eventsInBin()*log(BR) + myLs[i].calc_rd_likelihood(x)
 		   - BR*myLs[i].calc_mc_likelihood(x));
       }
