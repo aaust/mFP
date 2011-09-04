@@ -239,31 +239,90 @@ myFit()
 
   for (size_t iFile = 0; iFile < dataFiles.size(); iFile++)
     {
-      FILE* fd = fopen(dataFiles[iFile].c_str(), "r");
-      if (!fd)
-	{
-	  cerr << "Can't open input file '" << dataFiles[iFile] << "'." << endl;
-	  abort();
-	}
-      char line[99999];
-
       vector<event> RDevents;
-      while (fgets(line, 99999, fd) /*&& nrdevents < 5000*/)
-	{
-	  double m, tPr, theta, phi;
-	  sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
 
-	  hMassFine->Fill(m);
-	  htprime->Fill(tPr);
-	  event e(m, tPr, theta, phi);
-	  RDevents.push_back(e);
-	  hRD->Fill(cos(theta), phi);
-	  if (m < 1.5)
-	    hCosThVsPhiLow->Fill(cos(theta), phi);
-	  if (m > 2.2)
-	    hCosThVsPhiHigh->Fill(cos(theta), phi);
+      const char* fn = dataFiles[iFile].c_str();
+      size_t len = strlen(fn);
+
+      if (len > 5
+	  && fn[len - 5] == '.' && fn[len - 4] == 'r'
+	  && fn[len - 3] == 'o' && fn[len - 2] == 'o'
+	  && fn[len - 1] == 't')
+	{
+	  TDirectory *oldDir = gDirectory;
+	  TFile *f = TFile::Open(fn, "READ");
+	  if (!f)
+	    {
+	      cerr << "Can't open input file '" << fn << "'." << endl;
+	      abort();
+	    }
+
+	  TTree *t;
+	  f->GetObject("events", t);
+	  if (!t)
+	    {
+	      cerr << "Can't find tree 'trMC' in file '" << fn << "'." << endl;
+	      abort();
+	    }
+
+	  float mX;
+	  float tPr;
+	  float theta;
+	  float phi;
+	  float likeK, likePi;
+
+	  t->SetBranchAddress("mKK", &mX);
+	  t->SetBranchAddress("tPrime", &tPr);
+	  t->SetBranchAddress("theta", &theta);
+	  t->SetBranchAddress("phi", &phi);
+	  t->SetBranchAddress("likeK", &likeK);
+	  t->SetBranchAddress("likePi", &likePi);
+
+	  for (Long_t i = 0; i < t->GetEntries(); i++)
+	    {
+	      t->GetEntry(i);
+	      if (likeK != -1 && likePi > 2*likeK)
+		continue;
+	      event e(mX, tPr, theta, phi);
+	      RDevents.push_back(e);
+	      hRD->Fill(cos(theta), phi);
+	      if (mX < 1.5)
+		hCosThVsPhiLow->Fill(cos(theta), phi);
+	      if (mX > 2.2)
+		hCosThVsPhiHigh->Fill(cos(theta), phi);
+	      hMassFine->Fill(mX);
+	    }
+	  f->Close();
+	  oldDir->cd();
 	}
-      fclose(fd);
+      else
+	{
+	  FILE* fd = fopen(dataFiles[iFile].c_str(), "r");
+	  if (!fd)
+	    {
+	      cerr << "Can't open input file '" << dataFiles[iFile] << "'."
+		   << endl;
+	      abort();
+	    }
+	  char line[99999];
+
+	  while (fgets(line, 99999, fd) /*&& nrdevents < 5000*/)
+	    {
+	      double m, tPr, theta, phi;
+	      sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
+
+	      hMassFine->Fill(m);
+	      htprime->Fill(tPr);
+	      event e(m, tPr, theta, phi);
+	      RDevents.push_back(e);
+	      hRD->Fill(cos(theta), phi);
+	      if (m < 1.5)
+		hCosThVsPhiLow->Fill(cos(theta), phi);
+	      if (m > 2.2)
+		hCosThVsPhiHigh->Fill(cos(theta), phi);
+	    }
+	  fclose(fd);
+	}
       cout << "read " << RDevents.size() << " RD events" << endl;
 
       vector<event> MCevents;
@@ -331,12 +390,14 @@ myFit()
 	  else
 	    {
 	      // Note that Max writes cos(theta) instead of theta
-	      fd = fopen(MCFiles[iFile].c_str(), "r");
+	      FILE* fd = fopen(MCFiles[iFile].c_str(), "r");
 	      if (!fd)
 		{
 		  cerr << "Can't open input file '" << MCFiles[iFile] << "'." << endl;
 		  abort();
 		}
+	      char line[99999];
+
 	      while (fgets(line, 99999, fd))
 		{
 		  int acc;
