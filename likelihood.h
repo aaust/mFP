@@ -11,9 +11,9 @@
 
 class likelihood : public ROOT::Minuit2::FCNBase {
   std::vector<coherent_waves> ws;
-  std::vector<event> RDevents;
-  std::vector<event> MCevents;
-  std::vector<event> MCallEvents;
+  const std::vector<event>& RDevents;
+  const std::vector<event>& MCevents;
+  const std::vector<event>& MCallEvents;
 
   std::vector<std::vector<event> > binnedRDevents;
   std::vector<std::vector<event> > binnedMCevents;
@@ -78,6 +78,11 @@ public:
 
   void
   clearWeights() { weights.clear(); }
+
+private:
+  // Not implemented, used to check that likelihoods are not copied,
+  // which previously happened unintendedly.
+  likelihood& operator=(const likelihood&);
 };
 
 #endif

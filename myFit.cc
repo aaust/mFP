@@ -30,7 +30,7 @@ int iBin;
 
 class combinedLikelihood : public ROOT::Minuit2::FCNBase {
 public:
-  vector<likelihood> myLs;
+  vector<likelihood*> myLs;
   waveset ws;
   size_t nBins;
   double threshold;
@@ -42,32 +42,34 @@ public:
   {
   }
 
+  ~combinedLikelihood() { for (size_t i = 0; i < myLs.size(); i++) delete myLs[i]; }
+
   void
   addChannel(vector<event>& RDevents,
 	     vector<event>& MCevents,
 	     vector<event>& MCallEvents)
   {
     size_t idxBranching = /*2*NWAVES*/ 16 + this->getNChannels();
-    myLs.push_back(likelihood(ws, RDevents, MCevents, MCallEvents, nBins, threshold, binWidth, idxBranching));
+    myLs.push_back(new likelihood(ws, RDevents, MCevents, MCallEvents, nBins, threshold, binWidth, idxBranching));
   }
 
 
   double Up() const { return 0.5; }
 
-  void setBin(size_t iBin) { for (size_t i = 0; i < myLs.size(); i++) myLs[i].setBin(iBin); }
+  void setBin(size_t iBin) { for (size_t i = 0; i < myLs.size(); i++) myLs[i]->setBin(iBin); }
   size_t eventsInBin() const {
     size_t sum = 0;
-    for (size_t i = 0; i < myLs.size(); i++) sum += myLs[i].eventsInBin(); 
+    for (size_t i = 0; i < myLs.size(); i++) sum += myLs[i]->eventsInBin(); 
     return sum;
   }
-  void clearWeights() { for (size_t i = 0; i < myLs.size(); i++) myLs[i].clearWeights(); }
+  void clearWeights() { for (size_t i = 0; i < myLs.size(); i++) myLs[i]->clearWeights(); }
 
   double
   calc_mc_likelihood(const vector<double>& x) const
   {
     double result = 0;
     for (size_t i = 0; i < myLs.size(); i++)
-      result += myLs[i].calc_mc_likelihood(x);
+      result += myLs[i]->calc_mc_likelihood(x);
     return result;
   }
 
@@ -100,8 +102,8 @@ public:
 	// logarithm is then summed to yield the log-likelihood, and
 	// it can thus be taken out of the logarithm contained in the
 	// RD likelihood calculation as follows.
-	result += (myLs[i].eventsInBin()*log(BR) + myLs[i].calc_rd_likelihood(x)
-		   - BR*myLs[i].calc_mc_likelihood(x));
+	result += (myLs[i]->eventsInBin()*log(BR) + myLs[i]->calc_rd_likelihood(x)
+		   - BR*myLs[i]->calc_mc_likelihood(x));
       }
     return -result;
   }

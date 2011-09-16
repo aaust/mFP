@@ -14,6 +14,14 @@
 
 // NOTE the phase is ignored, as different reflectivities don't interfere
 
+void
+event::initAmpls()
+{
+  for (size_t l = 0; l < 5; l++)
+    for (size_t m = 0; m <= l; m++)
+      ampls[l*(l+1)/2 + m] = ROOT::Math::sph_legendre(l, m, this->theta);
+}
+
 double
 event::decayAmplitude(int reflectivity, int l, int m) const
 {
@@ -21,7 +29,11 @@ event::decayAmplitude(int reflectivity, int l, int m) const
   //if (lookupTable[id] != -1)
   //return lookupTable[id];
 
-  double spherical = ROOT::Math::sph_legendre(l, m, this->theta);
+  double spherical;
+  if (l < 5 && m <= l && ampls)
+    spherical = ampls[l*(l+1)/2 + m];
+  else
+    spherical = ROOT::Math::sph_legendre(l, m, this->theta);
 
   // This absorbs the factor 2 from e^i \pm e^-i = 2 {i sin, cos}
   double factor = 1; //sqrt(nrdevents);

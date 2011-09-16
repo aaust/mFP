@@ -14,15 +14,18 @@ public:
   double theta;
   double phi;
 
-  event() { mass = tPrime = theta = phi = 0; }
+  double ampls[14];
+
+  event() { mass = tPrime = theta = phi = 0; memset(ampls, 0, sizeof(ampls)); }
   /*
   event(const event& other) { theta = other.theta; phi = other.phi; }
   */
-  event(double th, double ph) { mass = tPrime = 0; theta = th; phi = ph; }
+  event(double th, double ph) { mass = tPrime = 0; theta = th; phi = ph; initAmpls(); }
   event(double mass_, double tPrime_, double th, double ph)
-  { mass = mass_; tPrime = tPrime_; theta = th; phi = ph; }
-  event(const event& o) { mass = o.mass; tPrime = o.tPrime; theta = o.theta; phi = o.phi; }
-
+  { mass = mass_; tPrime = tPrime_; theta = th; phi = ph; initAmpls(); }
+  event(const event& o) { mass = o.mass; tPrime = o.tPrime; theta = o.theta; phi = o.phi; memcpy(ampls, o.ampls, sizeof(ampls)); } //initAmpls(); }
+    
+  void initAmpls();
   double decayAmplitude(int reflectivity, const wave& w) const
   { return decayAmplitude(reflectivity, w.l, w.m); };
   double decayAmplitude(int reflectivity, int l, int m) const;
