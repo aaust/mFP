@@ -13,7 +13,7 @@ clean:
 .cc.o:
 	g++ -c ${CXXFLAGS} $< -o $@
 
-myFit.o: myFit.cc control.h wave.h
+myFit.o: myFit.cc control.h wave.h likelihood.h
 control.o: control.cc control.h
 wave.o: wave.cc wave.h event.h
 event.o: event.cc event.h
