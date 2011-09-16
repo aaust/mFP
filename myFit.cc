@@ -120,6 +120,8 @@ struct tStartingValue {
 };
 
 
+
+
 void __attribute((noinline))
 myFit()
 {
@@ -257,40 +259,70 @@ myFit()
 	      abort();
 	    }
 
-	  TTree *t;
-	  f->GetObject("events", t);
-	  if (!t)
+	  TTree *tree;
+	  f->GetObject("events", tree);
+	  if (tree)
 	    {
-	      cerr << "Can't find tree 'trMC' in file '" << fn << "'." << endl;
-	      abort();
+	      float mX;
+	      float tPr;
+	      float theta;
+	      float phi;
+	      float likeK, likePi;
+
+	      tree->SetBranchAddress("mKpi", &mX);
+	      tree->SetBranchAddress("tPrime", &tPr);
+	      tree->SetBranchAddress("theta", &theta);
+	      tree->SetBranchAddress("phi", &phi);
+	      tree->SetBranchAddress("likeK", &likeK);
+	      tree->SetBranchAddress("likePi", &likePi);
+
+	      for (Long_t i = 0; i < tree->GetEntries(); i++)
+		{
+		  tree->GetEntry(i);
+		  if (likeK != -1 && likePi > 2*likeK)
+		    continue;
+		  event e(mX, tPr, theta, phi);
+		  RDevents.push_back(e);
+		  hRD->Fill(cos(theta), phi);
+		  if (mX < 1.5)
+		    hCosThVsPhiLow->Fill(cos(theta), phi);
+		  if (mX > 2.2)
+		    hCosThVsPhiHigh->Fill(cos(theta), phi);
+		  hMassFine->Fill(mX);
+		}
 	    }
-
-	  float mX;
-	  float tPr;
-	  float theta;
-	  float phi;
-	  float likeK, likePi;
-
-	  t->SetBranchAddress("mKK", &mX);
-	  t->SetBranchAddress("tPrime", &tPr);
-	  t->SetBranchAddress("theta", &theta);
-	  t->SetBranchAddress("phi", &phi);
-	  t->SetBranchAddress("likeK", &likeK);
-	  t->SetBranchAddress("likePi", &likePi);
-
-	  for (Long_t i = 0; i < t->GetEntries(); i++)
+	  else
 	    {
-	      t->GetEntry(i);
-	      if (likeK != -1 && likePi > 2*likeK)
-		continue;
-	      event e(mX, tPr, theta, phi);
-	      RDevents.push_back(e);
-	      hRD->Fill(cos(theta), phi);
-	      if (mX < 1.5)
-		hCosThVsPhiLow->Fill(cos(theta), phi);
-	      if (mX > 2.2)
-		hCosThVsPhiHigh->Fill(cos(theta), phi);
-	      hMassFine->Fill(mX);
+	      f->GetObject("schluter/trRDEta3pi", tree);
+	      if (!tree)
+		{
+		  cerr << "can't find physics tree" << endl;
+		  abort();
+		}
+
+	      float m;
+	      float costh;
+	      float phi;
+	      float t;
+
+	      tree->SetBranchAddress("m", &m);
+	      tree->SetBranchAddress("t", &t);
+	      tree->SetBranchAddress("costh", &costh);
+	      tree->SetBranchAddress("phi", &phi);
+
+	      for (Long_t i = 0; i < tree->GetEntries(); i++)
+		{
+		  tree->GetEntry(i);
+		  event e(m, -t, acos(costh), phi);
+		  RDevents.push_back(e);
+		  hRD->Fill(costh, phi);
+		  if (m < 1.5)
+		    hCosThVsPhiLow->Fill(costh, phi);
+		  if (m > 2.2)
+		    hCosThVsPhiHigh->Fill(costh, phi);
+		  hMassFine->Fill(m);
+		}
+	      
 	    }
 	  f->Close();
 	  oldDir->cd();
@@ -360,7 +392,7 @@ myFit()
 	      float phi;
 
 	      t->SetBranchAddress("accepted", &acc);
-	      t->SetBranchAddress("mX", &mX);
+	      t->SetBranchAddress("mKpi", &mX);
 	      t->SetBranchAddress("tPrime", &tPr);
 	      t->SetBranchAddress("costhGJ", &costh);
 	      t->SetBranchAddress("phiGJ", &phi);
@@ -464,7 +496,6 @@ myFit()
   for (iBin = 0; iBin < nBins; iBin++)
     {
       sw.Start();
-
       myL.setBin(iBin);
 
       minuit->Clear();

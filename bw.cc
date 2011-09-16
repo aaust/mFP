@@ -6,6 +6,7 @@ using namespace std;
 
 const double mPi = .13957018;
 const double mPi0 = .1349766;
+const double mKs = .497614;
 const double mEta = .547853;
 const double mEtaP = .95778;
 
@@ -190,7 +191,53 @@ BW_exotic_pieta(double s)
   return BW(s, mPi, mEta, 1, 1.597, 0.340);
 }
 
-#if 1
+/*
+double
+fitFunc(double *x, double *p)
+{
+  double s = x[0]*x[0];
+
+  double iK892 = p[0];
+  double mK892 = p[1];
+  double wK892 = p[2];
+  double iK1430 = p[3];
+  double mK1430 = p[4];
+  double wK1430 = p[5];
+  double p0 = p[6];
+  double p1 = p[7];
+  double p2 = p[8];
+  double p3 = p[9];
+  double p4 = p[10];
+
+  complex<double> bwK892 = BW(s, mPi, mKs, 1, mK892, wK892);
+  double intK892 = norm(bwK892)*breakupMomentum(s, mPi, mKs);
+
+  complex<double> bwK1430 = BW(s, mPi, mKs, 2, mK1430, wK1430);
+  double intK1430 = norm(bwK1430)*breakupMomentum(s, mPi, mKs);
+
+  double poly = p0*(1 + p1*x[0] + p2*pow(x[0],2) + p3*pow(x[0],3) + p4*pow(x[0],4));
+  return iK892*intK892 + iK1430*intK1430 + poly;
+}
+
+
+void bw()
+{
+  hmKpifit->Draw();
+  f = new TF1("f", fitFunc, 0.65, 1.65, 11);
+  f->FixParameter(1, .892);
+  f->FixParameter(2, .030);
+  f->FixParameter(4, 1.43);
+  f->FixParameter(5, .1);
+  f->FixParameter(6,0);
+  f->FixParameter(7,0);
+  f->FixParameter(8,0);
+  f->FixParameter(9,0);
+  f->FixParameter(10,0);
+  hmKpifit->Fit("f");
+}
+*/
+
+#if 0
 void
 bw()
 {
