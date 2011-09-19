@@ -14,6 +14,11 @@ public:
   double theta;
   double phi;
 
+  // Lookup table.  This contains the Ylm for 0<=l<=4, 0<=m<=l.  They
+  // are arranged densely.  It would be smarter to actually know about
+  // the waveset in use, then one could only store the waves actually
+  // in use, but this is good enough for the numbers of events I'm
+  // dealing with.
   double ampls[14];
 
   event() { mass = tPrime = theta = phi = 0; memset(ampls, 0, sizeof(ampls)); }
