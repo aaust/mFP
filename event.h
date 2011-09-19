@@ -19,7 +19,7 @@ public:
   // the waveset in use, then one could only store the waves actually
   // in use, but this is good enough for the numbers of events I'm
   // dealing with.
-  double ampls[14];
+  double ampls[15];
 
   event() { mass = tPrime = theta = phi = 0; memset(ampls, 0, sizeof(ampls)); }
   /*

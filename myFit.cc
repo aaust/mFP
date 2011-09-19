@@ -295,7 +295,7 @@ myFit()
 	    }
 	  else
 	    {
-	      f->GetObject("schluter/trRDEta3pi", tree);
+	      f->GetObject("schluter/trRDEtap3pi", tree);
 	      if (!tree)
 		{
 		  cerr << "can't find physics tree" << endl;
@@ -511,7 +511,7 @@ myFit()
       // calculation we scale the starting values such that this
       // condition obtains.
       vector<double> vStartingValues(nParams);
-#if 0
+#if 1
       for (size_t iSV = 0; iSV < nParams; iSV++)
 	{
 	  if (!startingValues[iSV].fixed)
@@ -536,7 +536,7 @@ myFit()
 	  if (!startingValues[j].fixed)
 	    {
 	      minuit->SetParameter(j, startingValues[j].name.c_str(),
-				   startingValues[j].value*ratio, 1, 0, 0);
+				   startingValues[j].value*ratio, startingValues[j].value*ratio*0.01, 0, 0);
 	    }
 	  else
 	    {
