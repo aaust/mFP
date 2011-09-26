@@ -22,6 +22,7 @@ using namespace std;
 #include "3j.h"
 #include "event.h"
 #include "likelihood.h"
+#include "gHist.h"
 
 #define NFLATMCEVENTS 100000
 double massLow = 0;
@@ -122,6 +123,75 @@ struct tStartingValue {
 };
 
 
+void
+fillRDhists(const event& e)
+{
+  double lower = threshold;
+  double upper = threshold + nBins*binWidth;
+
+  gHist.Fill("htprime", "t' distribution", 250, 0, 1,
+	     e.tPrime);
+  gHist.Fill("hRD", "RD", 10, -1, 1, 10, -M_PI, M_PI,
+	     cos(e.theta), e.phi);
+  if (e.mass < 1.5)
+    gHist.Fill("hCosThVsPhiLow", "cos(#theta) vs. #phi for low mass;cos(#theta);#phi",
+	       20, -1, 1, 20, -M_PI, M_PI,
+	       cos(e.theta), e.phi);
+  if (e.mass > 2.2)
+    gHist.Fill("hCosThVsPhiHigh", "cos(#theta) vs. #phi for low mass;cos(#theta);#phi",
+	       20, -1, 1, 20, -M_PI, M_PI,
+	       cos(e.theta), e.phi);
+  gHist.Fill("hMassFine", "mass distribution",
+	     250, threshold, 3, e.mass);
+  gHist.Fill("hMassRough", "expected MC likelihood of result",
+	     nBins, lower, upper,
+	     e.mass);
+
+  gHist.Fill("hMvsCosth", "m vs costh Rd", nBins, lower, upper, 40, -1, 1,
+	     e.mass, cos(e.theta));
+}
+
+void
+fillMChists(const event& e, bool acc)
+{
+  double lower = threshold;
+  double upper = threshold + nBins*binWidth;
+
+  gHist.Fill("hThVsMgen", "generated cos(#theta_{#eta'}) vs M;cos(#theta);M/GeV",
+	     100, -1, 1, nBins, lower, upper,
+	     cos(e.theta), e.mass);
+  gHist.Fill("hPhiVsMgen", "generated #phi vs M;#phi;M/GeV",
+	     40, -M_PI, M_PI, nBins, lower, upper,
+	     e.phi, e.mass);
+  gHist.Fill("hMVsTgen", "generated M vs t';M/GeV;t'/GeV^{2}",
+	     nBins, lower, upper, 40, 0.05, 0.45,
+	     e.mass, e.tPrime);
+
+  gHist.Fill("hMvsCosthGen", "m vs costh MC Gen", nBins, lower, upper, 40, -1, 1,
+	     e.mass, cos(e.theta));
+
+  if (acc)
+    {
+      gHist.Fill("hThVsMacc", "accepted cos(#theta_{#eta'}) vs M;cos(#theta);M/GeV",
+		 100, -1, 1, nBins, lower, upper,
+		 cos(e.theta), e.mass);
+      gHist.Fill("hPhiVsMacc", "accepted #phi vs M;#phi;M/GeV",
+		 40, -M_PI, M_PI, nBins, lower, upper,
+		 e.phi, e.mass);
+      gHist.Fill("hMVsTacc", "accepted M vs t';M/GeV;t'/GeV^{2}",
+		 nBins, lower, upper, 40, 0.05, 0.45,
+		 e.mass, e.tPrime);
+      gHist.Fill("hMassMC", "MC mass distribution",
+		 250, threshold, 3,
+		 e.mass);
+      gHist.Fill("htprimeMC", "t' distribution",
+		 250, 0, 1,
+		 e.tPrime);
+      gHist.Fill("hMvsCosthAcc", "m vs costh MC Acc", nBins, lower, upper, 40, -1, 1,
+		 e.mass, cos(e.theta));
+
+    }
+}
 
 
 void __attribute((noinline))
@@ -176,7 +246,7 @@ myFit()
       char title[999];
       snprintf(name, 999, "hMoment%zd%zd", it->first, it->second);
       snprintf(title, 999, "Moment H(%zd,%zd)", it->first, it->second);
-      mhMoments[*it] = new TH1D(name, title, nBins, lower, upper);
+      mhMoments[*it] = gHist.getHist(name, title, nBins, lower, upper);
     }
 
   vector<tStartingValue> startingValues;
@@ -214,31 +284,6 @@ myFit()
   startingValues.push_back(tStartingValue("BR1", 1, true));
   startingValues.push_back(tStartingValue("BR2", 0.57, false));
 
-  TH2* hRD = new TH2D("hRD", "RD", 10, -1, 1, 10, -M_PI, M_PI);
-  TH1* hMassFine = new TH1D("hMassFine", "mass distribution",
-			    250, threshold, 3);
-  TH1* htprime = new TH1D("htprime", "t' distribution",
-			  250, 0, 1);
-  TH1* hMassMC = new TH1D("hMassMC", "MC mass distribution",
-			250, threshold, 3);
-  TH1* htprimeMC = new TH1D("htprimeMC", "t' distribution",
-			  250, 0, 1);
-  TH1* hMClikelihood = new TH1D("hMClikelihood", "MC likelihood of result", nBins, lower, upper);
-
-  TH2* hThVsMgen = new TH2D("hThVsMgen", "generated cos(#theta_{#eta'}) vs M;cos(#theta);M/GeV", 100, -1, 1, nBins, lower, upper);
-  TH2* hThVsMacc = new TH2D("hThVsMacc", "accepted cos(#theta_{#eta'}) vs M;cos(#theta);M/GeV", 100, -1, 1, nBins, lower, upper);
-
-  TH2* hPhiVsMgen = new TH2D("hPhiVsMgen", "generated #phi vs M;#phi;M/GeV", 40, -M_PI, M_PI, nBins, lower, upper);
-  TH2* hPhiVsMacc = new TH2D("hPhiVsMacc", "accepted #phi vs M;#phi;M/GeV", 40, -M_PI, M_PI, nBins, lower, upper);
-
-  TH2* hMVsTgen = new TH2D("hMVsTgen", "generated M vs t';M/GeV;t'/GeV^{2}", nBins, lower, upper, 40, 0.05, 0.45);
-  TH2* hMVsTacc = new TH2D("hMVsTacc", "accepted M vs t';M/GeV;t'/GeV^{2}", nBins, lower, upper, 40, 0.05, 0.45);
-
-  TH2* hCosThVsPhiLow = new TH2D("hCosThVsPhiLow", "cos(#theta) vs. #phi for low mass;cos(#theta);#phi",
-				 20, -1, 1, 20, -M_PI, M_PI);
-  TH2* hCosThVsPhiHigh = new TH2D("hCosThVsPhiHigh", "cos(#theta) vs. #phi for high mass;cos(#theta);#phi",
-				 20, -1, 1, 20, -M_PI, M_PI);
-
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
 
   for (size_t iFile = 0; iFile < dataFiles.size(); iFile++)
@@ -263,6 +308,7 @@ myFit()
 
 	  TTree *tree;
 	  f->GetObject("events", tree);
+	  oldDir->cd();
 	  if (tree)
 	    {
 	      float mX;
@@ -278,6 +324,7 @@ myFit()
 	      tree->SetBranchAddress("likeK", &likeK);
 	      tree->SetBranchAddress("likePi", &likePi);
 
+	      RDevents.reserve(tree->GetEntries());
 	      for (Long_t i = 0; i < tree->GetEntries(); i++)
 		{
 		  tree->GetEntry(i);
@@ -285,12 +332,7 @@ myFit()
 		    continue;
 		  event e(mX, tPr, theta, phi);
 		  RDevents.push_back(e);
-		  hRD->Fill(cos(theta), phi);
-		  if (mX < 1.5)
-		    hCosThVsPhiLow->Fill(cos(theta), phi);
-		  if (mX > 2.2)
-		    hCosThVsPhiHigh->Fill(cos(theta), phi);
-		  hMassFine->Fill(mX);
+		  fillRDhists(e);
 		}
 	    }
 	  else
@@ -312,22 +354,17 @@ myFit()
 	      tree->SetBranchAddress("costh", &costh);
 	      tree->SetBranchAddress("phi", &phi);
 
+	      RDevents.reserve(tree->GetEntries());
 	      for (Long_t i = 0; i < tree->GetEntries(); i++)
 		{
 		  tree->GetEntry(i);
 		  event e(m, -t, acos(costh), phi);
 		  RDevents.push_back(e);
-		  hRD->Fill(costh, phi);
-		  if (m < 1.5)
-		    hCosThVsPhiLow->Fill(costh, phi);
-		  if (m > 2.2)
-		    hCosThVsPhiHigh->Fill(costh, phi);
-		  hMassFine->Fill(m);
+		  fillRDhists(e);
 		}
 	      
 	    }
 	  f->Close();
-	  oldDir->cd();
 	}
       else
 	{
@@ -345,15 +382,9 @@ myFit()
 	      double m, tPr, theta, phi;
 	      sscanf(line, "%lf %lf %lf %lf", &m, &tPr, &theta, &phi);
 
-	      hMassFine->Fill(m);
-	      htprime->Fill(tPr);
 	      event e(m, tPr, theta, phi);
 	      RDevents.push_back(e);
-	      hRD->Fill(cos(theta), phi);
-	      if (m < 1.5)
-		hCosThVsPhiLow->Fill(cos(theta), phi);
-	      if (m > 2.2)
-		hCosThVsPhiHigh->Fill(cos(theta), phi);
+	      fillRDhists(e);
 	    }
 	  fclose(fd);
 	}
@@ -386,6 +417,7 @@ myFit()
 		  cerr << "Can't find tree 'trMC' in file '" << fn << "'." << endl;
 		  abort();
 		}
+	      oldDir->cd();
 
 	      int acc;
 	      float mX;
@@ -394,32 +426,32 @@ myFit()
 	      float phi;
 
 	      t->SetBranchAddress("accepted", &acc);
-	      t->SetBranchAddress("mKpi", &mX);
+	      if (t->GetBranch("mX"))
+		t->SetBranchAddress("mX", &mX);
+	      else if (t->GetBranch("mKpi"))
+		t->SetBranchAddress("mKpi", &mX);
+	      else
+		{
+		  cerr << "unknown format of MC input tree" << endl;
+		  abort();
+		}
 	      t->SetBranchAddress("tPrime", &tPr);
 	      t->SetBranchAddress("costhGJ", &costh);
 	      t->SetBranchAddress("phiGJ", &phi);
 
+	      MCallEvents.reserve(t->GetEntries());
+	      MCevents.reserve(t->GetEntries() / 10);  // Right order of magnitude.
 	      for (Long_t i = 0; i < t->GetEntries(); i++)
 		{
 		  t->GetEntry(i);
 		  event e(mX, tPr, acos(costh), phi);
 
-		  hThVsMgen->Fill(costh, mX);
-		  hPhiVsMgen->Fill(phi, mX);
-		  hMVsTgen->Fill(mX, tPr);
+		  fillMChists(e, acc);
 		  if (acc)
-		    {
-		      hThVsMacc->Fill(costh, mX);
-		      hPhiVsMacc->Fill(phi, mX);
-		      hMVsTacc->Fill(mX, tPr);
-		      hMassMC->Fill(mX);
-		      htprimeMC->Fill(tPr);
-		      MCevents.push_back(e);
-		    }
+		    MCevents.push_back(e);
 		  MCallEvents.push_back(e);
 		}
 	      f->Close();
-	      oldDir->cd();
 	    }
 	  else
 	    {
@@ -440,18 +472,9 @@ myFit()
 
 		  event e(m, tPr, acos(theta), phi);
 
-		  hThVsMgen->Fill(theta, m);
-		  hPhiVsMgen->Fill(phi, m);
-		  hMVsTgen->Fill(m, tPr);
+		  fillMChists(e, acc);
 		  if (acc)
-		    {
-		      hThVsMacc->Fill(theta, m);
-		      hPhiVsMacc->Fill(phi, m);
-		      hMVsTacc->Fill(m, tPr);
-		      hMassMC->Fill(m);
-		      htprimeMC->Fill(tPr);
-		      MCevents.push_back(e);
-		    }
+		    MCevents.push_back(e);
 		  MCallEvents.push_back(e);
 		}
 	      fclose(fd);
@@ -568,7 +591,8 @@ myFit()
 	  for (int j = 0; j < minuit->GetNumberTotalParameters(); j++)
 	    startingValues[j].value = minuit->GetParameter(j);
 
-	  hMClikelihood->SetBinContent(iBin+1, myL.calc_mc_likelihood(vStartingValues));
+	  gHist.getHist("hMClikelihood", "MC likelihood of result", nBins, lower, upper)
+	    ->SetBinContent(iBin+1, myL.calc_mc_likelihood(vStartingValues));
 
 	  for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
 	    {
