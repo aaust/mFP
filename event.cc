@@ -17,6 +17,8 @@
 void
 event::initAmpls()
 {
+  // Surprisingly, it helps if only slightly to parallelize this loop,
+  // spherical harmonics are expensive.
 #pragma omp parallel for
   for (size_t l = 0; l < 5; l++)
     for (size_t m = 0; m <= l; m++)
