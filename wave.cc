@@ -212,7 +212,6 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
     }
   else
     {   
-      // First, for the a1, a2:
       TMatrixDSym cov(4);
       size_t idxCov, idxCovOther;
       idxCov = idxInCovariance(minuit);
