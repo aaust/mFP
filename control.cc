@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "control.h"
 
@@ -18,10 +19,11 @@ int nFits;
 static bool
 readString(FILE* fd, string& result)
 {
-  char text[999];
-  if (fscanf(fd, "%s", text) != 1) // possible overflow
+  char *text;
+  if (fscanf(fd, "%as", &text) != 1) // %as is a GNU extension
     return false;
   result = string(text);
+  free(text);
   return true;
 }
 
