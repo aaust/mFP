@@ -56,15 +56,15 @@ likelihood::likelihood(waveset ws_,
 	  binnedRDevents[iBin].push_back(RDevents[iEvent]);
 	}
 
-      for (size_t iEvent = 0; iEvent < MCevents.size(); iEvent++)
-	{
-	  if (!flatMC && !MCevents[iEvent].accepted())
-	    continue;
-	  binnedMCevents[iBin].push_back(MCevents[iEvent]);
-	}
-
       if (!flatMC)
 	{
+	  for (size_t iEvent = 0; iEvent < MCevents.size(); iEvent++)
+	    {
+	      if (!MCevents[iEvent].accepted())
+		continue;
+	      binnedMCevents[iBin].push_back(MCevents[iEvent]);
+	    }
+
 	  double countAllMC = 0;  // no of MC events generated in bin
 	  for (size_t iEvent = 0; iEvent < MCallEvents.size(); iEvent++)
 	    {
@@ -108,8 +108,8 @@ likelihood::probabilityDensity(const vector<double>& x, const event& e) const
 double
 likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
 {
-  int id = reflectivity + ((w1.l << 16) | (w1.m << 12)
-			   | (w2.l << 8) | (w2.m << 4));
+  int id = (reflectivity+1)/2 + ((w1.l << 16) | (w1.m << 12)
+				 | (w2.l << 8) | (w2.m << 4));
   if (weights.find(id) != weights.end())
     return weights[id];
 
@@ -150,7 +150,8 @@ likelihood::MCmomentWeight(int L1, int M1, int L2, int M2)
   // Uses Kahan summation
   complex<double> sum = 0;
   complex<double> comp = 0;
-  const vector<event>& events = binnedMCevents[currentBin];
+  const vector<event>& events
+    = flatMC ? MCevents : binnedMCevents[currentBin];
   for (size_t i = 0; i < events.size(); i++)
     {
       double YL1M1 = ROOT::Math::sph_legendre(L1, M1, events[i].theta);
