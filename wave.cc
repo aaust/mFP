@@ -120,8 +120,96 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
   // 3. Neither fixed.
 
   if (minuit->IsFixed(idx + 1) || minuit->IsFixed(other.getIndex() + 1))
-    // Ignore for the time being.
-    h->SetBinError(iBin+1, 0.2);
+    {
+      if (minuit->IsFixed(idx + 1) && minuit->IsFixed(other.getIndex() + 1))
+	{
+	  // Can't happen, ignore.
+	  h->SetBinError(iBin+1, 0.2);
+	}
+      else
+	{
+	  bool swapped = false;
+	  size_t idxFix = idx;
+	  size_t idxFree = other.getIndex();
+	  if (minuit->IsFixed(other.getIndex() + 1))
+	    {
+	      swapped = true;
+	      std::swap(idxFix, idxFree);
+	    }
+	  TMatrixDSym cov(3);
+	  size_t idxCovFix, idxCovFree;
+	  if (swapped)
+	    {
+	      idxCovFix = other.idxInCovariance(minuit);
+	      idxCovFree = idxInCovariance(minuit);
+	    }
+	  else
+	    {
+	      idxCovFix = idxInCovariance(minuit);
+	      idxCovFree = other.idxInCovariance(minuit);
+	    }	  
+
+	  cov(0,0) = minuit->GetCovarianceMatrixElement(idxCovFix, idxCovFix);
+	  cov(1,1) = minuit->GetCovarianceMatrixElement(idxCovFree, idxCovFree);
+	  cov(2,2) = minuit->GetCovarianceMatrixElement(idxCovFree + 1, idxCovFree + 1);
+
+	  cov(0,1) = cov(1,0) = minuit->GetCovarianceMatrixElement(idxCovFix, idxCovFree);
+	  cov(0,2) = cov(2,0) = minuit->GetCovarianceMatrixElement(idxCovFix, idxCovFree + 1);
+	  cov(1,2) = cov(2,1) = minuit->GetCovarianceMatrixElement(idxCovFree, idxCovFree + 1);
+
+	  double values[3] = { minuit->GetParameter(idxFix),
+			       minuit->GetParameter(idxFree),
+			       minuit->GetParameter(idxFree + 1) };
+	  TVectorD gradient(3);
+	  // The algorithm follows the one in TF1::Derivative() :
+	  //   df(x) = (4 D(h/2) - D(h)) / 3
+	  // with D(h) = (f(x + h) - f(x - h)) / (2 h).
+	  for (size_t i = 0; i < 3; i++)
+	    {
+	      double save = values[i];
+	      const double step = 1e-5;
+
+	      values[i] = save + step/2;
+	      complex<double> a1(values[0], 0);
+	      complex<double> a2(values[1], values[2]);
+
+	      double rightShort = arg(a1 / a2);
+
+	      values[i] = save - step/2;
+	      a1 = complex<double>(values[0], 0);
+	      a2 = complex<double>(values[1], values[2]);
+
+	      double leftShort = arg(a1 / a2);
+	      while(rightShort - leftShort > M_PI)
+		leftShort += 2*M_PI;
+	      while(leftShort - rightShort > M_PI)
+		rightShort += 2*M_PI;
+
+	      values[i] = save + step;
+	      a1 = complex<double>(values[0], 0);
+	      a2 = complex<double>(values[1], values[2]);
+
+	      double rightLong = arg(a1 / a2);
+
+	      values[i] = save - step;
+	      a1 = complex<double>(values[0], 0);
+	      a2 = complex<double>(values[1], values[2]);
+
+	      double leftLong = arg(a1 / a2);
+	      while(rightLong - leftLong > M_PI)
+		leftLong += 2*M_PI;
+	      while(leftLong - rightLong > M_PI)
+		rightLong += 2*M_PI;
+
+	      double derivFull = (rightLong - leftLong) / 2 / step;
+	      double derivShort = (rightShort - leftShort) / step;
+
+	      gradient[i] =  1./3.*(4*derivShort - derivFull);
+	    }
+
+	  h->SetBinError(iBin+1, std::min(3.142,sqrt(cov.Similarity(gradient))));
+	}
+    }
   else
     {   
       // First, for the a1, a2:
