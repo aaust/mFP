@@ -118,7 +118,10 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
   double c = 0;
   const vector<event>& pMCevents
     = flatMC ? MCevents : binnedMCevents[currentBin];
-  for (size_t i = 0; i < pMCevents.size(); i++)
+
+  size_t nEv = pMCevents.size();
+#pragma omp parallel for reduction (+:sum)
+  for (size_t i = 0; i < nEv; i++)
     {
       // Forming this sum as REAL sum and with no conjugate, because
       // the form of the decay amplitudes allows this.  This is not
@@ -207,7 +210,9 @@ likelihood::calc_rd_likelihood(const vector<double>& x) const
   double sumRD = 0;
   double c = 0;
   const vector<event>& events = binnedRDevents[currentBin];
-  for (size_t i = 0; i < events.size(); i++)
+  size_t nEv = events.size();
+#pragma omp parallel for reduction (+:sumRD)
+  for (size_t i = 0; i < nEv; i++)
     {
       double y = log(probabilityDensity(x, events[i])) - c;
       double t = sumRD + y;

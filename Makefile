@@ -1,5 +1,5 @@
 OBJECTS=myFit.o control.o wave.o event.o likelihood.o 3j.o
-DEBUGFLAGS=-g
+DEBUGFLAGS=-g -fopenmp
 LDFLAGS=${DEBUGFLAGS}
 CXXFLAGS=-Wall ${DEBUGFLAGS} -O2 `root-config --cflags`
 LIBS=`root-config --libs --cflags` -lMinuit2 -lMathMore

@@ -6,6 +6,7 @@ using namespace std;
 
 #include <string>
 #include <stdio.h>
+#include <omp.h>
 
 #include "TH2.h"
 #include "TH3.h"
@@ -348,16 +349,23 @@ myFit()
 	      float costh;
 	      float phi;
 	      float t;
+	      float mCandEtaP1, mCandEtaP2;
 
 	      tree->SetBranchAddress("m", &m);
 	      tree->SetBranchAddress("t", &t);
 	      tree->SetBranchAddress("costh", &costh);
 	      tree->SetBranchAddress("phi", &phi);
+	      tree->SetBranchAddress("mCandEtaP1", &mCandEtaP1);
+	      tree->SetBranchAddress("mCandEtaP2", &mCandEtaP2);
 
 	      RDevents.reserve(tree->GetEntries());
 	      for (Long_t i = 0; i < tree->GetEntries(); i++)
 		{
 		  tree->GetEntry(i);
+		  gHist.Fill("hmEtap", "m(#pi#pi#eta)", 1000, 0.7, 1.7, mCandEtaP1);
+		  gHist.Fill("hmEtap", "m(#pi#pi#eta)", 1000, 0.7, 1.7, mCandEtaP2);
+		  if (fabs(mCandEtaP1 - .958) > 0.02 && fabs(mCandEtaP2 - .958) > 0.02)
+		    continue;
 		  event e(m, -t, acos(costh), phi);
 		  RDevents.push_back(e);
 		  fillRDhists(e);
@@ -428,6 +436,8 @@ myFit()
 	      t->SetBranchAddress("accepted", &acc);
 	      if (t->GetBranch("mX"))
 		t->SetBranchAddress("mX", &mX);
+	      else if (t->GetBranch("mKK"))
+		t->SetBranchAddress("mKK", &mX);
 	      else if (t->GetBranch("mKpi"))
 		t->SetBranchAddress("mKpi", &mX);
 	      else
@@ -487,6 +497,7 @@ myFit()
 	}
       else
 	{
+	  MCevents.reserve(NFLATMCEVENTS);
 	  for (int iMC = 0; iMC < NFLATMCEVENTS; iMC++)
 	    {
 	      event e(acos(gRandom->Uniform(-1,1)), gRandom->Uniform(-M_PI, M_PI));
@@ -673,6 +684,8 @@ myFit()
 
 int main()
 {
+  omp_get_num_threads();
+
   if (!readControlFile("control.txt"))
     {
       return 1;
