@@ -207,7 +207,7 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
 	      gradient[i] =  1./3.*(4*derivShort - derivFull);
 	    }
 
-	  h->SetBinError(iBin+1, std::min(3.142,sqrt(cov.Similarity(gradient))));
+	  h->SetBinError(iBin+1, std::min(M_PI,sqrt(cov.Similarity(gradient))));
 	}
     }
   else
@@ -278,7 +278,7 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
 	  gradient[i] =  1./3.*(4*derivShort - derivFull);
 	}
 
-      h->SetBinError(iBin+1, std::min(3.142,sqrt(cov.Similarity(gradient))));
+      h->SetBinError(iBin+1, std::min(M_PI,sqrt(cov.Similarity(gradient))));
     }
 
 }
