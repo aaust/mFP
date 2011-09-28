@@ -126,6 +126,11 @@ namespace {
       return this;
     }
     */
+
+    void clear()
+    {
+      mHists.clear();
+    }
   } gHist;
 }
 #endif

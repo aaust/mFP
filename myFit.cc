@@ -682,11 +682,14 @@ myFit()
 }
 
 
-int main()
+int main(int argc, char **argv)
 {
-  omp_get_num_threads();
-
-  if (!readControlFile("control.txt"))
+  const char *controlfn;
+  if (argc == 1)
+    controlfn = "control.txt";
+  else
+    controlfn = argv[1];
+  if (!readControlFile(controlfn))
     {
       return 1;
     }
@@ -700,6 +703,7 @@ int main()
       myFit();
       out->Write();
       delete out;
+      gHist.clear();
     }
 
   return 0;
