@@ -14,6 +14,7 @@ double threshold;
 int nBins;
 double binWidth;
 int nFits;
+bool continuous;
 
 
 static bool
@@ -59,6 +60,7 @@ readControlFile(string fileName)
   bool haveThreshold = false;
   bool haveNBins = false;
   bool haveBinWidth = false;
+  bool haveContinuous = false;
   while(!feof(fd))
     {
       char key[999];
@@ -109,6 +111,10 @@ readControlFile(string fileName)
 	    break;
 	  haveBinWidth = true;
 	}
+      else if (!strcasecmp(key, "continuous"))
+	{
+	  haveContinuous = true;
+	}
       else
 	{
 	  cerr << "unknown key '" << key << "' encountered" << endl;
@@ -153,6 +159,7 @@ readControlFile(string fileName)
       cerr << "No bin width given." << endl;
       good = false;
     }
+  continuous = haveContinuous;
   return good;
 }
 

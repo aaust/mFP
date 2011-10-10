@@ -545,13 +545,15 @@ myFit()
       // calculation we scale the starting values such that this
       // condition obtains.
       vector<double> vStartingValues(nParams);
-#if 1
-      for (size_t iSV = 0; iSV < nParams; iSV++)
-	{
-	  if (!startingValues[iSV].fixed)
-	    startingValues[iSV].value = gRandom->Uniform(1);
-	}
-#endif
+
+      // Use random starting values if the user didn't demand
+      // continuity between bins.
+      if (!continuous)
+	for (size_t iSV = 0; iSV < nParams; iSV++)
+	  {
+	    if (!startingValues[iSV].fixed)
+	      startingValues[iSV].value = gRandom->Uniform(1);
+	  }
       for (size_t iSV = 0; iSV < nParams; iSV++)
 	{
 	  vStartingValues[iSV] = startingValues[iSV].value;

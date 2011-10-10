@@ -11,6 +11,7 @@ extern double threshold;
 extern int nBins;
 extern double binWidth;
 extern int nFits;
+extern bool continuous;
 
 bool
 readControlFile(std::string fileName);
