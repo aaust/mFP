@@ -664,27 +664,6 @@ myFit()
 
   fulltime.Stop();
   cout << "took " << fulltime.CpuTime() << " s CPU time, " << fulltime.RealTime() << " s wall time" << endl;
-
-#if 0
-  TCanvas* c = new TCanvas();
-  c->Divide(5, 5);
-  for (int i = 1; i <= 25; i++)
-    {
-      hPredict->GetXaxis()->SetRange(i, i);
-      char name[555];
-      sprintf(name, "yz%d", i);
-      TH2* hProjection = (TH2*)hPredict->Project3D(name);
-      c->cd(i);
-      hProjection->Draw("colz");
-    }
-
-  c = new TCanvas();
-  c->Divide(2,2);
-  c->cd(1); hPwave->Draw();
-  c->cd(2); hDwave->Draw();
-  c->cd(3); hFwave->Draw();
-  c->cd(4); hPhaseDP->Draw();
-#endif
 }
 
 
