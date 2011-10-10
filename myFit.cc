@@ -540,10 +540,6 @@ myFit()
 	// two-body amplitudes.
 	myL.clearWeights();
 
-      // The MC part of the likelihood function will evaluate to the
-      // number of events in the fit.  In order to speed up the
-      // calculation we scale the starting values such that this
-      // condition obtains.
       vector<double> vStartingValues(nParams);
 
       // Use random starting values if the user didn't demand
@@ -558,6 +554,11 @@ myFit()
 	{
 	  vStartingValues[iSV] = startingValues[iSV].value;
 	}
+
+      // The MC part of the likelihood function will evaluate to the
+      // number of events in the fit.  In order to speed up the
+      // calculation we scale the starting values such that this
+      // condition obtains.
       size_t nGood = myL.eventsInBin();
       if (nGood == 0)
 	continue;
@@ -567,32 +568,35 @@ myFit()
 	  vStartingValues[iSV] *= ratio;
 	}
 
+      // Set starting values.
       for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
 	{
 	  if (!startingValues[j].fixed)
 	    {
 	      minuit->SetParameter(j, startingValues[j].name.c_str(),
-				   startingValues[j].value*ratio, startingValues[j].value*ratio*0.01, 0, 0);
+				   vStartingValues[j], vStartingValues[j].value*0.01, 0, 0);
 	    }
 	  else
 	    {
 	      minuit->SetParameter(j, startingValues[j].name.c_str(),
-				   startingValues[j].value, 1, 0, 0);
+				   vStartingValues[j], 1, 0, 0);
 	      minuit->FixParameter(j);
 	    }
 	}
       for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
 	{
 	  minuit->SetParameter(j, startingValues[j].name.c_str(),
-			       startingValues[j].value, .1, 0, 1);
+			       vStartingValues[j].value, .1, 0, 1);
 	  if (startingValues[j].fixed)
 	    minuit->FixParameter(j);
 	}
 
+      // Run minimizer.
       minuit->CreateMinimizer();
       int iret = minuit->Minimize();
       sw.Stop();
       cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
+
       if (iret == 0)
 	{
 	  vector<double> vStartingValue(nParams);
