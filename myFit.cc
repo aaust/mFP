@@ -574,7 +574,7 @@ myFit()
 	  if (!startingValues[j].fixed)
 	    {
 	      minuit->SetParameter(j, startingValues[j].name.c_str(),
-				   vStartingValues[j], vStartingValues[j].value*0.01, 0, 0);
+				   vStartingValues[j], vStartingValues[j]*0.01, 0, 0);
 	    }
 	  else
 	    {
@@ -586,7 +586,7 @@ myFit()
       for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
 	{
 	  minuit->SetParameter(j, startingValues[j].name.c_str(),
-			       vStartingValues[j].value, .1, 0, 1);
+			       vStartingValues[j], .1, 0, 1);
 	  if (startingValues[j].fixed)
 	    minuit->FixParameter(j);
 	}
@@ -627,8 +627,8 @@ myFit()
 
 	  if (myL.getNChannels() == 2)
 	    {
-	      hBR->SetBinContent(iBin+1, minuit->GetParameter(16 + 1));
-	      hBR->SetBinError(iBin+1, minuit->GetParError(16 + 1));
+	      hBR->SetBinContent(iBin+1, minuit->GetParameter(nParams - 1));
+	      hBR->SetBinError(iBin+1, minuit->GetParError(nParams - 1));
 	    }
 
 	  vector<double> result;
