@@ -10,6 +10,7 @@ struct tStartingValue {
   Double_t value;
   bool fixed;
 
+  tStartingValue() {}
   tStartingValue(const std::string& n, Double_t v, bool f)
     : name(n), value(v), fixed(f)
   {}

@@ -24,6 +24,7 @@ using namespace std;
 #include "event.h"
 #include "likelihood.h"
 #include "startingValue.h"
+#include "fitInfo.h"
 #include "gHist.h"
 
 #define NFLATMCEVENTS 100000
@@ -275,6 +276,15 @@ myFit()
 
   startingValues.push_back(tStartingValue("BR1", 1, true));
   startingValues.push_back(tStartingValue("BR2", 0.57, false));
+
+  TTree *outTree = new TTree("tFitResults", "fit results tree");
+  double *values = new double[startingValues.size()];
+  char branchDesc[99];
+  snprintf(branchDesc, 99, "values[%zd]/D", startingValues.size());
+  outTree->Branch("massLow", &massLow, "massLow/D");
+  outTree->Branch("massHigh", &massHigh, "massHigh/D");
+  outTree->Branch("values", values, branchDesc);
+  outTree->GetUserInfo()->Add(new fitInfo(startingValues));
 
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
 
@@ -593,8 +603,9 @@ myFit()
 	  vector<double> vStartingValue(nParams);
 	  for (size_t j = 0; j < nParams; j++)
 	    {
-	      vStartingValues[j] = minuit->GetParameter(j);
+	      values[j] = vStartingValues[j] = minuit->GetParameter(j);
 	    }
+	  outTree->Fill();
 
 	  for (int j = 0; j < minuit->GetNumberTotalParameters(); j++)
 	    startingValues[j].value = minuit->GetParameter(j);
