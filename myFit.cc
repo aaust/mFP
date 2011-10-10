@@ -23,6 +23,7 @@ using namespace std;
 #include "3j.h"
 #include "event.h"
 #include "likelihood.h"
+#include "startingValue.h"
 #include "gHist.h"
 
 #define NFLATMCEVENTS 100000
@@ -111,16 +112,6 @@ public:
   }
 
   size_t getNChannels() const { return myLs.size(); }
-};
-
-struct tStartingValue {
-  string name;
-  Double_t value;
-  bool fixed;
-
-  tStartingValue(const string& n, Double_t v, bool f)
-    : name(n), value(v), fixed(f)
-  {}
 };
 
 
