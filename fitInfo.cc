@@ -2,7 +2,8 @@
 
 #include "fitInfo.h"
 
-fitInfo::fitInfo(const std::vector<tStartingValue>& fitVars)
+fitInfo::fitInfo(const std::vector<tStartingValue>& fitVars, size_t nBins_)
+  : nBins(nBins_)
 {
   for (size_t i = 0; i < fitVars.size(); i++)
     {

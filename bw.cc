@@ -4,13 +4,7 @@
 
 using namespace std;
 
-const double mPi = .13957018;
-const double mPi0 = .1349766;
-const double mKs = .497614;
-const double mEta = .547853;
-const double mEtaP = .95778;
-
-const double hbarc = 0.1973269631; // MeV fm
+#include "bw.h"
 
 double
 blattWeisskopf(int L, double p)
