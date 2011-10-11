@@ -4,9 +4,13 @@ LDFLAGS=${DEBUGFLAGS}
 CXXFLAGS:=-Wall ${DEBUGFLAGS} -O2 $(shell root-config --cflags)
 LIBS:=$(shell root-config --libs --cflags) -lMinuit2 -lMathMore
 
+all: myFit
+.PHONY: all
+
 myFit: ${OBJECTS}
 	g++ -o $@ ${LDFLAGS} ${OBJECTS} ${LIBS}
 
+.PHONY: clean
 clean:
 	rm -f ${OBJECTS}
 	rm -f fitInfoDict.{cc,h}
