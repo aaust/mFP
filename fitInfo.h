@@ -21,6 +21,7 @@ public:
   fitInfo(const std::vector<tStartingValue>& fitVars);
 private:
   std::vector<std::string> paramNames;
+  std::vector<bool> fixed;
 
   ClassDef(fitInfo, 1)
 };

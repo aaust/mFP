@@ -17,6 +17,7 @@ using namespace std;
 #include "TDirectory.h"
 #include "TFile.h"
 #include "TTree.h"
+#include "TMatrixDSym.h"
 
 #include "control.h"
 #include "wave.h"
@@ -278,12 +279,14 @@ myFit()
   startingValues.push_back(tStartingValue("BR2", 0.57, false));
 
   TTree *outTree = new TTree("tFitResults", "fit results tree");
-  double *values = new double[startingValues.size()];
+  double *values = new double[lastIdx];
+  TMatrixDSym *covMat = new TMatrixDSym(lastIdx);
   char branchDesc[99];
   snprintf(branchDesc, 99, "values[%zd]/D", startingValues.size());
   outTree->Branch("massLow", &massLow, "massLow/D");
   outTree->Branch("massHigh", &massHigh, "massHigh/D");
   outTree->Branch("values", values, branchDesc);
+  outTree->Branch("covMat", "TMatrixDSym", &covMat);
   outTree->GetUserInfo()->Add(new fitInfo(startingValues));
 
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
@@ -517,6 +520,7 @@ myFit()
   cout << "combined fit of " << myL.getNChannels() << " channels." << endl;
 
   TStopwatch sw;
+  const size_t nParams = lastIdx + myL.getNChannels();
 
   TFitterMinuit* minuit = new TFitterMinuit();
   minuit->SetMinuitFCN(&myL);
@@ -527,7 +531,6 @@ myFit()
 		      nBins, lower, upper);
   hBR->SetMinimum(0);
 
-  const size_t nParams = lastIdx + myL.getNChannels();
   TStopwatch fulltime;
   fulltime.Start();
   for (iBin = 0; iBin < nBins; iBin++)
@@ -601,10 +604,70 @@ myFit()
       if (iret == 0)
 	{
 	  vector<double> vStartingValue(nParams);
+	  
 	  for (size_t j = 0; j < nParams; j++)
 	    {
-	      values[j] = vStartingValues[j] = minuit->GetParameter(j);
+	      vStartingValues[j] = minuit->GetParameter(j);
 	    }
+
+	  for (size_t i = 0; i < ws.size(); i++)
+	    for (size_t j = 0; j < ws[i].waves.size(); j++)
+	      {
+		size_t idx = ws[i].waves[j].getIndex();
+		values[idx] = minuit->GetParameter(idx);
+		values[idx+1] = minuit->GetParameter(idx+1);
+	      }
+
+	  for (size_t i1 = 0; i1 < ws.size(); i1++)
+	    for (size_t j1 = 0; j1 < ws[i1].waves.size(); j1++)
+	      {
+		const wave& w1 = ws[i1].waves[j1];
+		size_t idx1 = w1.getIndex();
+		size_t idx1Cov = w1.idxInCovariance(minuit);
+
+		for (size_t i2 = 0; i2 < ws.size(); i2++)
+		  for (size_t j2 = 0; j2 < ws[i2].waves.size(); j2++)
+		    {
+		      const wave& w2 = ws[i2].waves[j2];
+		      size_t idx2 = w2.getIndex();
+		      size_t idx2Cov = w2.idxInCovariance(minuit);
+
+		      // Four possibilities:
+		      // 1) both free -> simply copy values to covMat
+		      if (!w1.phaseLocked && !w2.phaseLocked)
+			{
+			  (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+			  (*covMat)(idx1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
+			  (*covMat)(idx1+1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
+			  (*covMat)(idx1+1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov+1);
+			}
+		      // 2) first fixed, second free -> covariances with Im(w2) are zero
+		      else if (!w1.phaseLocked && w2.phaseLocked)
+			{
+			  (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+			  (*covMat)(idx1,idx2+1) = 0;
+			  (*covMat)(idx1+1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
+			  (*covMat)(idx1+1,idx2+1) = 0;
+			}
+		      // 3) vice versa
+		      else if (w1.phaseLocked && !w2.phaseLocked)
+			{
+			  (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+			  (*covMat)(idx1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
+			  (*covMat)(idx1+1,idx2) = 0;
+			  (*covMat)(idx1+1,idx2+1) = 0;
+			}
+		      // 4) both fixed
+		      else
+			{
+			  (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+			  (*covMat)(idx1,idx2+1) = 0;
+			  (*covMat)(idx1+1,idx2) = 0;
+			  (*covMat)(idx1+1,idx2+1) = 0;
+			}
+		    }
+	      }
+
 	  outTree->Fill();
 
 	  for (int j = 0; j < minuit->GetNumberTotalParameters(); j++)
