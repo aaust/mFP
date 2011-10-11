@@ -282,12 +282,12 @@ myFit()
   double *values = new double[lastIdx];
   TMatrixDSym *covMat = new TMatrixDSym(lastIdx);
   char branchDesc[99];
-  snprintf(branchDesc, 99, "values[%zd]/D", startingValues.size());
+  snprintf(branchDesc, 99, "values[%zd]/D", lastIdx);
   outTree->Branch("massLow", &massLow, "massLow/D");
   outTree->Branch("massHigh", &massHigh, "massHigh/D");
   outTree->Branch("values", values, branchDesc);
   outTree->Branch("covMat", "TMatrixDSym", &covMat);
-  outTree->GetUserInfo()->Add(new fitInfo(startingValues, nBins));
+  outTree->GetUserInfo()->Add(new fitInfo(startingValues, nBins, lastIdx));
 
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
 

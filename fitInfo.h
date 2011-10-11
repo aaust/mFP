@@ -20,9 +20,9 @@ class fitInfo : public TObject
 {
 public:
   fitInfo() {};
-  fitInfo(const std::vector<tStartingValue>& fitVars, size_t nBins_);
+  fitInfo(const std::vector<tStartingValue>& fitVars, size_t nBins_, size_t nVars_);
 
-  size_t getNparams() const { return paramNames.size(); }
+  size_t getNvars() const { return nVars; }
 
   const std::vector<std::string>& getParamNames() const { return paramNames; }
   const std::vector<bool>& getFixed() const { return fixed; }
@@ -30,7 +30,7 @@ public:
 private:
   std::vector<std::string> paramNames;
   std::vector<bool> fixed;
-  size_t nBins;
+  size_t nBins, nVars;
 
   ClassDef(fitInfo, 1)
 };
