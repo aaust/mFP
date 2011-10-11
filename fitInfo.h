@@ -5,6 +5,8 @@
 // The data stored in the output tree's UserInfo need to be put in a
 // TList, which in turn means they have to be put in data structures
 // inheriting from TObject, so we take care of this here.
+//
+// Collect relevant global information concerning the fit.
 
 #include <vector>
 #include <string>

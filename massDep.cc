@@ -1,4 +1,5 @@
 #include <vector>
+#include <complex>
 using namespace std;
 
 #include "TObject.h"
@@ -10,11 +11,64 @@ using namespace std;
 #include "bw.h"
 #include "fitInfo.h"
 
+
+// Abstract interface.
+// This is supposed to contain phase-space factors.
+class waveParametrization {
+public:
+  virtual complex<double> value(double m, const double* par) = 0;
+  virtual size_t getNpar() const = 0;
+};
+
+
+class simpleBreitWigner : public waveParametrization {
+public:
+  simpleBreitWigner(double m1_, double m2_, int J_)
+    : m1(m1_), m2(m2_), J(J_) {};
+  virtual complex<double> value(double m, const double* par);
+  virtual size_t getNpar() const { return 2; }
+private:
+  double m1, m2;
+  int J;
+};
+
+complex<double>
+simpleBreitWigner::value(double m, const double* par)
+{
+  return breakupMomentum(m*m, m1, m2)*BW(m*m, m1, m2, J, par[0], par[1]);
+}
+
 class chiSquare : public ROOT::Minuit2::FCNBase {
 public:
+  chiSquare(const fitInfo* info_) : info(info_) {}
+
   double Up() const { return 1.; }
   double operator()(const vector<double>& x) const;
+
+  void addBin(double massLow, double massHigh,
+	      const vector<double>& values,
+	      const TMatrixDSym& covMat)
+  {
+    this->massLow.push_back(massLow);
+    this->massHigh.push_back(massHigh);
+    this->values.push_back(vector<double>(&values[0],&values[info->getNparams()]));
+    this->covMats.push_back(TMatrixDSym(covMat));
+  }
+private:
+  const fitInfo* info;
+
+  vector<double> massLow;
+  vector<double> massHigh;
+  vector<vector<double> > values;
+  vector<TMatrixDSym> covMats;
 };
+
+double
+chiSquare::operator()(const vector<double>& x) const 
+{
+  return 0;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -70,6 +124,8 @@ int main(int argc, char **argv)
 	cout << values[j] << " ";
       cout << endl;
     }
+
+  chiSquare fitFunc(info);
 
   delete f;
   return 0;
