@@ -16,7 +16,7 @@ clean:
 	g++ -c ${CXXFLAGS} $< -o $@
 
 fitInfoDict.o: fitInfoDict.cc
-fitInfoDict.cc: fitInfo.h startingValue.h LinkDef.h
+fitInfoDict.cc: fitInfo.h startingValue.h
 	rootcint -f $@ -c fitInfo.h+
 
 myFit.o: myFit.cc control.h wave.h likelihood.h gHist.h startingValue.h fitInfo.h
