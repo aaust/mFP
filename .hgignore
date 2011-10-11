@@ -1,0 +1,14 @@
+syntax: glob
+
+# executables
+massDep
+myFit
+
+# objects, generated files
+*.o
+fitInfoDict.*
+
+# random files that appear during the course of time
+*.root
+*~
+*.orig
