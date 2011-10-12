@@ -117,15 +117,16 @@ chiSquare::valueInBin(Long_t i, const vector<double>& x) const
   // x[11] ... x[18] : params of G-wave
 
   double m = .5*(massLow + massHigh);
-
   double m1 = mEtaP;
   double m2 = mPi;
+  double phaseSpace = pow(sqrt(breakupMomentum(m*m, m1, m2)),2);
+
   const double *par = &x[1];
   complex<double> Dwave = 0;
   if (par[0] > 0 && par[1] > 0 && par[2] > par[0] && par[3] > 0)
-    Dwave = x[0]*breakupMomentum(m*m, m1, m2)*(BW(m*m, m1, m2, 2, par[0], par[1])
-					       + (complex<double>(par[4], par[5])
-						  *BW(m*m, m1, m2, 2, par[2], par[3])));
+    Dwave = x[0]*phaseSpace*(BW_a2_pietap_coupled(m*m) //BW(m*m, m1, m2, 2, par[0], par[1])
+			     + (complex<double>(par[4], par[5])
+				*BW(m*m, m1, m2, 2, par[2], par[3])));
   complex<double> phaseD = 1;
   if (abs(Dwave) != 0)
     phaseD = Dwave / abs(Dwave);
@@ -134,15 +135,15 @@ chiSquare::valueInBin(Long_t i, const vector<double>& x) const
   par = &x[9];
   complex<double> Pwave;
   if (par[0] > 0 && par[1] > 0)
-    Pwave = complex<double>(x[7],x[8])*breakupMomentum(m*m, m1, m2)*BW(m*m, m1, m2, 1, par[0], par[1]);
+    Pwave = complex<double>(x[7],x[8])*phaseSpace*BW(m*m, m1, m2, 1, par[0], par[1]);
   Pwave /= phaseD;
 
   par = &x[13];
   complex<double> Gwave;
   if (par[0] > 0 && par[1] > 0 && par[2] > par[0] && par[3] > 0)
-    Gwave = complex<double>(x[11],x[12])*breakupMomentum(m*m, m1, m2)*(BW(m*m, m1, m2, 4, par[0], par[1])
-								       + (complex<double>(par[4], par[5])
-									  *BW(m*m, m1, m2, 4, par[2], par[3])));
+    Gwave = complex<double>(x[11],x[12])*phaseSpace*(BW(m*m, m1, m2, 4, par[0], par[1])
+						     + (complex<double>(par[4], par[5])
+							*BW(m*m, m1, m2, 4, par[2], par[3])));
 
   //cout << Dwave << " " << Pwave << " " << Gwave << endl;
 
@@ -150,8 +151,13 @@ chiSquare::valueInBin(Long_t i, const vector<double>& x) const
   eps[0] = values[0] - real(Dwave);
   eps[1] = values[2] - real(Pwave);
   eps[2] = values[3] - imag(Pwave);
-  eps[3] = values[4] - real(Gwave);
-  eps[4] = values[5] - imag(Gwave);
+  if (m > 1.7)
+    {
+      eps[3] = values[4] - real(Gwave);
+      eps[4] = values[5] - imag(Gwave);
+    }
+  else
+    eps[3] = eps[4] = 0;
 
   TMatrixDSym cov(5);
   cov(0,0) = (*covMat)(0,0);
@@ -169,12 +175,12 @@ double
 chiSquare::operator()(const vector<double>& x) const 
 {
   double value = 0;
-  for (Long_t i = 3; i < 15 /*(Long_t)info->getNbins()*/; i++)
+  for (Long_t i = 3; i < 30 /*(Long_t)info->getNbins()*/; i++)
     {
       value += valueInBin(i, x);
     }
   cout << value << endl;
-#if 0
+#if 1
   cout << " x = {";
   for (size_t i = 0; i < x.size(); i++)
     cout << x[i] << " ";
@@ -261,13 +267,13 @@ int main(int argc, char **argv)
   TFitterMinuit* minuit = new TFitterMinuit();
   minuit->SetMinuitFCN(&fitFunc);
 
-  minuit->SetParameter(0, "D strength", 237.822, 1, 0, 10000);
+  minuit->SetParameter(0, "D strength", 57.4152, 1, 0, 10000);
   minuit->SetParameter(1, "a_2 mass", 1.3183, 0, 0, 0);
   minuit->FixParameter(1);
   minuit->SetParameter(2, "a_2 width", 0.107, 0, 0, 0);
   minuit->FixParameter(2);
   minuit->SetParameter(3, "a_2' mass", 1.7, 0.02, 1.4, 10);
-  minuit->SetParameter(4, "a_2' width", .3, 0.01, 0, 10);
+  minuit->SetParameter(4, "a_2' width", .3, 0.01, 0, 1);
   minuit->SetParameter(5, "a_2' strength Re", 1., 0.1, 0, 0);
   minuit->SetParameter(6, "a_2' strength Im", 0, 0.1, 0, 0);
 
@@ -293,6 +299,56 @@ int main(int argc, char **argv)
   int iret = minuit->Minimize();
   sw.Stop();
   cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
+
+  //if (!iret)
+    {
+      vector<double> x;
+      for (int i = 0; i < minuit->GetNumberTotalParameters(); i++)
+	x.push_back(minuit->GetParameter(i));
+
+      for (int i = 0; i < 50; i++)
+	{
+	  double m = 1.1 + 2./50*i;
+
+	  double m1 = mEtaP;
+	  double m2 = mPi;
+	  const double *par = &x[1];
+	  complex<double> Dwave = x[0]*breakupMomentum(m*m, m1, m2)*(BW_a2_pietap_coupled(m*m) //BW(m*m, m1, m2, 2, par[0], par[1])
+								     + (complex<double>(par[4], par[5])
+									*BW(m*m, m1, m2, 2, par[2], par[3])));
+	  complex<double> phaseD = 1;
+	  if (abs(Dwave) != 0)
+	    phaseD = Dwave / abs(Dwave);
+	  Dwave /= phaseD;
+
+	  par = &x[9];
+	  complex<double> Pwave;
+	  if (par[0] > 0 && par[1] > 0)
+	    Pwave = complex<double>(x[7],x[8])*breakupMomentum(m*m, m1, m2)*BW(m*m, m1, m2, 1, par[0], par[1]);
+	  Pwave /= phaseD;
+
+	  par = &x[13];
+	  complex<double> Gwave;
+	  if (par[0] > 0 && par[1] > 0 && par[2] > par[0] && par[3] > 0)
+	    Gwave = complex<double>(x[11],x[12])*breakupMomentum(m*m, m1, m2)*(BW(m*m, m1, m2, 4, par[0], par[1])
+								       + (complex<double>(par[4], par[5])
+									  *BW(m*m, m1, m2, 4, par[2], par[3])));
+
+	  gHist.getHist("hDwaveRe", "Dwave", 50, 1.1, 3.1)->SetBinContent(i,real(Dwave));
+	  gHist.getHist("hPwaveRe", "Re Pwave", 50, 1.1, 3.1)->SetBinContent(i,real(Pwave));
+	  gHist.getHist("hPwaveIm", "Im Pwave", 50, 1.1, 3.1)->SetBinContent(i,imag(Pwave));
+	  gHist.getHist("hGwaveRe", "Re Gwave", 50, 1.1, 3.1)->SetBinContent(i,real(Gwave));
+	  gHist.getHist("hGwaveIm", "Im Gwave", 50, 1.1, 3.1)->SetBinContent(i,imag(Gwave));
+
+	  gHist.getHist("hDwaveInt", "int DWave", 50, 1.1, 3.1)->SetBinContent(i,norm(Dwave));
+	  gHist.getHist("hPwaveInt", "int Pwave", 50, 1.1, 3.1)->SetBinContent(i,norm(Pwave));
+	  gHist.getHist("hGwaveInt", "int Gwave", 50, 1.1, 3.1)->SetBinContent(i,norm(Gwave));
+
+	  gHist.getHist("hPhaseDP", "phase D - P", 50, 1.1, 3.1)->SetBinContent(i, arg(Dwave / Pwave));
+	  gHist.getHist("hPhaseDG", "phase D - G", 50, 1.1, 3.1)->SetBinContent(i, arg(Dwave / Gwave));
+	  gHist.getHist("hPhasePG", "phase P - G", 50, 1.1, 3.1)->SetBinContent(i, arg(Pwave / Gwave));
+	}
+    }
 
   fout->Write();
   delete fout;
