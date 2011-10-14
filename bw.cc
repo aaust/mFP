@@ -66,7 +66,7 @@ BWcoupled(double s, double m1a, double m2a, double m1b, double m2b,
   double q0b = breakupMomentum(m0*m0, m1b, m2b);
   double qb = breakupMomentum(s, m1b, m2b);
 
-  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(J, qb) / blattWeisskopf(J, q0b), 2);
+  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(1, qb) / blattWeisskopf(1, q0b), 2);
 
   double numerator = blattWeisskopf(J, qa) * sqrt(Gammaa);
   complex<double> denominator = complex<double>(m0*m0 - s, -m0*(BR*Gammaa + (1-BR)*Gammab));
@@ -152,7 +152,7 @@ BW_a2_pieta_coupled(double s)
 complex<double>
 BW_a2_pietap_coupled(double s)
 {
-  return BWcoupled(s, mPi, mEtaP, mPi, 0.77, mPi, mEta, 2, 1.3183, 0.107, 0.70/0.85, 0.15/0.85);
+  return BWcoupled(s, mPi, mEtaP, mPi, 0.77, mPi, mEta, 2, 1.3183, 0.107, 0.70/0.85, 0.145/0.85);
 }
 
 complex<double>
@@ -170,7 +170,7 @@ BW_a4_pieta(double s)
 complex<double>
 BW_a4_pietap(double s)
 {
-  return BW(s, mPi, mEtaP, 4, 2.001, 0.235);
+  return BW(s, mPi, mEtaP, 4, 2.001, 0.235) / BW(2.001*2.001, mPi, mEtaP, 4, 2.001, 0.235);
 }
 
 complex<double>
@@ -231,7 +231,7 @@ void bw()
 }
 */
 
-#if 0
+#if 1
 void
 bw()
 {
@@ -239,15 +239,15 @@ bw()
 
   for (int i = 1; i < 2000; i++)
     {
-      double m = mPi + mEtaP + i*0.001; //mPi + 0.77 + i*0.001;
-      complex<double> z = BW_a4_pietap(m*m);
-      complex<double> z2 = BW_a4_pieta(m*m);
+      double m = mPi + mEtaP + i*0.01; //mPi + 0.77 + i*0.001;
+      complex<double> z =BW_a2_pietap_coupled(m*m);
+      complex<double> z2 = BW(m*m, mEtaP, mPi, 2, 9.99981, 0.999996);
       of << m << " "
-	   << real(z) << " " << imag(z) << " " << norm(z)*breakupMomentum(m*m, mEtaP, mPi) << " " << arg(z)*180/3.142 << " "
-	 << real(z2) << " " << imag(z2) << " " << norm(z2)*breakupMomentum(m*m, mEta, mPi) << " " << arg(z2)*180/3.142 << " "
-	 << arg(z / z2) << " " << breakupMomentum(m*m, mEta, mPi)
-	 << " " << breakupMomentum(m*m, mEtaP, mPi)
-	   << endl;
+	   << real(z) << " " << imag(z) << " " << norm(z)*breakupMomentum(m*m, mEtaP, mPi)/m/m << " " << arg(z)*180/3.142 << " "
+	 << real(z2) << " " << imag(z2) << " " << norm(z2)*breakupMomentum(m*m, mEta, mPi)/m/m << " " << arg(z2)*180/3.142 << " "
+	 << arg(z / z2) << " " << breakupMomentum(m*m, mEtaP, mPi)
+	 << " " << breakupMomentum(m*m, mEtaP, mPi) / m / m
+	 << endl;
     }
 }
 #endif

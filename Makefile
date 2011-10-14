@@ -1,12 +1,13 @@
 MYFIT_OBJECTS=myFit.o control.o wave.o event.o likelihood.o 3j.o fitInfo.o fitInfoDict.o
 MASSDEP_OBJECTS=massDep.o bw.o fitInfo.o fitInfoDict.o
+PREDICT_OBJECTS=predict.o bw.o
 OBJECTS=${MYFIT_OBJECTS} ${MASSDEP_OBJECTS}
 DEBUGFLAGS=-g -fopenmp
 LDFLAGS=${DEBUGFLAGS}
 CXXFLAGS:=-Wall ${DEBUGFLAGS} -O2 $(shell root-config --cflags)
 LIBS:=$(shell root-config --libs --cflags) -lMinuit2 -lMathMore
 
-all: myFit massDep
+all: myFit massDep predict
 .PHONY: all
 
 myFit: ${MYFIT_OBJECTS}
@@ -14,6 +15,9 @@ myFit: ${MYFIT_OBJECTS}
 
 massDep: ${MASSDEP_OBJECTS}
 	g++ -o $@ ${LDFLAGS} ${MASSDEP_OBJECTS} ${LIBS}
+
+predict: ${PREDICT_OBJECTS}
+	g++ -o $@ ${LDFLAGS} ${PREDICT_OBJECTS} ${LIBS}
 
 .PHONY: clean
 clean:
@@ -30,6 +34,7 @@ fitInfoDict.cc: fitInfo.h startingValue.h
 
 myFit.o: myFit.cc control.h wave.h likelihood.h gHist.h startingValue.h fitInfo.h
 massDep.o: massDep.cc bw.h startingValue.h fitInfo.h
+predict.o: predict.cc bw.h
 
 control.o: control.cc control.h
 wave.o: wave.cc wave.h event.h
