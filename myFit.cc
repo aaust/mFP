@@ -17,6 +17,7 @@ using namespace std;
 #include "TDirectory.h"
 #include "TFile.h"
 #include "TTree.h"
+#include "TLorentzVector.h"
 #include "TMatrixDSym.h"
 
 #include "control.h"
@@ -28,7 +29,7 @@ using namespace std;
 #include "fitInfo.h"
 #include "gHist.h"
 
-#define NFLATMCEVENTS 100000
+#define NFLATMCEVENTS 1500
 double massLow = 0;
 double massHigh = 9999;
 int iBin;
@@ -137,7 +138,7 @@ fillRDhists(const event& e)
 	       cos(e.theta), e.phi);
   gHist.Fill("hMassFine", "mass distribution",
 	     250, threshold, 3, e.mass);
-  gHist.Fill("hMassRough", "expected MC likelihood of result",
+  gHist.Fill("hMassCoarse", "expected MC likelihood of result",
 	     nBins, lower, upper,
 	     e.mass);
 
@@ -343,38 +344,101 @@ myFit()
 	  else
 	    {
 	      f->GetObject("schluter/trRDEtap3pi", tree);
-	      if (!tree)
+	      if (tree)
 		{
-		  cerr << "can't find physics tree" << endl;
-		  abort();
+		  float m;
+		  float costh;
+		  float phi;
+		  float t;
+		  float mCandEtaP1, mCandEtaP2;
+		  float CL1, CL2;
+		  float pG1X, pG1Y, pG1Z, pG1E;
+		  float pG2X, pG2Y, pG2Z, pG2E;
+
+		  tree->SetBranchAddress("m", &m);
+		  tree->SetBranchAddress("t", &t);
+		  tree->SetBranchAddress("costh", &costh);
+		  tree->SetBranchAddress("phi", &phi);
+		  tree->SetBranchAddress("mCandEtaP1", &mCandEtaP1);
+		  tree->SetBranchAddress("mCandEtaP2", &mCandEtaP2);
+		  tree->SetBranchAddress("CL1", (int*)&CL1); // mistakes happen -> int*
+		  tree->SetBranchAddress("CL2", (int*)&CL2);
+		  tree->SetBranchAddress("pG1X", &pG1X);
+		  tree->SetBranchAddress("pG1Y", &pG1Y);
+		  tree->SetBranchAddress("pG1Z", &pG1Z);
+		  tree->SetBranchAddress("pG1E", &pG1E);
+		  tree->SetBranchAddress("pG2X", &pG2X);
+		  tree->SetBranchAddress("pG2Y", &pG2Y);
+		  tree->SetBranchAddress("pG2Z", &pG2Z);
+		  tree->SetBranchAddress("pG2E", &pG2E);
+
+		  RDevents.reserve(tree->GetEntries());
+		  for (Long_t i = 0; i < tree->GetEntries(); i++)
+		    {
+		      tree->GetEntry(i);
+
+		      TLorentzVector lvEta(pG1X + pG2X, pG1Y + pG2Y, pG1Z + pG2Z, pG1E + pG2E);
+
+		      gHist.Fill("hmEtap", "m(#pi#pi#eta)", 1000, 0.7, 1.7, mCandEtaP1);
+		      gHist.Fill("hmEtap", "m(#pi#pi#eta)", 1000, 0.7, 1.7, mCandEtaP2);
+		      gHist.Fill("hCL1pre", "CL1 pre mass cut", 200, 0, 1, CL1);
+		      gHist.Fill("hCL2pre", "CL2 pre mass cut", 200, 0, 1, CL2);
+
+		      gHist.Fill("hmEtaVsCL2pre", "m(#gamma#gamma) vs. CL2", 100, 0.5, 0.62, 400, 0, 1,
+				 lvEta.M(), CL2);
+
+		      gHist.Fill("hmEta", "m(#gamma#gamma)", 400, 0.5, 0.62, lvEta.M());
+		      gHist.Fill("hmEtaVsE", "m(#gamma#gamma) vs E", 200, 0.5, 0.62, 100, 0, 200,
+				 lvEta.M(), lvEta.E());
+		      if (fabs(mCandEtaP1 - .958) < 0.02 || fabs(mCandEtaP2 - .958) < 0.02 /*CL2 > 0.01*/)
+			{
+			  gHist.Fill("hmEtaPostCL", "m(#gamma#gamma)", 400, 0.5, 0.62, lvEta.M());
+			  gHist.Fill("hmEtaVsEPostCL", "m(#gamma#gamma) vs E", 200, 0.5, 0.62, 100, 0, 200,
+				     lvEta.M(), lvEta.E());
+			  //continue;
+			}
+		      gHist.Fill("hmEtappost", "m(#pi#pi#eta) post CL cut", 1000, 0.7, 1.7, mCandEtaP1);
+		      gHist.Fill("hmEtappost", "m(#pi#pi#eta) post CL cut", 1000, 0.7, 1.7, mCandEtaP2);
+
+		      if (fabs(mCandEtaP1 - .958) > 0.02 && fabs(mCandEtaP2 - .958) > 0.02)
+			continue;
+		      gHist.Fill("hCL1", "CL1 post mass cut", 200, 0, 1, CL1);
+		      gHist.Fill("hCL2", "CL2 post mass cut", 200, 0, 1, CL2);
+		      gHist.Fill("hmEtaVsCL2", "m(#gamma#gamma) vs. CL2 post mass cut", 100, 0.5, 0.62, 400, 0, 1,
+				 lvEta.M(), CL2);
+		      event e(m, -t, acos(costh), phi);
+		      RDevents.push_back(e);
+		      fillRDhists(e);
+		    }
 		}
-
-	      float m;
-	      float costh;
-	      float phi;
-	      float t;
-	      float mCandEtaP1, mCandEtaP2;
-
-	      tree->SetBranchAddress("m", &m);
-	      tree->SetBranchAddress("t", &t);
-	      tree->SetBranchAddress("costh", &costh);
-	      tree->SetBranchAddress("phi", &phi);
-	      tree->SetBranchAddress("mCandEtaP1", &mCandEtaP1);
-	      tree->SetBranchAddress("mCandEtaP2", &mCandEtaP2);
-
-	      RDevents.reserve(tree->GetEntries());
-	      for (Long_t i = 0; i < tree->GetEntries(); i++)
+	      else
 		{
-		  tree->GetEntry(i);
-		  gHist.Fill("hmEtap", "m(#pi#pi#eta)", 1000, 0.7, 1.7, mCandEtaP1);
-		  gHist.Fill("hmEtap", "m(#pi#pi#eta)", 1000, 0.7, 1.7, mCandEtaP2);
-		  if (fabs(mCandEtaP1 - .958) > 0.02 && fabs(mCandEtaP2 - .958) > 0.02)
-		    continue;
-		  event e(m, -t, acos(costh), phi);
-		  RDevents.push_back(e);
-		  fillRDhists(e);
+		  f->GetObject("tPredict", tree);
+		  if (!tree)
+		    {
+		      cerr << "no known tree found" << endl;
+		      abort();
+		    }
+
+		  float m;
+		  float costh;
+		  float phi;
+		  float t;
+		  tree->SetBranchAddress("m", &m);
+		  tree->SetBranchAddress("t", &t);
+		  tree->SetBranchAddress("costh", &costh);
+		  tree->SetBranchAddress("phi", &phi);
+ 
+		  RDevents.reserve(tree->GetEntries());
+		  for (Long_t i = 0; i < tree->GetEntries(); i++)
+		    {
+		      tree->GetEntry(i);
+
+		      event e(m, t, acos(costh), phi);
+		      RDevents.push_back(e);
+		      fillRDhists(e);
+		    }
 		}
-	      
 	    }
 	  f->Close();
 	}
@@ -641,7 +705,7 @@ myFit()
 			  (*covMat)(idx1+1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
 			  (*covMat)(idx1+1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov+1);
 			}
-		      // 2) first fixed, second free -> covariances with Im(w2) are zero
+		      // 2) first free, second fixed -> covariances with Im(w1) are zero
 		      else if (!w1.phaseLocked && w2.phaseLocked)
 			{
 			  (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
@@ -657,7 +721,7 @@ myFit()
 			  (*covMat)(idx1+1,idx2) = 0;
 			  (*covMat)(idx1+1,idx2+1) = 0;
 			}
-		      // 4) both fixed
+		      // 4) both fixed (impossible)
 		      else
 			{
 			  (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
