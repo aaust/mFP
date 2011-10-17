@@ -39,7 +39,7 @@ event::decayAmplitude(int reflectivity, int l, int m) const
     spherical = ROOT::Math::sph_legendre(l, m, this->theta);
 
   // This absorbs the factor 2 from e^i \pm e^-i = 2 {i sin, cos}
-  double factor = 1; //sqrt(nrdevents);
+  double factor = .5; //sqrt(nrdevents);
   if (m != 0)
     factor *= sqrt(2.);    
 
