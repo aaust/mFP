@@ -12,15 +12,12 @@ using namespace std;
 
 
 likelihood::likelihood(waveset ws_,
-		       vector<event>& RDevents_,
-		       vector<event>& MCevents_,
-		       vector<event>& MCallEvents_,
+		       vector<event>& RDevents,
+		       vector<event>& MCevents,
+		       vector<event>& MCallEvents,
 		       size_t nBins_, double threshold_, double binWidth_,
 		       size_t idxBranching_)
   : ws(ws_),
-    RDevents(RDevents_),
-    MCevents(MCevents_),
-    MCallEvents(MCallEvents_),
     nBins(nBins_),
     threshold(threshold_),
     binWidth(binWidth_),
@@ -80,6 +77,12 @@ likelihood::likelihood(waveset ws_,
 	}
     }
 
+  if (flatMC)
+    {
+      for (size_t iEvent = 0; iEvent < MCevents.size(); iEvent++)
+	flatMCevents.push_back(MCevents[iEvent]);
+    }
+
   sw.Stop();
   cout << "data binned after " << sw.CpuTime() << " s." << endl;
 }
@@ -117,7 +120,7 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
   double sum = 0;
   double c = 0;
   const vector<event>& pMCevents
-    = flatMC ? MCevents : binnedMCevents[currentBin];
+    = flatMC ? flatMCevents : binnedMCevents[currentBin];
 
   size_t nEv = pMCevents.size();
 #pragma omp parallel for reduction (+:sum)
@@ -154,7 +157,7 @@ likelihood::MCmomentWeight(int L1, int M1, int L2, int M2)
   complex<double> sum = 0;
   complex<double> comp = 0;
   const vector<event>& events
-    = flatMC ? MCevents : binnedMCevents[currentBin];
+    = flatMC ? flatMCevents : binnedMCevents[currentBin];
   for (size_t i = 0; i < events.size(); i++)
     {
       double YL1M1 = ROOT::Math::sph_legendre(L1, M1, events[i].theta);

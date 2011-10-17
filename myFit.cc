@@ -29,7 +29,7 @@ using namespace std;
 #include "fitInfo.h"
 #include "gHist.h"
 
-#define NFLATMCEVENTS 1500
+#define NFLATMCEVENTS 100000
 double massLow = 0;
 double massHigh = 9999;
 int iBin;

@@ -11,12 +11,10 @@
 
 class likelihood : public ROOT::Minuit2::FCNBase {
   std::vector<coherent_waves> ws;
-  const std::vector<event>& RDevents;
-  const std::vector<event>& MCevents;
-  const std::vector<event>& MCallEvents;
 
   std::vector<std::vector<event> > binnedRDevents;
   std::vector<std::vector<event> > binnedMCevents;
+  std::vector<event> flatMCevents;
   std::vector<double> binnedEtaAcc;
 
   size_t nBins;
@@ -31,9 +29,9 @@ class likelihood : public ROOT::Minuit2::FCNBase {
 
 public:
   likelihood(waveset ws_,
-	     std::vector<event>& RDevents_,
-	     std::vector<event>& MCevents_,
-	     std::vector<event>& MCallEvents_,
+	     std::vector<event>& RDevents,
+	     std::vector<event>& MCevents,
+	     std::vector<event>& MCallEvents,
 	     size_t nBins_, double threshold_, double binWidth_,
 	     size_t idxBranching);
 
