@@ -55,20 +55,20 @@ BW(double s, double m1, double m2,
 
 complex<double>
 BWcoupled(double s, double m1a, double m2a, double m1b, double m2b,
-	  int J, double m0, double Gamma0, double BR)
+	  double m0, double Gamma0, int Ja, int Jb, double BR)
 {
   double m = sqrt(s);
   double q0a = breakupMomentum(m0*m0, m1a, m2a);
   double qa = breakupMomentum(s, m1a, m2a);
 
-  double Gammaa = Gamma0 * m0/m * qa/q0a * pow(blattWeisskopf(J, qa) / blattWeisskopf(J, q0a), 2);
+  double Gammaa = Gamma0 * m0/m * qa/q0a * pow(blattWeisskopf(Ja, qa) / blattWeisskopf(Ja, q0a), 2);
 
   double q0b = breakupMomentum(m0*m0, m1b, m2b);
   double qb = breakupMomentum(s, m1b, m2b);
 
-  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(1, qb) / blattWeisskopf(1, q0b), 2);
+  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(Jb, qb) / blattWeisskopf(Jb, q0b), 2);
 
-  double numerator = blattWeisskopf(J, qa) * sqrt(Gammaa);
+  double numerator = blattWeisskopf(Ja, qa) * sqrt(Gammaa);
   complex<double> denominator = complex<double>(m0*m0 - s, -m0*(BR*Gammaa + (1-BR)*Gammab));
 
   return numerator / denominator;
@@ -76,25 +76,25 @@ BWcoupled(double s, double m1a, double m2a, double m1b, double m2b,
 
 complex<double>
 BWcoupled(double s, double m1a, double m2a, double m1b, double m2b, double m1c, double m2c,
-	  int J, double m0, double Gamma0, double BRb, double BRc)
+	  double m0, double Gamma0, int Ja, int Jb, int Jc, double BRb, double BRc)
 {
   double m = sqrt(s);
   double q0a = breakupMomentum(m0*m0, m1a, m2a);
   double qa = breakupMomentum(s, m1a, m2a);
 
-  double Gammaa = Gamma0 * m0/m * qa/q0a * pow(blattWeisskopf(J, qa) / blattWeisskopf(J, q0a), 2);
+  double Gammaa = Gamma0 * m0/m * qa/q0a * pow(blattWeisskopf(Ja, qa) / blattWeisskopf(Ja, q0a), 2);
 
   double q0b = breakupMomentum(m0*m0, m1b, m2b);
   double qb = breakupMomentum(s, m1b, m2b);
 
-  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(J, qb) / blattWeisskopf(J, q0b), 2);
+  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(Jb, qb) / blattWeisskopf(Jb, q0b), 2);
 
   double q0c = breakupMomentum(m0*m0, m1c, m2c);
   double qc = breakupMomentum(s, m1c, m2c);
 
-  double Gammac = Gamma0 * m0/m * qc/q0c * pow(blattWeisskopf(J, qc) / blattWeisskopf(J, q0c), 2);
+  double Gammac = Gamma0 * m0/m * qc/q0c * pow(blattWeisskopf(Jc, qc) / blattWeisskopf(Jc, q0c), 2);
 
-  double numerator = blattWeisskopf(J, qa) * sqrt(Gammaa);
+  double numerator = blattWeisskopf(Ja, qa) * sqrt(Gammaa);
   complex<double> denominator = complex<double>(m0*m0 - s, -m0*((1 - BRb - BRc)*Gammaa + BRb*Gammab + BRc*Gammac));
 
   return numerator / denominator;
@@ -102,30 +102,30 @@ BWcoupled(double s, double m1a, double m2a, double m1b, double m2b, double m1c, 
 
 complex<double>
 BWcoupled(double s, double m1a, double m2a, double m1b, double m2b, double m1c, double m2c, double m1d, double m2d,
-	  int J, double m0, double Gamma0, double BRb, double BRc, double BRd)
+	  double m0, double Gamma0, int Ja, int Jb, int Jc, int Jd, double BRb, double BRc, double BRd)
 {
   double m = sqrt(s);
   double q0a = breakupMomentum(m0*m0, m1a, m2a);
   double qa = breakupMomentum(s, m1a, m2a);
 
-  double Gammaa = Gamma0 * m0/m * qa/q0a * pow(blattWeisskopf(J, qa) / blattWeisskopf(J, q0a), 2);
+  double Gammaa = Gamma0 * m0/m * qa/q0a * pow(blattWeisskopf(Ja, qa) / blattWeisskopf(Ja, q0a), 2);
 
   double q0b = breakupMomentum(m0*m0, m1b, m2b);
   double qb = breakupMomentum(s, m1b, m2b);
 
-  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(J, qb) / blattWeisskopf(J, q0b), 2);
+  double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(Jb, qb) / blattWeisskopf(Jb, q0b), 2);
 
   double q0c = breakupMomentum(m0*m0, m1c, m2c);
   double qc = breakupMomentum(s, m1c, m2c);
 
-  double Gammac = Gamma0 * m0/m * qc/q0c * pow(blattWeisskopf(J, qc) / blattWeisskopf(J, q0c), 2);
+  double Gammac = Gamma0 * m0/m * qc/q0c * pow(blattWeisskopf(Jc, qc) / blattWeisskopf(Jc, q0c), 2);
 
   double q0d = breakupMomentum(m0*m0, m1d, m2d);
   double qd = breakupMomentum(s, m1d, m2d);
 
-  double Gammad = Gamma0 * m0/m * qd/q0d * pow(blattWeisskopf(J, qd) / blattWeisskopf(J, q0d), 2);
+  double Gammad = Gamma0 * m0/m * qd/q0d * pow(blattWeisskopf(Jd, qd) / blattWeisskopf(Jd, q0d), 2);
 
-  double numerator = blattWeisskopf(J, qa) * sqrt(Gammaa);
+  double numerator = blattWeisskopf(Ja, qa) * sqrt(Gammaa);
   complex<double> denominator = complex<double>(m0*m0 - s, -m0*((1 - BRb - BRc -BRd)*Gammaa + BRb*Gammab + BRc*Gammac + BRd*Gammad));
 
   return numerator / denominator;
@@ -146,20 +146,20 @@ BW_a2_pieta(double s)
 complex<double>
 BW_a2_pieta_coupled(double s)
 {
-  return BWcoupled(s, mPi, mEta, mPi, 0.77, 2, 1.3183, 0.107, 0.2);
+  return BWcoupled(s, mPi, mEta, mPi, 0.77, 1.3183, 0.107, 2, 1, 0.2);
 }
 
 complex<double>
 BW_a2_pietap_coupled(double s)
 {
-  return BWcoupled(s, mPi, mEtaP, mPi, 0.77, mPi, mEta, 2, 1.3183, 0.107, 0.70/0.85, 0.145/0.85);
+  return BWcoupled(s, mPi, mEtaP, mPi, 0.77, mPi, mEta, 1.3183, 0.107, 2, 1, 2, 0.70/0.85, 0.145/0.85);
   //return BWcoupled(s, mPi, mEtaP, mPi, 0.77, 2, 1.3183, 0.107, 0.99) / abs(BWcoupled(1.3183*1.3183, mPi, mEtaP, mPi, 0.77, 2, 1.3183, 0.107, 0.99));
 }
 
 complex<double>
 BW_a2_pirho(double s)
 {
-  return BW(s, mPi, .77, 2, 1.3183, 0.107);
+  return BW(s, mPi, .77, 1, 1.3183, 0.107);
 }
 
 complex<double>

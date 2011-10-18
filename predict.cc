@@ -46,7 +46,7 @@ getBWAmplitude(int J, double mass, double t)
   switch(J)
     {
     case 1: return BW(mass*mass, mEtaP, mPi, 1, 1.6, 0.4);
-    case 2: return 0.5*BW_a2_pietap(mass*mass);
+    case 2: return 0.5*BW_a2_pietap_coupled(mass*mass);
     case 4: return BW_a4_pietap(mass*mass);
     default: return 0;
     }

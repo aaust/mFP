@@ -20,6 +20,8 @@ std::complex<double> BW_a2_pietap_coupled(double s);
 std::complex<double> BW_a2_pieta_coupled(double s);
 std::complex<double> BW_a4_pietap(double s);
 std::complex<double> BWcoupled(double s, double m1a, double m2a, double m1b, double m2b,
-			       int J, double m0, double Gamma0, double BR);
+			       double m0, double Gamma0, int Ja, int Jb, double BR);
+std::complex<double> BWcoupled(double s, double m1a, double m2a, double m1b, double m2b, double m1c, double m2c,
+			       double m0, double Gamma0, int Ja, int Jb, int Jc, double BRa, double BRb);
 
 #endif

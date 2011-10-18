@@ -80,8 +80,8 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
 
   const double *par = &x[1];
   complex<double> Dwave = 0;
-  if (par[0] > 0 && par[1] > 0 && par[2] > par[0] && par[3] > 0)
-    Dwave = x[0]*phaseSpace*(BW(m*m, m1, m2, 2, par[0], par[1]) //BW(m*m, m1, m2, 2, par[0], par[1])
+  if (par[0] > 0 && par[1] > 0 && par[2] > par[0] && par[3] > 0 && m > 0.77 + mPi)
+    Dwave = x[0]*phaseSpace*(BWcoupled(m*m, mPi, mEtaP, mPi, 0.77, mPi, mEta, par[0], par[1], 2, 1, 2, 0.70/0.85, 0.145/0.85) //BW(m*m, m1, m2, 2, par[0], par[1])
 			     //+ (complex<double>(par[4], par[5])
 			     //	*BW(m*m, m1, m2, 2, par[2], par[3]))
 			     );
@@ -154,8 +154,21 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
   if (!status)
     {
       cout << "non-positive-definite covariance matrix in bin " << iBin << endl;
-      cov.Print();
-      return 0;
+
+      // Rescale errors.
+      for (int i = 0; i < 5; i++)
+	for (int j = 0; j < 5; j++)
+	  if (i != j)
+	    cov(i, j) = 0;
+      for (int i = 0; i < 5; i++)
+	cov(i,i) = 5*cov(i,i);
+
+      G = TDecompChol(cov).Invert(status);
+      if (!status)
+	{
+	  cout << "diagonal errors non-positive definite, ignoring bin" << endl;
+	  return 0;
+	}
     }
 
   if (0 && iBin == 4)
@@ -165,7 +178,7 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
       cout << G.Similarity(eps) << endl;
     }
 
-  if (G.Similarity(eps) < 10000)
+  if (G.Similarity(eps) > 10000)
     {
       cout << "Gigantic value " << G.Similarity(eps) << " in bin " << iBin << endl;
       G.Print();
@@ -396,7 +409,7 @@ int main(int argc, char **argv)
 	  const double *par = &x[1];
 	  complex<double> Dwave = 0;
 	  if (par[0] > 0 && par[1] > 0 && par[2] > par[0] && par[3] > 0)
-	    Dwave = x[0]*phaseSpace*(BW(m*m, m1, m2, 2, par[0], par[1]) //BWcoupled(m*m, m1, m2, mPi, 0.77, 1, par[0], par[1], 0.2) //BW(m*m, m1, m2, 2, par[0], par[1])
+	    Dwave = x[0]*phaseSpace*(BWcoupled(m*m, mPi, mEtaP, mPi, 0.77, mPi, mEta, par[0], par[1], 2, 1, 2, 0.70/0.85, 0.145/0.85) //BWcoupled(m*m, m1, m2, mPi, 0.77, 1, par[0], par[1], 0.2) //BW(m*m, m1, m2, 2, par[0], par[1])
 				     //+ (complex<double>(par[4], par[5])
 				     //	*BW(m*m, m1, m2, 2, par[2], par[3]))
 				     );
