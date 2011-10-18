@@ -17,9 +17,9 @@ blattWeisskopf(int L, double p)
   case 1:
     result = sqrt(2*z/(z+1)); break;
   case 2:
-    result = sqrt(13*z*z/(z*pow(z-3, 2) + 9*z)); break;
+    result = sqrt(13*z*z/(pow(z-3, 2) + 9*z)); break;
   case 3:
-    result = sqrt(277*z*z*z/(z*pow(z-15, 2)+ 9*pow(2*z-5, 2))); break;
+    result = sqrt(277*z*z*z/(z*pow(z-15, 2) + 9*pow(2*z-5, 2))); break;
   case 4:
     result = sqrt(12746*pow(z,4)/(pow(z*z-45*z+105,2) + 25*z*pow(2*z-21,2))); break;
   default:
@@ -153,6 +153,7 @@ complex<double>
 BW_a2_pietap_coupled(double s)
 {
   return BWcoupled(s, mPi, mEtaP, mPi, 0.77, mPi, mEta, 2, 1.3183, 0.107, 0.70/0.85, 0.145/0.85);
+  //return BWcoupled(s, mPi, mEtaP, mPi, 0.77, 2, 1.3183, 0.107, 0.99) / abs(BWcoupled(1.3183*1.3183, mPi, mEtaP, mPi, 0.77, 2, 1.3183, 0.107, 0.99));
 }
 
 complex<double>
@@ -170,7 +171,7 @@ BW_a4_pieta(double s)
 complex<double>
 BW_a4_pietap(double s)
 {
-  return BW(s, mPi, mEtaP, 4, 2.001, 0.235) / BW(2.001*2.001, mPi, mEtaP, 4, 2.001, 0.235);
+  return BW(s, mPi, mEtaP, 4, 2.001, 0.235) / abs(BW(2.001*2.001, mPi, mEtaP, 4, 2.001, 0.235));
 }
 
 complex<double>
