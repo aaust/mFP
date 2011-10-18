@@ -288,7 +288,7 @@ myFit()
   outTree->Branch("massHigh", &massHigh, "massHigh/D");
   outTree->Branch("values", values, branchDesc);
   outTree->Branch("covMat", "TMatrixDSym", &covMat);
-  outTree->GetUserInfo()->Add(new fitInfo(startingValues, nBins, lastIdx));
+  outTree->GetUserInfo()->Add(new fitInfo(startingValues, nBins, threshold, binWidth, lastIdx));
 
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
 
