@@ -9,7 +9,7 @@ using namespace std;
 double
 blattWeisskopf(int L, double p)
 {
-  double z = pow(p / hbarc, 2);  // 1fm interaction radius
+  double z = pow(p / hbarc, 2);  // 1fm interaction radius, VES uses 5.2 GeV^-1
   double result;
   switch (L) {
   case 0:
@@ -47,10 +47,12 @@ BW(double s, double m1, double m2,
 
   double Gamma = Gamma0 * m0/m * q/q0 * pow(blattWeisskopf(J, q) / blattWeisskopf(J, q0), 2);
 
-  double numerator = blattWeisskopf(J, q) * sqrt(Gamma);
+  double numerator = sqrt(Gamma);
   complex<double> denominator = complex<double>(m0*m0 - s, -m0*Gamma);
 
-  return numerator / denominator;
+  double norm = 1/(m0*sqrt(Gamma0));
+
+  return numerator / denominator / norm;
 }
 
 complex<double>
@@ -68,7 +70,7 @@ BWcoupled(double s, double m1a, double m2a, double m1b, double m2b,
 
   double Gammab = Gamma0 * m0/m * qb/q0b * pow(blattWeisskopf(Jb, qb) / blattWeisskopf(Jb, q0b), 2);
 
-  double numerator = blattWeisskopf(Ja, qa) * sqrt(Gammaa);
+  double numerator = sqrt(Gammaa);
   complex<double> denominator = complex<double>(m0*m0 - s, -m0*(BR*Gammaa + (1-BR)*Gammab));
 
   return numerator / denominator;
@@ -94,10 +96,12 @@ BWcoupled(double s, double m1a, double m2a, double m1b, double m2b, double m1c, 
 
   double Gammac = Gamma0 * m0/m * qc/q0c * pow(blattWeisskopf(Jc, qc) / blattWeisskopf(Jc, q0c), 2);
 
-  double numerator = blattWeisskopf(Ja, qa) * sqrt(Gammaa);
+  double numerator = sqrt(Gammaa);
   complex<double> denominator = complex<double>(m0*m0 - s, -m0*((1 - BRb - BRc)*Gammaa + BRb*Gammab + BRc*Gammac));
 
-  return numerator / denominator;
+  double norm = 1/(m0*sqrt(Gamma0));
+
+  return numerator / denominator / norm;
 }
 
 complex<double>
@@ -125,10 +129,12 @@ BWcoupled(double s, double m1a, double m2a, double m1b, double m2b, double m1c, 
 
   double Gammad = Gamma0 * m0/m * qd/q0d * pow(blattWeisskopf(Jd, qd) / blattWeisskopf(Jd, q0d), 2);
 
-  double numerator = blattWeisskopf(Ja, qa) * sqrt(Gammaa);
+  double numerator = sqrt(Gammaa);
   complex<double> denominator = complex<double>(m0*m0 - s, -m0*((1 - BRb - BRc -BRd)*Gammaa + BRb*Gammab + BRc*Gammac + BRd*Gammad));
 
-  return numerator / denominator;
+  double norm = 1/(m0*sqrt(Gamma0));
+
+  return numerator / denominator / norm;
 }
 
 complex<double>
@@ -240,14 +246,14 @@ bw()
 
   for (int i = 1; i < 2000; i++)
     {
-      double m = mPi + mEtaP + i*0.01; //mPi + 0.77 + i*0.001;
-      complex<double> z =BW_a2_pietap_coupled(m*m);
-      complex<double> z2 = BW(m*m, mEtaP, mPi, 2, 9.99981, 0.999996);
+      double m = mPi + mEta + i*0.001; //mPi + 0.77 + i*0.001;
+      complex<double> z =BW_a2_pieta(m*m);
+      complex<double> z2 = BW(m*m, mEta, mPi, 2, 9.99981, 0.999996);
       of << m << " "
-	   << real(z) << " " << imag(z) << " " << norm(z)*breakupMomentum(m*m, mEtaP, mPi)/m/m << " " << arg(z)*180/3.142 << " "
+	   << real(z) << " " << imag(z) << " " << abs(z) << " " << arg(z)*180/3.142 << " "
 	 << real(z2) << " " << imag(z2) << " " << norm(z2)*breakupMomentum(m*m, mEta, mPi)/m/m << " " << arg(z2)*180/3.142 << " "
 	 << arg(z / z2) << " " << breakupMomentum(m*m, mEtaP, mPi)
-	 << " " << breakupMomentum(m*m, mEtaP, mPi) / m / m
+	 << " " << blattWeisskopf(4, breakupMomentum(m*m, mEta, mPi))
 	 << endl;
     }
 }
