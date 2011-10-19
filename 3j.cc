@@ -177,10 +177,21 @@ decomposeMoment(const std::pair<size_t, size_t>& LM, const waveset& ws, const ve
   return decomposeMoment(LM.first, LM.second, ws, x);
 }
 
+double
+decomposeMoment(const std::pair<size_t, size_t>& LM, const waveset& ws, const double* x)
+{
+  return decomposeMoment(LM.first, LM.second, ws, x);
+}
 
 // Calculates moment H(LM) from the waveset ws with corresponding fit results x.
 double
 decomposeMoment(int L, int M, const waveset& ws, const vector<double>& x)
+{
+  return decomposeMoment(L, M, ws, &x[0]);
+}
+
+double
+decomposeMoment(int L, int M, const waveset& ws, const double* x)
 {
   double result = 0;
   for (size_t iWs = 0; iWs < ws.size(); iWs++)

@@ -1,6 +1,7 @@
 #include <complex>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 using namespace std;
 
@@ -19,6 +20,9 @@ using namespace std;
 #include "TTree.h"
 #include "TLorentzVector.h"
 #include "TMatrixDSym.h"
+#include "Math/Minimizer.h"
+#include "Math/Factory.h"
+#include "Math/Functor.h"
 
 #include "control.h"
 #include "wave.h"
@@ -118,6 +122,51 @@ public:
 };
 
 
+class ambiguity : public ROOT::Minuit2::FCNBase {
+public:
+  ambiguity(const waveset& ws_, const vector<double>& start_);
+
+  double Up() const { return 1.; }
+  double operator()(const vector<double>& x) const;
+  double operator()(const double* x) const;
+
+private:
+  const waveset ws;
+  std::vector<std::pair<size_t, size_t> > vecMom;
+  vector<double> start;
+};
+
+ambiguity::ambiguity(const waveset& ws_, const vector<double>& start_)
+  : ws(ws_), start(start_)
+{
+  vecMom = listOfMoments(ws);
+}
+
+double
+ambiguity::operator()(const vector<double>& x) const
+{
+  return this->operator()(&x[0]);
+}
+
+double
+ambiguity::operator()(const double* x) const
+{
+  double value = 0;
+  for (std::vector<std::pair<size_t, size_t> >::const_iterator it = vecMom.begin();
+       it != vecMom.end(); it++)
+    {
+      double old = decomposeMoment(*it, ws, start);
+      //for (size_t i = 0; i < x.size(); i++)
+      //cout << x[i] << " ";
+      //cout << endl;
+      double noo = decomposeMoment(*it, ws, x);
+      //cout << "old = " << old << " noo " << noo << endl;
+      value += (old - noo)*(old - noo); // / min(abs(old), 1.);
+    }
+  return value;
+}
+
+
 void
 fillRDhists(const event& e)
 {
@@ -201,7 +250,7 @@ myFit()
   positive.push_back(wave("D+", 2, 1, nBins, lower, upper, true));
   positive.push_back(wave("P+", 1, 1, nBins, lower, upper));
   //positive.push_back(wave("F+", 3, 1, nBins, lower, upper));
-  positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
+  //positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
   //positive.push_back(wave("D++", 2, 2, nBins, lower, upper));
 
   vector<wave> negative;
@@ -327,15 +376,15 @@ myFit()
 	      tree->SetBranchAddress("tPrime", &tPr);
 	      tree->SetBranchAddress("theta", &theta);
 	      tree->SetBranchAddress("phi", &phi);
-	      tree->SetBranchAddress("likeK", &likeK);
-	      tree->SetBranchAddress("likePi", &likePi);
+	      //tree->SetBranchAddress("likeK", &likeK);
+	      //tree->SetBranchAddress("likePi", &likePi);
 
 	      RDevents.reserve(tree->GetEntries());
 	      for (Long_t i = 0; i < tree->GetEntries(); i++)
 		{
 		  tree->GetEntry(i);
-		  if (likeK != -1 && likePi > 2*likeK)
-		    continue;
+		  //if (likeK != -1 && likePi > 2*likeK)
+		  //continue;
 		  event e(mX, tPr, theta, phi);
 		  RDevents.push_back(e);
 		  fillRDhists(e);
@@ -788,6 +837,96 @@ myFit()
 	    }
 	  hIntensity->SetBinContent(iBin + 1, intensity / 10000);
 #endif
+
+	  ambiguity amb(ws, vStartingValues);
+	  for (int iTry = 0; iTry < 5; iTry++)
+	    {
+	      ROOT::Math::Minimizer* min = 
+		ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
+
+	      min->SetMaxFunctionCalls(1000000); // for Minuit/Minuit2 
+	      min->SetMaxIterations(10000);  // for GSL 
+	      min->SetTolerance(0.001);
+	      min->SetPrintLevel(1);
+
+	      // create funciton wrapper for minmizer
+	      // a IMultiGenFunction type 
+	      ROOT::Math::Functor f(amb,16); 
+    
+	      min->SetFunction(f);
+
+
+	      TFitterMinuit *minuitAmb = new TFitterMinuit();
+	      minuitAmb->SetMinuitFCN(&amb);
+	      // Set starting values.
+	      size_t j = 0;
+	      for (; j < nParams - myL.getNChannels(); j++)
+		{
+		  if (!startingValues[j].fixed)
+		    {
+		      min->SetVariable(j, (startingValues[j].name + "f").c_str(),
+				       gRandom->Uniform(-vStartingValues[j],vStartingValues[j]), 0.01);
+		    }
+		  else
+		    {
+		      min->SetFixedVariable(j, startingValues[j].name.c_str(), 0);
+		    }
+		}
+	      int iret = min->Minimize();
+	      if (!iret || min->MinValue() > 1)
+		continue;
+
+	      const double *result = min->X();
+	      
+	      // Set starting values.
+	      for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
+		{
+		  if (!startingValues[j].fixed)
+		    {
+		      minuit->SetParameter(j, startingValues[j].name.c_str(),
+					   result[j], vStartingValues[j]*0.01, 0, 0);
+		    }
+		  else
+		    {
+		      minuit->SetParameter(j, startingValues[j].name.c_str(),
+					   result[j], 1, 0, 0);
+		      minuit->FixParameter(j);
+		    }
+		}
+	      for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
+		{
+		  minuit->SetParameter(j, startingValues[j].name.c_str(),
+				       vStartingValues[j], .1, 0, 1);
+		  if (startingValues[j].fixed)
+		    minuit->FixParameter(j);
+		}
+
+	      // Run minimizer.
+	      minuit->CreateMinimizer();
+	      iret = minuit->Minimize();
+	      sw.Stop();
+	      cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
+
+	      if (iret == 0)
+		{
+		  for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
+		    {
+		      vector<wave>& waves = ws[iCoherent].getWaves();
+		      for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
+			{
+			  complex<double> a(minuit->GetParameter(waves[iWave1].getIndex()),
+					    minuit->GetParameter(waves[iWave1].getIndex() + 1));
+
+			  gHist.getHist(waves[iWave1].name.c_str(),
+					"fit results for this wave, alternative fit",
+					nBins, threshold, threshold + nBins*binWidth)
+			    ->SetBinContent(iBin+1, norm(a));
+			}
+		    }
+		  //minuitAmb->PrintResults(1, 0.);
+		  break;
+		}
+	    }
 	}
     }
 
