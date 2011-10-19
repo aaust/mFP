@@ -140,43 +140,36 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
 		 m, imag(Gwave));
     }
 
-  TMatrixDSym cov(5);
-  cov(0,0) = (*covMat)(0,0);
-  for (int i = 1; i < 5; i++)
-    cov(0,i) = cov(i,0) = (flipImag && (i == 3 || i == 5) ? -1 : 1) * (*covMat)(0,i+1);
-  for (int i = 1; i < 5; i++)
-    for (int j = 1; j < 5; j++)
-      cov(i,j) = cov(j,i) =  (flipImag && ((i == 3 && j != 3)
-					   || (i == 5 && j != 3)) ? -1 : 1) * (*covMat)(i+1, j+1);
+  covMat->Print();
+
+  TMatrixDSym cov(14);
+  int colSkipped = 0, rowSkipped = 0;
+  for (int i = 0; i < 14; i++)
+    {
+      if (i == 1 || i == 6)
+	rowSkipped++;
+      colSkipped = 0;
+      for (int j = 0; j < 14; j++)
+	{
+	  if (j == 1 || j == 6)
+	    colSkipped++;
+	  cov(i,j) = (*covMat)(i + rowSkipped, j + colSkipped);
+	}
+    }
+  cov.Print();
 
   bool status;
-  TMatrixDSym G(TDecompChol(cov).Invert(status));
+  TMatrixDSym weight(TDecompChol(cov).Invert(status));
   if (!status)
     {
       cout << "non-positive-definite covariance matrix in bin " << iBin << endl;
-
-      // Rescale errors.
-      for (int i = 0; i < 5; i++)
-	for (int j = 0; j < 5; j++)
-	  if (i != j)
-	    cov(i, j) = 0;
-      for (int i = 0; i < 5; i++)
-	cov(i,i) = 5*cov(i,i);
-
-      G = TDecompChol(cov).Invert(status);
-      if (!status)
-	{
-	  cout << "diagonal errors non-positive definite, ignoring bin" << endl;
-	  return 0;
-	}
+      abort();
     }
 
-  if (0 && iBin == 4)
-    {
-      //cov.Invert().Print();
-      cout << values[0] << " - " << real(Dwave) << endl;
-      cout << G.Similarity(eps) << endl;
-    }
+  TMatrixDSym G(5);
+  for (int i = 0; i < 5; i++)
+    for (int j = 0; j < 5; j++)
+      G(i,j) = weight(i,j);
 
   if (G.Similarity(eps) > 10000)
     {
