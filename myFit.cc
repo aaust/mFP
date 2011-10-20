@@ -337,7 +337,7 @@ myFit()
   outTree->Branch("massHigh", &massHigh, "massHigh/D");
   outTree->Branch("values", values, branchDesc);
   outTree->Branch("covMat", "TMatrixDSym", &covMat);
-  outTree->GetUserInfo()->Add(new fitInfo(startingValues, nBins, threshold, binWidth, lastIdx));
+  outTree->GetUserInfo()->Add(new fitInfo(modelName, startingValues, nBins, threshold, binWidth, lastIdx));
 
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
 
@@ -679,7 +679,7 @@ myFit()
       size_t nGood = myL.eventsInBin();
       if (nGood == 0)
 	continue;
-      double ratio = sqrt(nGood / myL.calc_mc_likelihood(vStartingValues));
+      double ratio = (vStartingValues[0] < 0 ? -1 : 1)*sqrt(nGood / myL.calc_mc_likelihood(vStartingValues));
       for (size_t iSV = 0; iSV < nParams - myL.getNChannels(); iSV++)
 	{
 	  vStartingValues[iSV] *= ratio;

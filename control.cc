@@ -15,6 +15,7 @@ int nBins;
 double binWidth;
 int nFits;
 bool continuous;
+string modelName;
 
 
 static bool
@@ -61,6 +62,7 @@ readControlFile(string fileName)
   bool haveNBins = false;
   bool haveBinWidth = false;
   bool haveContinuous = false;
+  bool haveModelName = false;
   while(!feof(fd))
     {
       char key[999];
@@ -114,6 +116,12 @@ readControlFile(string fileName)
       else if (!strcasecmp(key, "continuous"))
 	{
 	  haveContinuous = true;
+	}
+      else if (!strcasecmp(key, "modelName"))
+	{
+	  if (!readString(fd, modelName))
+	    break;
+	  haveModelName = true;
 	}
       else
 	{

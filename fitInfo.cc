@@ -1,10 +1,14 @@
 #include <vector>
+#include <string>
+
+using namespace std;
 
 #include "fitInfo.h"
 
-fitInfo::fitInfo(const std::vector<tStartingValue>& fitVars, size_t nBins_, double threshold_,
+fitInfo::fitInfo(const string& modelName_, const vector<tStartingValue>& fitVars,
+		 size_t nBins_, double threshold_,
 		 double binWidth_, size_t nVars_)
-  : nBins(nBins_), threshold(threshold_), binWidth(binWidth_), nVars(nVars_)
+  : modelName(modelName_), nBins(nBins_), threshold(threshold_), binWidth(binWidth_), nVars(nVars_)
 {
   for (size_t i = 0; i < fitVars.size(); i++)
     {
