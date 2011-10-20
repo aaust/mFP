@@ -20,7 +20,8 @@ struct wave {
 
   wave() { histIntensity = 0; }
   wave(int ll, int mm) { l = ll; m = mm; histIntensity = 0; }
-  wave(const char* name_, int ll, int mm) : name(name_), l(ll), m(mm) { histIntensity = 0; }
+  wave(const char* name_, int ll, int mm)
+    : name(name_), l(ll), m(mm), histIntensity(0), phaseLocked(false) { }
   wave(const char* name_, int ll, int mm, int nBins, double lower, double upper, bool phaseLocked_ = false)
     : name(name_), l(ll), m(mm), phaseLocked(phaseLocked_)
   { buildHists(nBins, lower, upper); }
