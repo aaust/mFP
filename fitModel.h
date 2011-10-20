@@ -6,13 +6,17 @@
 
 class fitModel {
  public:
-  fitModel(double mass_, const std::vector<double>& x) {};
+  fitModel() {};
+  virtual void evaluateAt(double mass_, const std::vector<double>& x) = 0;
   virtual std::complex<double> valueForWave(const char *name) const = 0;
+
+  static fitModel* getFitModelForName(const string& name);
 };
 
 class fitModelEtaPi : public fitModel {
 public:
-  fitModelEtaPi(double mass_, const std::vector<double>& x);
+  fitModelEtaPi() : mass(0), Dwave(0), Pwave(0), Gwave(0) {};
+  void evaluateAt(double mass_, const std::vector<double>& x);
   std::complex<double> valueForWave(const char* name) const;
 private:
   double mass;

@@ -25,9 +25,12 @@ public:
   double Up() const { return 1.; }
   double operator()(const vector<double>& x) const;
 
+  ~chiSquare() { delete model; }
+
 private:
   TTree *tree;
   const fitInfo *info;
+  fitModel *model;
   double valueInBin(Long_t i, const vector<double>& x) const;
 
   mutable double massLow;
@@ -61,6 +64,8 @@ chiSquare::chiSquare(TTree* tree_) : tree(tree_)
   tree->SetBranchAddress("massHigh", &massHigh);
   tree->SetBranchAddress("values", values);
   tree->SetBranchAddress("covMat", &covMat);
+
+  model = fitModel::getFitModelForName(info->getModelName());
 }
 
 double
@@ -74,20 +79,25 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
   // x[11] ... x[18] : params of G-wave
 
   double m = .5*(massLow + massHigh);
-  if (m < 0.77+mPi || m > 2.2)
+  if (m < 0.77+mPi || m > 2.5)
     return 0;
 
-  fitModelEtaPi model(m, x);
-  complex<double> Dwave = model.valueForWave("D+");
-  complex<double> Pwave = model.valueForWave("P+");
-  complex<double> Gwave = model.valueForWave("G+");
+  model->evaluateAt(m, x);
+  complex<double> Dwave = model->valueForWave("D+");
+  complex<double> Pwave = model->valueForWave("P+");
+  complex<double> Gwave = model->valueForWave("G+");
 
   TVectorD eps(5);
   eps[0] = values[0] - real(Dwave);
   assert(values[1] == 0);
-  eps[1] = values[2] - real(Pwave);
-  eps[2] = (flipImag ? -1 : 1) * values[3] - imag(Pwave);
-  if (m > 1.7)
+  if (m < 2.)
+    {
+      eps[1] = values[2] - real(Pwave);
+      eps[2] = (flipImag ? -1 : 1) * values[3] - imag(Pwave);
+    }
+  else
+    eps[1] = eps[2] = 0;
+  if (m > 1.5 && m < 2.5)
     {
       eps[3] = values[4] - real(Gwave);
       eps[4] =  (flipImag ? -1 : 1) * values[5] - imag(Gwave);
@@ -96,14 +106,14 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
     eps[3] = eps[4] = 0;
 
   gHist.Fill("hDwaveEvolution", "evolution of Dwave",
-	     info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
+	     info->getNbins(), info->getLower(), info->getLower() + (info->getNbins()+1) * info->getBinWidth(), 1000, 500, -500,
 	     m, real(Dwave));
   gHist.Fill("hPwaveReEvolution", "evolution of Re Pwave",
 	     info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
 	     m, real(Pwave));
   gHist.Fill("hPwaveImEvolution", "evolution of Im Pwave",
 	     info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
-	     m, imag(Pwave));
+	     m, (flipImag ? -1 : 1)*imag(Pwave));
   if (1 || m > 1.4)
     {
       gHist.Fill("hGwaveReEvolution", "evolution of Re Gwave",
@@ -111,7 +121,7 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
 		 m, real(Gwave));
       gHist.Fill("hGwaveImEvolution", "evolution of Im Gwave",
 		 info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
-		 m, imag(Gwave));
+		 m, (flipImag ? -1 : 1) * imag(Gwave));
     }
 
   TMatrixDSym cov(14);
@@ -274,15 +284,15 @@ int main(int argc, char **argv)
   //{137.706, 1.31412, 0.132691, 1.78024, 0.00239979, -0.0639616, 0.793151, 25.5136, 5.09123, 1.6503, 0.307946,  }
   //{13.7333, 1.3183, 0.107, 2.99991, 0.782959, 0, 0, -19237.9, 8934.96, 1.99998, 1.1686e-06, -0.965659, -0.348415, 2.001, 0.235, 4.64518, 0.0361006, 0, 0,  }
     //{234, 1.3183, 0.107, 1.9, .5, 0, 0, 100, -18, 1.4, 0.4, 121.445, 43.7584, 2.0253, 0.28722, 5, 0.7, 0, 0 } // 2.001, 0.235, 5., 0.7, 0, 0 }
-    { 436.457, 1.32303, 0.136207, 1.8, 0.6, 0, 0, 129.9454, -124.109, 1.35334, 0.4, 123.153, 39.3762, 2.01117, 0.236181, 5, 0.7, 0, 0, }
+    { 493.863, 1.313, 0.1057, 1.8, 0.6, 0, 0, 142.454, -94.109, 1.35, 0.3, 130.12059638, 24.3762, 1.99, 0.236181, 5, 0.4, 1.3, -1.5, }
 ;
 
   minuit->SetParameter(0, "D strength", vals[0], .1, 0, 0);
-  //minuit->FixParameter(0);
+  minuit->FixParameter(0);
   minuit->SetParameter(1, "a_2 mass", vals[1], 0.01, 0, 0);
-  //minuit->FixParameter(1);
+  minuit->FixParameter(1);
   minuit->SetParameter(2, "a_2 width", vals[2], 0.01, 0.0, 0.);
-  //minuit->FixParameter(2);
+  minuit->FixParameter(2);
   minuit->SetParameter(3, "a_2' mass", vals[3], 0.05, 1.5, 2.);
   minuit->FixParameter(3);
   minuit->SetParameter(4, "a_2' width", vals[4], 0.2, 0.4, 1.);
@@ -293,22 +303,22 @@ int main(int argc, char **argv)
   minuit->FixParameter(6);
 
   minuit->SetParameter(7, "P strength Re", vals[7], 1, 0, 0);
-  //minuit->FixParameter(7);
+  minuit->FixParameter(7);
   minuit->SetParameter(8, "P strength Im", vals[8], 1, 0, 0);
-  //minuit->FixParameter(8);
+  minuit->FixParameter(8);
   minuit->SetParameter(9, "P-wave mass", vals[9], 0.02, 0, 2);
-  //minuit->FixParameter(9);
+  minuit->FixParameter(9);
   minuit->SetParameter(10, "P-wave width", vals[10], 0.25, 0, 1.5);
-  //minuit->FixParameter(10);
+  minuit->FixParameter(10);
 
   minuit->SetParameter(11, "G strength Re", vals[11], 0.1, 0, 0);
-  //minuit->FixParameter(11);
+  minuit->FixParameter(11);
   minuit->SetParameter(12, "G strength Im", vals[12], 0.1, 0, 0);
-  //minuit->FixParameter(12);
+  minuit->FixParameter(12);
   minuit->SetParameter(13, "a_4 mass", vals[13], 0.01, 0, 0);
-  //minuit->FixParameter(13);
+  minuit->FixParameter(13);
   minuit->SetParameter(14, "a_4 width", vals[14], 0.02, 0, 0);
-  //minuit->FixParameter(14);
+  minuit->FixParameter(14);
   minuit->SetParameter(15, "a_4' mass", vals[15], 0.01, 2.1, 10);
   minuit->FixParameter(15);
   minuit->SetParameter(16, "a_4' width", vals[16], 0.01, 0, 10);
@@ -318,13 +328,22 @@ int main(int argc, char **argv)
   minuit->SetParameter(18, "a_4' strength Im", vals[18], 0.1, 0, 0);
   minuit->FixParameter(18);
 
-  minuit->SetParameter(19, "D BG exp width", 10, 0.1, 0, 10);
+  minuit->SetParameter(19, "D BG exp width", 4.77, 0.1, 0, 10);
   minuit->FixParameter(19);
-  minuit->SetParameter(20, "D BG const", 0, 0.1, 0, 10);
+  minuit->SetParameter(20, "D BG const", 83.202, 0.1, 0, 0);
   minuit->FixParameter(20);
-  minuit->SetParameter(21, "D BG linear", 0, 0.1, 0, 10);
+  minuit->SetParameter(21, "D BG linear", -74.4, 0.1, 0, 0);
   minuit->FixParameter(21);
-  minuit->SetParameter(22, "D BG quadratic", 0, 0.1, 0, 0);
+  minuit->SetParameter(22, "D BG quadratic", 10.15, 0.1, 0, 0);
+  minuit->FixParameter(22);
+
+  minuit->SetParameter(19, "G BG exp width", 0.77, 0.1, 0, 10);
+  //minuit->FixParameter(19);
+  minuit->SetParameter(20, "G BG const", 1.202, 0.1, 0, 0);
+  //minuit->FixParameter(20);
+  minuit->SetParameter(21, "G BG linear", 0, 0.1, 0, 0);
+  minuit->FixParameter(21);
+  minuit->SetParameter(22, "G BG quadratic", 0, 0.1, 0, 0);
   minuit->FixParameter(22);
 
   TStopwatch sw;
@@ -338,21 +357,28 @@ int main(int argc, char **argv)
 
   //if (!iret)
     {
+      fitModel* model = fitModel::getFitModelForName(info->getModelName());
+
       vector<double> x;
       for (int i = 0; i < minuit->GetNumberTotalParameters(); i++)
 	x.push_back(minuit->GetParameter(i));
 
       for (size_t i = 0; i < info->getNbins(); i++)
 	{
-	  double m = info->getThreshold() + info->getBinWidth()*i;
+	  double m = info->getThreshold() + info->getBinWidth()*(i + 0.5);
 
-	  if (m < 0.77+mPi || m > 2.3)
+	  if (m < 0.77+mPi)
 	    continue;
 
-	  fitModelEtaPi model(m, x);
-	  complex<double> Dwave = model.valueForWave("D+");
-	  complex<double> Pwave = model.valueForWave("P+");
-	  complex<double> Gwave = model.valueForWave("G+");
+	  model->evaluateAt(m, x);
+	  complex<double> Dwave = model->valueForWave("D+");
+	  complex<double> Pwave = model->valueForWave("P+");
+	  complex<double> Gwave = model->valueForWave("G+");
+	  if (flipImag)
+	    {
+	      Pwave = conj(Pwave);
+	      Gwave = conj(Gwave);
+	    }
 
 	  //gHist.getHist("hPhaseD", "#phi(D)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,arg(phaseD));
 	  gHist.getHist("hDwaveRe", "Dwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Dwave));
