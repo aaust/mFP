@@ -14,8 +14,9 @@ using namespace std;
 #include "bw.h"
 #include "fitInfo.h"
 #include "gHist.h"
+#include "fitModel.h"
 
-const bool flipImag = true;
+const bool flipImag = false;
 
 class chiSquare : public ROOT::Minuit2::FCNBase {
 public:
@@ -73,47 +74,20 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
   // x[11] ... x[18] : params of G-wave
 
   double m = .5*(massLow + massHigh);
-  //cout << " m = " << m << endl;
-  double m1 = mEtaP;
-  double m2 = mPi;
-  double phaseSpace = 1; //sqrt(m); //1; //sqrt(breakupMomentum(m*m, m1, m2)); // / m; // sqrt(m);
+  if (m < 0.77+mPi || m > 2.2)
+    return 0;
 
-  const double *par = &x[1];
-  complex<double> Dwave = 0;
-  if (par[0] > 0 && par[1] > 0 && par[2] > par[0] && par[3] > 0 && m > 0.77 + mPi)
-    Dwave = x[0]*phaseSpace*(BWcoupled(m*m, mPi, mEtaP, mPi, 0.77, mPi, mEta, par[0], par[1], 2, 1, 2, 0.70/0.85, 0.145/0.85) //BW(m*m, m1, m2, 2, par[0], par[1])
-			     //+ (complex<double>(par[4], par[5])
-			     //	*BW(m*m, m1, m2, 2, par[2], par[3]))
-			     );
-  //cout << BW_a2_pieta_coupled(m*m) << BW(m*m, m1, m2, 2, par[2], par[3]) << endl;
-  complex<double> phaseD = 1;
-  if (abs(Dwave) != 0)
-    phaseD = Dwave / abs(Dwave);
-  Dwave /= phaseD;
+  fitModelEtaPi model(m, x);
+  complex<double> Dwave = model.valueForWave("D+");
+  complex<double> Pwave = model.valueForWave("P+");
+  complex<double> Gwave = model.valueForWave("G+");
 
-  par = &x[9];
-  complex<double> Pwave = 0;
-  if (par[0] > 0 && par[1] > 0 && par[0] > mEtaP + mPi)
-    Pwave = complex<double>(x[7],x[8])*phaseSpace*BW(m*m, m1, m2, 1, par[0], par[1]);
-  //cout << "BW(" << m << "," << m1 << "," << m2 << ",1,1," << par[0] << "," << par[1] << ") = " << Pwave << endl;
-  Pwave /= phaseD;
-
-  par = &x[13];
-  complex<double> Gwave = 0;
-  if (par[0] > 0 && par[1] > 0 && par[2] > par[0] && par[3] > 0)
-    Gwave = complex<double>(x[11],x[12])*phaseSpace*(BW(m*m, m1, m2, 4, par[0], par[1])
-						     //+ (complex<double>(par[4], par[5])
-						     //	*BW(m*m, m1, m2, 4, par[2], par[3]))
-						     );
-  Gwave /= phaseD;
-
-  //cout << "mDPG = " << m << " " << Dwave << " " << Pwave << " " << Gwave << endl;
   TVectorD eps(5);
   eps[0] = values[0] - real(Dwave);
   assert(values[1] == 0);
   eps[1] = values[2] - real(Pwave);
   eps[2] = (flipImag ? -1 : 1) * values[3] - imag(Pwave);
-  if (m > 1.4)
+  if (m > 1.7)
     {
       eps[3] = values[4] - real(Gwave);
       eps[4] =  (flipImag ? -1 : 1) * values[5] - imag(Gwave);
@@ -122,25 +96,23 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
     eps[3] = eps[4] = 0;
 
   gHist.Fill("hDwaveEvolution", "evolution of Dwave",
-	     info->getNbins(), info->getLower(), info->getUpper(), 1000, -500, 500,
+	     info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
 	     m, real(Dwave));
   gHist.Fill("hPwaveReEvolution", "evolution of Re Pwave",
-	     info->getNbins(), info->getLower(), info->getUpper(), 1000, -500, 500,
+	     info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
 	     m, real(Pwave));
   gHist.Fill("hPwaveImEvolution", "evolution of Im Pwave",
-	     info->getNbins(), info->getLower(), info->getUpper(), 1000, -500, 500,
+	     info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
 	     m, imag(Pwave));
-  if (m > 1.4)
+  if (1 || m > 1.4)
     {
       gHist.Fill("hGwaveReEvolution", "evolution of Re Gwave",
-		 info->getNbins(), info->getLower(), info->getUpper(), 1000, -500, 500,
+		 info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
 		 m, real(Gwave));
       gHist.Fill("hGwaveImEvolution", "evolution of Im Gwave",
-		 info->getNbins(), info->getLower(), info->getUpper(), 1000, -500, 500,
+		 info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
 		 m, imag(Gwave));
     }
-
-  covMat->Print();
 
   TMatrixDSym cov(14);
   int colSkipped = 0, rowSkipped = 0;
@@ -156,8 +128,6 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
 	  cov(i,j) = (*covMat)(i + rowSkipped, j + colSkipped);
 	}
     }
-  cov.Print();
-
   bool status;
   TMatrixDSym weight(TDecompChol(cov).Invert(status));
   if (!status)
@@ -193,8 +163,6 @@ chiSquare::operator()(const vector<double>& x) const
   double value = 0;
   for (Long_t i = 0; i < (Long_t)info->getNbins(); i++)
     {
-      //if (i == 4 || i == 23)
-      //continue;
       value += valueInBin(i, x);
     }
   if (value < 0)
@@ -305,7 +273,8 @@ int main(int argc, char **argv)
   //{134.733, 1.31361, 0.119147, 1.79072, 0.00399844, 7700.92, 5441.68, 17827.8, 31456.4, 1.10929, 0.0231332, 0.474292, 4.70543, 2.001, 0.235, 9.38998, 7.48521e-05, 817.705, -434.581,  }
   //{137.706, 1.31412, 0.132691, 1.78024, 0.00239979, -0.0639616, 0.793151, 25.5136, 5.09123, 1.6503, 0.307946,  }
   //{13.7333, 1.3183, 0.107, 2.99991, 0.782959, 0, 0, -19237.9, 8934.96, 1.99998, 1.1686e-06, -0.965659, -0.348415, 2.001, 0.235, 4.64518, 0.0361006, 0, 0,  }
-    {160, 1.3183, 0.107, 2, .5, 0, 0, 200, 0, 1.6, 0.4, 3.5, 0, 2.001, 0.235, 5., 0.7, 0, 0 }
+    //{234, 1.3183, 0.107, 1.9, .5, 0, 0, 100, -18, 1.4, 0.4, 121.445, 43.7584, 2.0253, 0.28722, 5, 0.7, 0, 0 } // 2.001, 0.235, 5., 0.7, 0, 0 }
+    { 436.457, 1.32303, 0.136207, 1.8, 0.6, 0, 0, 129.9454, -124.109, 1.35334, 0.4, 123.153, 39.3762, 2.01117, 0.236181, 5, 0.7, 0, 0, }
 ;
 
   minuit->SetParameter(0, "D strength", vals[0], .1, 0, 0);
@@ -314,9 +283,9 @@ int main(int argc, char **argv)
   //minuit->FixParameter(1);
   minuit->SetParameter(2, "a_2 width", vals[2], 0.01, 0.0, 0.);
   //minuit->FixParameter(2);
-  minuit->SetParameter(3, "a_2' mass", vals[3], 0.05, 1.4, 3);
+  minuit->SetParameter(3, "a_2' mass", vals[3], 0.05, 1.5, 2.);
   minuit->FixParameter(3);
-  minuit->SetParameter(4, "a_2' width", vals[4], 0.2, 0, 1.7);
+  minuit->SetParameter(4, "a_2' width", vals[4], 0.2, 0.4, 1.);
   minuit->FixParameter(4);
   minuit->SetParameter(5, "a_2' strength Re", vals[5], 0.1, 0, 0);
   minuit->FixParameter(5);
@@ -332,11 +301,11 @@ int main(int argc, char **argv)
   minuit->SetParameter(10, "P-wave width", vals[10], 0.25, 0, 1.5);
   //minuit->FixParameter(10);
 
-  minuit->SetParameter(11, "G strength Re", vals[11], 0.1, -5, 5);
+  minuit->SetParameter(11, "G strength Re", vals[11], 0.1, 0, 0);
   //minuit->FixParameter(11);
   minuit->SetParameter(12, "G strength Im", vals[12], 0.1, 0, 0);
   //minuit->FixParameter(12);
-  minuit->SetParameter(13, "a_4 mass", vals[13], 0.01, 0, 10);
+  minuit->SetParameter(13, "a_4 mass", vals[13], 0.01, 0, 0);
   //minuit->FixParameter(13);
   minuit->SetParameter(14, "a_4 width", vals[14], 0.02, 0, 0);
   //minuit->FixParameter(14);
@@ -349,33 +318,15 @@ int main(int argc, char **argv)
   minuit->SetParameter(18, "a_4' strength Im", vals[18], 0.1, 0, 0);
   minuit->FixParameter(18);
 
-  /*
-  minuit->SetParameter(0, "D strength", 57.4152, 1, 0, 10000);
-  minuit->SetParameter(1, "a_2 mass", 1.3183, 0, 0, 0);
-  minuit->FixParameter(1);
-  minuit->SetParameter(2, "a_2 width", 0.107, 0, 0, 0);
-  minuit->FixParameter(2);
-  minuit->SetParameter(3, "a_2' mass", 1.7, 0.02, 1.4, 10);
-  minuit->SetParameter(4, "a_2' width", .3, 0.01, 0, 1);
-  minuit->SetParameter(5, "a_2' strength Re", 1., 0.1, 0, 0);
-  minuit->SetParameter(6, "a_2' strength Im", 0, 0.1, 0, 0);
+  minuit->SetParameter(19, "D BG exp width", 10, 0.1, 0, 10);
+  minuit->FixParameter(19);
+  minuit->SetParameter(20, "D BG const", 0, 0.1, 0, 10);
+  minuit->FixParameter(20);
+  minuit->SetParameter(21, "D BG linear", 0, 0.1, 0, 10);
+  minuit->FixParameter(21);
+  minuit->SetParameter(22, "D BG quadratic", 0, 0.1, 0, 0);
+  minuit->FixParameter(22);
 
-  minuit->SetParameter(7, "P strength Re", 100, 1, 0, 0);
-  minuit->SetParameter(8, "P strength Im", 0, 1, 0, 0);
-  minuit->SetParameter(9, "P-wave mass", 1.399, 0.02, 0, 10);
-  minuit->SetParameter(10, "P-wave width", .3, 0.05, 0, 10);
-
-  minuit->SetParameter(11, "G strength Re", 10, 0.1, 0, 0);
-  minuit->SetParameter(12, "G strength Im", 0, 0.1, 0, 0);
-  minuit->SetParameter(13, "a_4 mass", 2.001, 0, 0, 0);
-  minuit->FixParameter(13);
-  minuit->SetParameter(14, "a_4 width", 0.235, 0, 0, 0);
-  minuit->FixParameter(14);
-  minuit->SetParameter(15, "a_4' mass", 2.5, 0.01, 2.1, 10);
-  minuit->SetParameter(16, "a_4' width", .6, 0.01, 0, 10);
-  minuit->SetParameter(17, "a_4' strength Re", 1., 0.1, 0, 0);
-  minuit->SetParameter(18, "a_4' strength Im", 0, 0.1, 0, 0);
-  */
   TStopwatch sw;
   sw.Start();
   minuit->CreateMinimizer();
@@ -395,41 +346,15 @@ int main(int argc, char **argv)
 	{
 	  double m = info->getThreshold() + info->getBinWidth()*i;
 
-	  double m1 = mEtaP;
-	  double m2 = mPi;
-	  double phaseSpace = 1; //sqrt(m); //breakupMomentum(m*m,m1,m2));// sqrt(m); //breakupMomentum(m*m, m1, m2)) / m;
+	  if (m < 0.77+mPi || m > 2.3)
+	    continue;
 
-	  const double *par = &x[1];
-	  complex<double> Dwave = 0;
-	  if (par[0] > 0 && par[1] > 0 && par[2] > par[0] && par[3] > 0)
-	    Dwave = x[0]*phaseSpace*(BWcoupled(m*m, mPi, mEtaP, mPi, 0.77, mPi, mEta, par[0], par[1], 2, 1, 2, 0.70/0.85, 0.145/0.85) //BWcoupled(m*m, m1, m2, mPi, 0.77, 1, par[0], par[1], 0.2) //BW(m*m, m1, m2, 2, par[0], par[1])
-				     //+ (complex<double>(par[4], par[5])
-				     //	*BW(m*m, m1, m2, 2, par[2], par[3]))
-				     );
-	  //cout << Dwave<< BW_a2_pieta_coupled(m*m) << BW(m*m, m1, m2, 2, par[2], par[3]) << endl;
-	  complex<double> phaseD = 1;
-	  if (abs(Dwave) != 0)
-	    phaseD = Dwave / abs(Dwave);
-	  Dwave /= phaseD;
+	  fitModelEtaPi model(m, x);
+	  complex<double> Dwave = model.valueForWave("D+");
+	  complex<double> Pwave = model.valueForWave("P+");
+	  complex<double> Gwave = model.valueForWave("G+");
 
-	  par = &x[9];
-	  complex<double> Pwave = 0;
-	  if (par[0] > 0 && par[1] > 0 && par[0] > mEta + mPi)
-	    Pwave = complex<double>(x[7],x[8])*phaseSpace*BW(m*m, m1, m2, 1, par[0], par[1]);
-	  //cout << "BW(" << m << "," << m1 << "," << m2 << ",1,1," << par[0] << "," << par[1] << ") = " << Pwave << endl;
-	  gHist.getHist("hPhaseP", "#phi(P)", 50, 0.725, 0.725+50*0.05)->SetBinContent(i,arg(Pwave));
-	  Pwave /= phaseD;
-
-	  par = &x[13];
-	  complex<double> Gwave = 0;
-	  if (par[0] > 0 && par[1] > 0 && par[2] > par[0] && par[3] > 0)
-	    Gwave = complex<double>(x[11],x[12])*phaseSpace*(BW(m*m, m1, m2, 4, par[0], par[1])
-							     //+ (complex<double>(par[4], par[5])
-							     //	*BW(m*m, m1, m2, 4, par[2], par[3]))
-							     );
-	  Gwave /= phaseD;
-
-	  gHist.getHist("hPhaseD", "#phi(D)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,arg(phaseD));
+	  //gHist.getHist("hPhaseD", "#phi(D)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,arg(phaseD));
 	  gHist.getHist("hDwaveRe", "Dwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Dwave));
 	  gHist.getHist("hPwaveRe", "Re Pwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Pwave));
 	  gHist.getHist("hPwaveIm", "Im Pwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,(flipImag ? -1 : 1) * imag(Pwave));
