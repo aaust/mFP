@@ -9,6 +9,18 @@ using namespace std;
 #include "bw.h"
 #include "fitModel.h"
 
+class fitModelEtaPi : public fitModel {
+public:
+  fitModelEtaPi() : mass(0), Dwave(0), Pwave(0), Gwave(0) {};
+  void evaluateAt(double mass_, const std::vector<double>& x);
+  std::complex<double> valueForWave(const char* name) const;
+private:
+  double mass;
+  std::complex<double> Dwave;
+  std::complex<double> Pwave;
+  std::complex<double> Gwave;
+};
+
 void
 fitModelEtaPi::evaluateAt(double mass_, const vector<double>& x)
 {
