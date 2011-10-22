@@ -1,6 +1,6 @@
 {
   c= new TCanvas; c->Divide(3,2);
-  c->cd(1); h0->Draw(); hDwaveRe->Draw("same");
+  c->cd(1); h0->Draw(); hDwaveRe->Draw("same"); hDwaveBG->Draw("same");
   c->cd(2); h2->Draw(); hPwaveRe->Draw("same");
   c->cd(3); h3->Draw(); hPwaveIm->Draw("same");
   //c->cd(4); hPhaseD->Draw();
