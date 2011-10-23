@@ -385,6 +385,7 @@ int main(int argc, char **argv)
 	  model->evaluateAt(m, x);
 	  complex<double> phaseD = model->valueForWave("phaseD");
 	  complex<double> Dwave = model->valueForWave("D+");
+	  complex<double> DwaveBG = model->valueForWave("D+BG");
 	  complex<double> Pwave = model->valueForWave("P+");
 	  complex<double> Gwave = model->valueForWave("G+");
 	  if (flipImag)
