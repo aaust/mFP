@@ -287,15 +287,15 @@ int main(int argc, char **argv)
   //{13.7333, 1.3183, 0.107, 2.99991, 0.782959, 0, 0, -19237.9, 8934.96, 1.99998, 1.1686e-06, -0.965659, -0.348415, 2.001, 0.235, 4.64518, 0.0361006, 0, 0,  }
     //{234, 1.3183, 0.107, 1.9, .5, 0, 0, 100, -18, 1.4, 0.4, 121.445, 43.7584, 2.0253, 0.28722, 5, 0.7, 0, 0 } // 2.001, 0.235, 5., 0.7, 0, 0 }
     //    { 493.863, 1.313, 0.1057, 1.8, 0.6, 0, 0, 142.454, -94.109, 1.35, 0.3, 130.12059638, 24.3762, 1.99, 0.236181, 5, 0.4, 1.3, -1.5, }
-    { 318.601, 1.31276, 0.109759, 1.8, 0.6, 0, 0, 95.8984, -54.8463, 1.38494, 0.439218, 76.5587, 35.9412, 2.07055, 0.643189, 5, 0.4, 1.3, -1.5, }
+    { 315.601, 1.31176, 0.106659, 1.8, 0.6, 0, 0, 95.8984, -54.8463, 1.38494, 0.43218, 76.5587, 35.9412, 2.07055, 0.643189, 5, 0.4, 1.3, -1.5, }
   ;
 
   minuit->SetParameter(0, "D strength", vals[0], .1, 0, 0);
   //minuit->FixParameter(0);
   minuit->SetParameter(1, "a_2 mass", vals[1], 0.01, 0, 0);
-  minuit->FixParameter(1);
+  //minuit->FixParameter(1);
   minuit->SetParameter(2, "a_2 width", vals[2], 0.01, 0.0, 0.);
-  minuit->FixParameter(2);
+  //minuit->FixParameter(2);
   minuit->SetParameter(3, "a_2' mass", vals[3], 0.05, 1.5, 2.2);
   minuit->FixParameter(3);
   minuit->SetParameter(4, "a_2' width", vals[4], 0.2, 0.3, 1.);
@@ -315,11 +315,11 @@ int main(int argc, char **argv)
   //minuit->FixParameter(10);
 
   minuit->SetParameter(11, "G strength Re", vals[11], 0.1, 0, 0);
-  //minuit->FixParameter(11);
+  minuit->FixParameter(11);
   minuit->SetParameter(12, "G strength Im", vals[12], 0.1, 0, 0);
-  //minuit->FixParameter(12);
+  minuit->FixParameter(12);
   minuit->SetParameter(13, "a_4 mass", vals[13], 0.01, 0, 0);
-  //minuit->FixParameter(13);
+  minuit->FixParameter(13);
   minuit->SetParameter(14, "a_4 width", vals[14], 0.02, 0, 0);
   minuit->FixParameter(14);
   minuit->SetParameter(15, "a_4' mass", vals[15], 0.01, 2.1, 10);
@@ -331,14 +331,14 @@ int main(int argc, char **argv)
   minuit->SetParameter(18, "a_4' strength Im", vals[18], 0.1, 0, 0);
   minuit->FixParameter(18);
 
-  minuit->SetParameter(19, "D BG exp width", 3.55205, 0.1, 0, 10);
-  minuit->FixParameter(19);
-  minuit->SetParameter(20, "D BG const", 26.6502, 0.1, 0, 0);
+  minuit->SetParameter(19, "D BG exp width", 3.25205, 0.1, 0, 10);
+  //minuit->FixParameter(19);
+  minuit->SetParameter(20, "D BG const", 0.38502, 0.1, 0, 0);
   //minuit->FixParameter(20);
-  minuit->SetParameter(21, "D BG linear", -25.4077 / 26.3039, 0.1, 0, 0);
-  minuit->FixParameter(21);
-  minuit->SetParameter(22, "D BG quadratic", 3.0648 / 26.3039, 0.1, 0, 0);
-  minuit->FixParameter(22);
+  minuit->SetParameter(21, "D BG linear", 16.3077 / 26.3039, 0.1, 0, 0);
+  //minuit->FixParameter(21);
+  minuit->SetParameter(22, "D BG quadratic", -13.71648 / 26.3039, 0.1, 0, 0);
+  //minuit->FixParameter(22);
   /*
   minuit->SetParameter(23, "G BG exp width", 9.02584, 0.1, 0, 10);
   minuit->FixParameter(23);
