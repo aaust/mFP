@@ -10,6 +10,8 @@ const double mKs = .497614;
 const double mEta = .547853;
 const double mEtaP = .95778;
 
+const double mRho = .77549;
+
 const double hbarc = 0.1973269631; // GeV fm
 
 double blattWeisskopf(int L, double p);
