@@ -15,6 +15,7 @@ int nBins;
 double binWidth;
 int nFits;
 bool continuous;
+bool ambiguous;
 string modelName;
 
 
@@ -62,6 +63,7 @@ readControlFile(string fileName)
   bool haveNBins = false;
   bool haveBinWidth = false;
   bool haveContinuous = false;
+  bool haveAmbiguous = false;
   bool haveModelName = false;
   while(!feof(fd))
     {
@@ -117,6 +119,10 @@ readControlFile(string fileName)
 	{
 	  haveContinuous = true;
 	}
+      else if (!strcasecmp(key, "ambiguous"))
+	{
+	  haveAmbiguous = true;
+	}
       else if (!strcasecmp(key, "modelName"))
 	{
 	  if (!readString(fd, modelName))
@@ -168,6 +174,7 @@ readControlFile(string fileName)
       good = false;
     }
   continuous = haveContinuous;
+  ambiguous = haveAmbiguous;
   return good;
 }
 

@@ -968,7 +968,7 @@ myFit()
 	  
 	  // Ambiguities only for negative reflectivities
 	  // for the moment hard-wired for this wave set: P+, D+, S0, P0, P-, D0, D-
-	  if (lastIdx == 14){
+	  if (ambiguous && lastIdx == 14){
 	    // calculate coefficients
 	    vector<double> amplitudes;
 	    for (int k = 0; k < 14; k++)
