@@ -122,6 +122,132 @@ public:
 };
 
 
+// from : Numerical Recipes in C: The Art of Scientific Computing (Second Edition), published by Cambridge University Press, SECTION 9.5
+
+void laguer(const vector<complex<double> > &a, complex<double> &x, int &its) {
+	const int MR=8,MT=10,MAXIT=MT*MR;
+	const double EPS=numeric_limits<double>::epsilon();
+	const double frac[MR+1]={0.0,0.5,0.25,0.75,0.13,0.38,0.62,0.88,1.0};
+	complex<double> dx,x1,b,d,f,g,h,sq,gp,gm,g2;
+	int m=a.size()-1;
+	for (int iter=1;iter<=MAXIT;iter++) {
+		its=iter;
+		b=a[m];
+		double err=abs(b);
+		d=f=0.0;
+		double abx=abs(x);
+		for (int j=m-1;j>=0;j--) {
+			f=x*f+d;
+			d=x*d+b;
+			b=x*b+a[j];
+			err=abs(b)+abx*err;
+		}
+		err *= EPS;
+		if (abs(b) <= err) return;
+		g=d/b;
+		g2=g*g;
+		h=g2-2.0*f/b;
+		sq=sqrt(double(m-1)*(double(m)*h-g2));
+		gp=g+sq;
+		gm=g-sq;
+		double abp=abs(gp);
+		double abm=abs(gm);
+		if (abp < abm) gp=gm;
+		dx=max(abp,abm) > 0.0 ? double(m)/gp : polar(1+abx,double(iter));
+		x1=x-dx;
+		if (x == x1) return;
+		if (iter % MT != 0) x=x1;
+		else x -= frac[iter/MT]*dx;
+	}
+	throw("too many iterations in laguer");
+};
+
+void zroots(const vector<complex<double> > &a, vector<complex<double> > &roots, const bool &polish)
+{
+	const double EPS=1.0e-14;
+	int i,its;
+	complex<double> x,b,c;
+	int m=a.size()-1;
+	vector<complex<double> > ad(m+1);
+	for (int j=0;j<=m;j++) ad[j]=a[j];
+	for (int j=m-1;j>=0;j--) {
+		x=0.0;
+		vector<complex<double> > ad_v(j+2);
+		for (int jj=0;jj<j+2;jj++) ad_v[jj]=ad[jj];
+		laguer(ad_v,x,its);
+		if (abs(imag(x)) <= 2.0*EPS*abs(real(x)))
+		  x=complex<double>(real(x),0.0);
+		roots[j]=x;
+		b=ad[j+1];
+		for (int jj=j;jj>=0;jj--) {
+			c=ad[jj];
+			ad[jj]=b;
+			b=x*b+c;
+		}
+	}
+	if (polish)
+		for (int j=0;j<m;j++)
+			laguer(a,roots[j],its);
+	for (int j=1;j<m;j++) {
+		x=roots[j];
+		for (i=j-1;i>=0;i--) {
+			if (real(roots[i]) <= real(x)) break;
+			roots[i+1]=roots[i];
+		}
+		roots[i+1]=x;
+	}
+};
+
+// from : Techniques of Amplitude Analysis for two-pseudoscalar systems, S.U. Chung, Phys.Rev.D 56, 1997, 7299
+
+void waves2coeff(vector<double> &values, vector<complex<double> > &coeff){
+
+   complex<double> S0(values[4], values[5]);
+   complex<double> P0(values[6], values[7]);
+   complex<double> PM(values[8], values[9]);
+   complex<double> D0(values[10],values[11]);
+   complex<double> DM(values[12],values[13]);
+
+   complex<double> a0 = S0 + sqrt(3)*P0 + sqrt(5)*D0;
+   complex<double> a1 = -2.*sqrt(3)*(PM + sqrt(5)*DM);
+   complex<double> a2 = 2.*S0 - 4.*sqrt(5)*D0;
+   complex<double> a3 = -2.*sqrt(3)*(PM - sqrt(5)*DM);
+   complex<double> a4 = S0 - sqrt(3)*P0 + sqrt(5)*D0;
+   
+   coeff.push_back(a0);
+   coeff.push_back(a1);
+   coeff.push_back(a2);
+   coeff.push_back(a3);
+   coeff.push_back(a4);
+
+};
+
+void roots2waves(complex<double> &a4, vector<complex<double> > &roots, vector<double> &waves){
+
+  complex<double> u1 = roots[0];
+  complex<double> u2 = roots[1];
+  complex<double> u3 = roots[2];
+  complex<double> u4 = roots[3];
+  
+  complex<double> s0 = a4/6. * (2.*u1*u2*u3*u4 + u1*u2 + u1*u3 + u1*u4 + u2*u3 + u2*u4 + u3*u4 + 2.);
+  complex<double> p0 = a4/(2.*sqrt(3)) * (u1*u2*u3*u4 - 1.);
+  complex<double> pm = a4/(4.*sqrt(3)) * (u1*u2*u3 + u2*u3*u4 + u3*u4*u1 + u4*u1*u2 + u1 + u2 + u3 + u4);
+  complex<double> d0 = a4/(6.*sqrt(5)) * (u1*u2*u3*u4 - u1*u2 - u1*u3 - u1*u4 - u2*u3 - u2*u4 - u3*u4 + 1.);
+  complex<double> dm = a4/(4.*sqrt(15))* (u1*u2*u3 + u2*u3*u4 + u3*u4*u1 + u4*u1*u2 - u1 - u2 - u3 - u4);
+
+  waves.push_back(real(s0));
+  waves.push_back(imag(s0));
+  waves.push_back(real(p0));
+  waves.push_back(imag(p0));
+  waves.push_back(real(pm));
+  waves.push_back(imag(pm));
+  waves.push_back(real(d0));
+  waves.push_back(imag(d0));
+  waves.push_back(real(dm));
+  waves.push_back(imag(dm));
+};
+
+
 class ambiguity : public ROOT::Minuit2::FCNBase {
 public:
   ambiguity(const waveset& ws_, const vector<double>& start_);
@@ -236,7 +362,6 @@ fillMChists(const event& e, bool acc)
 
     }
 }
-
 
 void __attribute((noinline))
 myFit()
@@ -648,6 +773,9 @@ myFit()
   fulltime.Start();
   for (iBin = 0; iBin < nBins; iBin++)
     {
+
+      cout << "Bin " << iBin << " : " << lower+(iBin*binWidth) << "GeV" << endl;
+
       sw.Start();
       myL.setBin(iBin);
 
@@ -837,6 +965,119 @@ myFit()
 	    }
 	  hIntensity->SetBinContent(iBin + 1, intensity / 10000);
 #endif
+	  
+	  // Ambiguities only for negative reflectivities
+	  // for the moment hard-wired for this wave set: P+, D+, S0, P0, P-, D0, D-
+	  if (lastIdx == 14){
+	    // calculate coefficients
+	    vector<double> amplitudes;
+	    for (int k = 0; k < 14; k++)
+	      amplitudes.push_back(values[k]);
+	    
+	    vector<complex<double> > input;
+	    waves2coeff(amplitudes, input);
+
+	    // find 4 complex roots
+	    vector<complex<double> > roots(4);
+	    zroots(input, roots, true);
+
+	    for (int l=0; l<4; l++){
+	      stringstream ss;         // conversion int to string
+	      ss << l;
+	      string num = ss.str();
+
+	      gHist.getHist(("hRe"+num).c_str(), "Real part of root",
+			    nBins, threshold, threshold + nBins*binWidth)
+		->SetBinContent(iBin+1, real(roots[l]));
+	      gHist.getHist(("hIm"+num).c_str(), "Imaginary part of root",
+			    nBins, threshold, threshold + nBins*binWidth)
+		->SetBinContent(iBin+1, TMath::Abs(imag(roots[l])));
+	    }
+
+	    // calculate 8 ambiguous solutions by complex conjugating
+	    vector<double> ambiguous[8];
+	    for (int j=0; j<8; j++){
+
+	      // first, fill positive reflectivity
+	      ambiguous[j].push_back(values[0]);
+	      ambiguous[j].push_back(values[1]);
+	      ambiguous[j].push_back(values[2]);
+	      ambiguous[j].push_back(values[3]);
+
+	      vector<complex<double> > solution(roots);      
+	      // 1 3 5 7
+	      if (j&0x1) solution[3] = conj(solution[3]);
+	      // 2 3 6 7
+	      if (j&0x2) solution[2] = conj(solution[2]);
+	      // 4 5 6 7
+	      if (j&0x4) solution[1] = conj(solution[1]);
+	      
+	      //      vector<double> waves;
+	      roots2waves(input[4], solution, ambiguous[j]);
+	      // for (int m=0; m<14; m++)
+	      // cout << values[m] << " " << ambiguous[j][m] << endl;
+	    }
+
+	    // now run fit again with 8 solutions as starting value
+	    for (int n = 0; n < 8; n++){
+	      stringstream ss;         // conversion int to string
+	      ss << n;
+	      string amb = ss.str();
+	      
+	      for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
+		{
+		  if (!startingValues[j].fixed)
+		    {
+		      minuit->SetParameter(j, startingValues[j].name.c_str(),
+					   ambiguous[n][j], vStartingValues[j]*0.01, 0, 0);
+		    }
+		  else
+		    {
+		      minuit->SetParameter(j, startingValues[j].name.c_str(),
+					   ambiguous[n][j], 1, 0, 0);
+		      minuit->FixParameter(j);
+		    }
+		}
+	      for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
+		{
+		  minuit->SetParameter(j, startingValues[j].name.c_str(),
+				       vStartingValues[j], .1, 0, 1);
+		  if (startingValues[j].fixed)
+		    minuit->FixParameter(j);
+		}
+	      
+	      // Run minimizer.
+	      minuit->CreateMinimizer();
+	      iret = minuit->Minimize();
+	      sw.Stop();
+	      cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
+	    
+	      if (iret == 0)
+		{
+		  for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
+		    {
+		      vector<wave>& waves = ws[iCoherent].getWaves();
+		      for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
+			{
+			  if (waves[iWave1].name == "S0"){
+			    complex<double> a(minuit->GetParameter(waves[iWave1].getIndex()),
+					      minuit->GetParameter(waves[iWave1].getIndex() + 1));
+			    
+			    gHist.getHist(("hAmbi"+waves[iWave1].name+"sol"+amb).c_str(),
+					  ("fit results for this wave, solution "+amb).c_str(),
+					  nBins, threshold, threshold + nBins*binWidth)
+			      ->SetBinContent(iBin+1, norm(a));
+			  }
+			}
+		    }
+		  //minuitAmb->PrintResults(1, 0.);
+		  //break;
+		}
+	    }
+	  }
+	    
+
+#if 0
 
 	  ambiguity amb(ws, vStartingValues);
 	  for (int iTry = 0; iTry < 5; iTry++)
@@ -927,6 +1168,7 @@ myFit()
 		  break;
 		}
 	    }
+#endif
 	}
     }
 
