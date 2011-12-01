@@ -106,11 +106,19 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
   double phi = arg(a1 / a2);
   double oldPhase = 0;
   if (iBin > 0)
-    oldPhase = h->GetBinContent(iBin);
-  
-  while ((oldPhase - fabs(phi)) > M_PI)
+    {
+      oldPhase = h->GetBinContent(iBin);
+      // but sometimes a number of previous fits failed
+      int fail=1;
+      while (oldPhase == 0 && iBin-fail>0)
+	{
+	  oldPhase = h->GetBinContent(iBin-fail);
+	  fail++;
+	}
+    }
+  while ((oldPhase - phi) > M_PI)
     phi += 2*M_PI;
-  while ((fabs(phi) - oldPhase) > M_PI)
+  while ((phi - oldPhase) > M_PI)
     phi -= 2*M_PI;
   
   h->SetBinContent(iBin+1, phi);
