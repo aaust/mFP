@@ -124,8 +124,9 @@ public:
 
 // from : Numerical Recipes in C: The Art of Scientific Computing (Second Edition), published by Cambridge University Press, SECTION 9.5
 
-void laguer(const vector<complex<double> > &a, complex<double> &x, int &its) {
-	const int MR=8,MT=10,MAXIT=MT*MR;
+void laguer(const vector<complex<double> > &a, complex<double> &x, int &its)
+{
+  const int MR=8,MT=10,MAXIT=MT*MR;
 	const double EPS=numeric_limits<double>::epsilon();
 	const double frac[MR+1]={0.0,0.5,0.25,0.75,0.13,0.38,0.62,0.88,1.0};
 	complex<double> dx,x1,b,d,f,g,h,sq,gp,gm,g2;
@@ -200,8 +201,8 @@ void zroots(const vector<complex<double> > &a, vector<complex<double> > &roots, 
 
 // from : Techniques of Amplitude Analysis for two-pseudoscalar systems, S.U. Chung, Phys.Rev.D 56, 1997, 7299
 
-void waves2coeff(vector<double> &values, vector<complex<double> > &coeff){
-
+void waves2coeff(vector<double> &values, vector<complex<double> > &coeff)
+{
    complex<double> S0(values[4], values[5]);
    complex<double> P0(values[6], values[7]);
    complex<double> PM(values[8], values[9]);
@@ -222,8 +223,8 @@ void waves2coeff(vector<double> &values, vector<complex<double> > &coeff){
 
 };
 
-void roots2waves(complex<double> &a4, vector<complex<double> > &roots, vector<double> &waves){
-
+void roots2waves(complex<double> &a4, vector<complex<double> > &roots, vector<double> &waves)
+{
   complex<double> u1 = roots[0];
   complex<double> u2 = roots[1];
   complex<double> u3 = roots[2];
@@ -246,51 +247,6 @@ void roots2waves(complex<double> &a4, vector<complex<double> > &roots, vector<do
   waves.push_back(real(dm));
   waves.push_back(imag(dm));
 };
-
-
-class ambiguity : public ROOT::Minuit2::FCNBase {
-public:
-  ambiguity(const waveset& ws_, const vector<double>& start_);
-
-  double Up() const { return 1.; }
-  double operator()(const vector<double>& x) const;
-  double operator()(const double* x) const;
-
-private:
-  const waveset ws;
-  std::vector<std::pair<size_t, size_t> > vecMom;
-  vector<double> start;
-};
-
-ambiguity::ambiguity(const waveset& ws_, const vector<double>& start_)
-  : ws(ws_), start(start_)
-{
-  vecMom = listOfMoments(ws);
-}
-
-double
-ambiguity::operator()(const vector<double>& x) const
-{
-  return this->operator()(&x[0]);
-}
-
-double
-ambiguity::operator()(const double* x) const
-{
-  double value = 0;
-  for (std::vector<std::pair<size_t, size_t> >::const_iterator it = vecMom.begin();
-       it != vecMom.end(); it++)
-    {
-      double old = decomposeMoment(*it, ws, start);
-      //for (size_t i = 0; i < x.size(); i++)
-      //cout << x[i] << " ";
-      //cout << endl;
-      double noo = decomposeMoment(*it, ws, x);
-      //cout << "old = " << old << " noo " << noo << endl;
-      value += (old - noo)*(old - noo); // / min(abs(old), 1.);
-    }
-  return value;
-}
 
 
 void
@@ -372,8 +328,8 @@ myFit()
   double upper = threshold + nBins*binWidth;
 
   vector<wave> positive;
-  positive.push_back(wave("D+", 2, 1, nBins, lower, upper, true));
-  positive.push_back(wave("P+", 1, 1, nBins, lower, upper));
+  positive.push_back(wave("P+", 1, 1, nBins, lower, upper, true));
+  positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
   //positive.push_back(wave("F+", 3, 1, nBins, lower, upper));
   //positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
   //positive.push_back(wave("D++", 2, 2, nBins, lower, upper));
@@ -770,6 +726,7 @@ myFit()
   hBR->SetMinimum(0);
 
   TStopwatch fulltime;
+  int failBins = 0;
   fulltime.Start();
   for (iBin = 0; iBin < nBins; iBin++)
     {
@@ -930,7 +887,7 @@ myFit()
 		    }
 		}
 	    }
-
+	  
 	  if (myL.getNChannels() == 2)
 	    {
 	      hBR->SetBinContent(iBin+1, minuit->GetParameter(nParams - 1));
@@ -968,98 +925,99 @@ myFit()
 	  
 	  // Ambiguities only for negative reflectivities
 	  // for the moment hard-wired for this wave set: P+, D+, S0, P0, P-, D0, D-
-	  if (lastIdx == 14){
-	    // calculate coefficients
-	    vector<double> amplitudes;
-	    for (int k = 0; k < 14; k++)
-	      amplitudes.push_back(values[k]);
+	  if (ambiguous && lastIdx == 14)
+	    {
+	      // calculate coefficients
+	      vector<double> amplitudes;
+	      for (int k = 0; k < 14; k++)
+		amplitudes.push_back(values[k]);
 	    
-	    vector<complex<double> > input;
-	    waves2coeff(amplitudes, input);
+	      vector<complex<double> > input;
+	      waves2coeff(amplitudes, input);
 
-	    // find 4 complex roots
-	    vector<complex<double> > roots(4);
-	    zroots(input, roots, true);
+	      // find 4 complex roots
+	      vector<complex<double> > roots(4);
+	      zroots(input, roots, true);
 
-	    for (int l=0; l<4; l++){
-	      stringstream ss;         // conversion int to string
-	      ss << l;
-	      string num = ss.str();
+	      for (int l=0; l<4; l++){
+		stringstream ss;         // conversion int to string
+		ss << l;
+		string num = ss.str();
 
-	      gHist.getHist(("hRe"+num).c_str(), "Real part of root",
-			    nBins, threshold, threshold + nBins*binWidth)
-		->SetBinContent(iBin+1, real(roots[l]));
-	      gHist.getHist(("hIm"+num).c_str(), "Imaginary part of root",
-			    nBins, threshold, threshold + nBins*binWidth)
-		->SetBinContent(iBin+1, TMath::Abs(imag(roots[l])));
-	    }
+		gHist.getHist(("hRe"+num).c_str(), "Real part of root",
+			      nBins, threshold, threshold + nBins*binWidth)
+		  ->SetBinContent(iBin+1, real(roots[l]));
+		gHist.getHist(("hIm"+num).c_str(), "Imaginary part of root",
+			      nBins, threshold, threshold + nBins*binWidth)
+		  ->SetBinContent(iBin+1, TMath::Abs(imag(roots[l])));
+	      }
 
-	    // calculate 8 ambiguous solutions by complex conjugating
-	    vector<double> ambiguous[8];
-	    for (int j=0; j<8; j++){
+	      // calculate 8 ambiguous solutions by complex conjugating
+	      vector<double> ambiguous[8];
+	      for (int j=0; j<8; j++){
 
-	      // first, fill positive reflectivity
-	      ambiguous[j].push_back(values[0]);
-	      ambiguous[j].push_back(values[1]);
-	      ambiguous[j].push_back(values[2]);
-	      ambiguous[j].push_back(values[3]);
+		// first, fill positive reflectivity
+		ambiguous[j].push_back(values[0]);
+		ambiguous[j].push_back(values[1]);
+		ambiguous[j].push_back(values[2]);
+		ambiguous[j].push_back(values[3]);
 
-	      vector<complex<double> > solution(roots);      
-	      // 1 3 5 7
-	      if (j&0x1) solution[3] = conj(solution[3]);
-	      // 2 3 6 7
-	      if (j&0x2) solution[2] = conj(solution[2]);
-	      // 4 5 6 7
-	      if (j&0x4) solution[1] = conj(solution[1]);
+		vector<complex<double> > solution(roots);      
+		// 1 3 5 7
+		if (j&0x1) solution[3] = conj(solution[3]);
+		// 2 3 6 7
+		if (j&0x2) solution[2] = conj(solution[2]);
+		// 4 5 6 7
+		if (j&0x4) solution[1] = conj(solution[1]);
 	      
-	      //      vector<double> waves;
-	      roots2waves(input[4], solution, ambiguous[j]);
-	      // for (int m=0; m<14; m++)
-	      // cout << values[m] << " " << ambiguous[j][m] << endl;
-	    }
+		//      vector<double> waves;
+		roots2waves(input[4], solution, ambiguous[j]);
+		// for (int m=0; m<14; m++)
+		// cout << values[m] << " " << ambiguous[j][m] << endl;
+	      }
 
-	    // now run fit again with 8 solutions as starting value
-	    for (int n = 0; n < 8; n++){
-	      stringstream ss;         // conversion int to string
-	      ss << n;
-	      string amb = ss.str();
+	      // now run fit again with 8 solutions as starting value
+	      for (int n = 0; n < 8; n++){
+		stringstream ss;         // conversion int to string
+		ss << n;
+		string amb = ss.str();
 	      
-	      for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
-		{
-		  if (!startingValues[j].fixed)
-		    {
-		      minuit->SetParameter(j, startingValues[j].name.c_str(),
-					   ambiguous[n][j], vStartingValues[j]*0.01, 0, 0);
-		    }
-		  else
-		    {
-		      minuit->SetParameter(j, startingValues[j].name.c_str(),
-					   ambiguous[n][j], 1, 0, 0);
+		for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
+		  {
+		    if (!startingValues[j].fixed /*&& j > 3*/)
+		      {
+			minuit->SetParameter(j, startingValues[j].name.c_str(),
+					     ambiguous[n][j], 1/*ambiguous[n][j]*0.01*/, 0, 0);
+		      }
+		    else
+		      {
+			minuit->SetParameter(j, startingValues[j].name.c_str(),
+					     ambiguous[n][j], 1, 0, 0);
+			minuit->FixParameter(j);
+		      }
+		  }
+		for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
+		  {
+		    minuit->SetParameter(j, startingValues[j].name.c_str(),
+					 vStartingValues[j], .1, 0, 1);
+		    if (startingValues[j].fixed)
 		      minuit->FixParameter(j);
-		    }
-		}
-	      for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
-		{
-		  minuit->SetParameter(j, startingValues[j].name.c_str(),
-				       vStartingValues[j], .1, 0, 1);
-		  if (startingValues[j].fixed)
-		    minuit->FixParameter(j);
-		}
+		  }
 	      
-	      // Run minimizer.
-	      minuit->CreateMinimizer();
-	      iret = minuit->Minimize();
-	      sw.Stop();
-	      cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
+		// Run minimizer.
+		minuit->CreateMinimizer();
+		iret = minuit->Minimize();
+		sw.Stop();
+		cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
 	    
-	      if (iret == 0)
-		{
-		  for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
-		    {
-		      vector<wave>& waves = ws[iCoherent].getWaves();
-		      for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
-			{
-			  if (waves[iWave1].name == "S0"){
+		if (iret == 0)
+		  {
+		    for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
+		      {
+			vector<wave>& waves = ws[iCoherent].getWaves();
+			for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
+			  {
+			    //if (waves[iWave1].name == "S0"){
 			    complex<double> a(minuit->GetParameter(waves[iWave1].getIndex()),
 					      minuit->GetParameter(waves[iWave1].getIndex() + 1));
 			    
@@ -1068,112 +1026,20 @@ myFit()
 					  nBins, threshold, threshold + nBins*binWidth)
 			      ->SetBinContent(iBin+1, norm(a));
 			  }
-			}
-		    }
-		  //minuitAmb->PrintResults(1, 0.);
-		  //break;
-		}
-	    }
-	  }
-	    
-
-#if 0
-
-	  ambiguity amb(ws, vStartingValues);
-	  for (int iTry = 0; iTry < 5; iTry++)
-	    {
-	      ROOT::Math::Minimizer* min = 
-		ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
-
-	      min->SetMaxFunctionCalls(1000000); // for Minuit/Minuit2 
-	      min->SetMaxIterations(10000);  // for GSL 
-	      min->SetTolerance(0.001);
-	      min->SetPrintLevel(1);
-
-	      // create funciton wrapper for minmizer
-	      // a IMultiGenFunction type 
-	      ROOT::Math::Functor f(amb,16); 
-    
-	      min->SetFunction(f);
-
-
-	      TFitterMinuit *minuitAmb = new TFitterMinuit();
-	      minuitAmb->SetMinuitFCN(&amb);
-	      // Set starting values.
-	      size_t j = 0;
-	      for (; j < nParams - myL.getNChannels(); j++)
-		{
-		  if (!startingValues[j].fixed)
-		    {
-		      min->SetVariable(j, (startingValues[j].name + "f").c_str(),
-				       gRandom->Uniform(-vStartingValues[j],vStartingValues[j]), 0.01);
-		    }
-		  else
-		    {
-		      min->SetFixedVariable(j, startingValues[j].name.c_str(), 0);
-		    }
-		}
-	      int iret = min->Minimize();
-	      if (!iret || min->MinValue() > 1)
-		continue;
-
-	      const double *result = min->X();
-	      
-	      // Set starting values.
-	      for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
-		{
-		  if (!startingValues[j].fixed)
-		    {
-		      minuit->SetParameter(j, startingValues[j].name.c_str(),
-					   result[j], vStartingValues[j]*0.01, 0, 0);
-		    }
-		  else
-		    {
-		      minuit->SetParameter(j, startingValues[j].name.c_str(),
-					   result[j], 1, 0, 0);
-		      minuit->FixParameter(j);
-		    }
-		}
-	      for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
-		{
-		  minuit->SetParameter(j, startingValues[j].name.c_str(),
-				       vStartingValues[j], .1, 0, 1);
-		  if (startingValues[j].fixed)
-		    minuit->FixParameter(j);
-		}
-
-	      // Run minimizer.
-	      minuit->CreateMinimizer();
-	      iret = minuit->Minimize();
-	      sw.Stop();
-	      cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
-
-	      if (iret == 0)
-		{
-		  for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
-		    {
-		      vector<wave>& waves = ws[iCoherent].getWaves();
-		      for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
-			{
-			  complex<double> a(minuit->GetParameter(waves[iWave1].getIndex()),
-					    minuit->GetParameter(waves[iWave1].getIndex() + 1));
-
-			  gHist.getHist(waves[iWave1].name.c_str(),
-					"fit results for this wave, alternative fit",
-					nBins, threshold, threshold + nBins*binWidth)
-			    ->SetBinContent(iBin+1, norm(a));
-			}
-		    }
-		  //minuitAmb->PrintResults(1, 0.);
-		  break;
-		}
-	    }
-#endif
+			//		    }
+		      }
+		    //minuitAmb->PrintResults(1, 0.);
+		    //break;
+		  }
+	      }
+	    }	      
 	}
+      else failBins++;
     }
 
   fulltime.Stop();
-  cout << "took " << fulltime.CpuTime() << " s CPU time, " << fulltime.RealTime() << " s wall time" << endl;
+  cout << "Took " << fulltime.CpuTime() << " s CPU time, " << fulltime.RealTime() << " s wall time." << endl;
+  cout << "In " << failBins << " bins TFitterMinuit::Minimization DID not converge !" << endl;
 }
 
 
