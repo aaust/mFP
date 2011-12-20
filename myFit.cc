@@ -199,6 +199,16 @@ void zroots(const vector<complex<double> > &a, vector<complex<double> > &roots, 
 	}
 };
 
+// Sort roots
+
+void sortroots(vector<complex<double> > &roots)
+{ 
+  if ( imag(roots[0]) > 0 ) roots[0] = conj(roots[0]);
+  if ( imag(roots[1]) > 0 ) roots[1] = conj(roots[1]);
+  if ( imag(roots[2]) < 0 ) roots[2] = conj(roots[2]);
+  if ( imag(roots[3]) < 0 ) roots[3] = conj(roots[3]);
+}
+  
 // from : Techniques of Amplitude Analysis for two-pseudoscalar systems, S.U. Chung, Phys.Rev.D 56, 1997, 7299
 
 void waves2coeff(vector<double> &values, vector<complex<double> > &coeff)
@@ -222,6 +232,7 @@ void waves2coeff(vector<double> &values, vector<complex<double> > &coeff)
    coeff.push_back(a4);
 
 };
+
 
 void roots2waves(complex<double> &a4, vector<complex<double> > &roots, vector<double> &waves)
 {
@@ -776,7 +787,7 @@ myFit()
 	  if (!startingValues[j].fixed)
 	    {
 	      minuit->SetParameter(j, startingValues[j].name.c_str(),
-				   vStartingValues[j], vStartingValues[j]*0.01, 0, 0);
+				   vStartingValues[j], 1/*vStartingValues[j]*0.01*/, 0, 0);
 	    }
 	  else
 	    {
@@ -795,13 +806,13 @@ myFit()
 
       // Run minimizer.
       minuit->CreateMinimizer();
-      int iret = minuit->Minimize();
+      int iret = minuit->Minimize();//10000000, 1);
       sw.Stop();
       cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
 
       if (iret == 0)
 	{
-	  vector<double> vStartingValue(nParams);
+	  //	  vector<double> vStartingValue(nParams);
 	  
 	  for (size_t j = 0; j < nParams; j++)
 	    {
@@ -874,19 +885,21 @@ myFit()
 	  gHist.getHist("hMClikelihood", "MC likelihood of result", nBins, lower, upper)
 	    ->SetBinContent(iBin+1, myL.calc_mc_likelihood(vStartingValues));
 
-	  for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
-	    {
-	      vector<wave>& waves = ws[iCoherent].getWaves();
-	      for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
-		{
-		  waves[iWave1].fillHistIntensity(iBin, minuit);
-		  if (iWave1 != waves.size()-1)
-		    {
-		      for (size_t iWave2 = iWave1 + 1; iWave2 < waves.size(); iWave2++)
-			waves[iWave1].fillHistPhase(iBin, waves[iWave2], minuit);
-		    }
-		}
-	    }
+	  if (!ambiguous){
+	    for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)  
+	      {
+		vector<wave>& waves = ws[iCoherent].getWaves();
+		for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
+		  {
+		    waves[iWave1].fillHistIntensity(iBin, minuit);
+		    if (iWave1 != waves.size()-1)
+		      {
+			for (size_t iWave2 = iWave1 + 1; iWave2 < waves.size(); iWave2++)
+			  waves[iWave1].fillHistPhase(iBin, waves[iWave2], minuit);
+		      }
+		  }
+	      }  
+	  }
 	  
 	  if (myL.getNChannels() == 2)
 	    {
@@ -938,6 +951,8 @@ myFit()
 	      // find 4 complex roots
 	      vector<complex<double> > roots(4);
 	      zroots(input, roots, true);
+
+	      sortroots(roots);
 
 	      for (int l=0; l<4; l++){
 		stringstream ss;         // conversion int to string
@@ -1006,7 +1021,7 @@ myFit()
 	      
 		// Run minimizer.
 		minuit->CreateMinimizer();
-		iret = minuit->Minimize();
+		iret = minuit->Minimize();//10000000,1);
 		sw.Stop();
 		cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
 	    
@@ -1017,7 +1032,6 @@ myFit()
 			vector<wave>& waves = ws[iCoherent].getWaves();
 			for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
 			  {
-			    //if (waves[iWave1].name == "S0"){
 			    complex<double> a(minuit->GetParameter(waves[iWave1].getIndex()),
 					      minuit->GetParameter(waves[iWave1].getIndex() + 1));
 			    
@@ -1026,10 +1040,25 @@ myFit()
 					  nBins, threshold, threshold + nBins*binWidth)
 			      ->SetBinContent(iBin+1, norm(a));
 			  }
-			//		    }
 		      }
-		    //minuitAmb->PrintResults(1, 0.);
-		    //break;
+		    
+		    // plot result for solution 0
+		    if (n==0){
+		      for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)  
+			{
+			  vector<wave>& waves = ws[iCoherent].getWaves();
+			  for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
+			    {
+			      waves[iWave1].fillHistIntensity(iBin, minuit);
+			      if (iWave1 != waves.size()-1)
+				{
+				  for (size_t iWave2 = iWave1 + 1; iWave2 < waves.size(); iWave2++)
+				    waves[iWave1].fillHistPhase(iBin, waves[iWave2], minuit);
+				}
+			    }  
+			  
+			}
+		    }  
 		  }
 	      }
 	    }	      
