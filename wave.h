@@ -36,6 +36,9 @@ struct wave {
   // to covariance matrix elements awkward.  This should help.
   size_t idxInCovariance(const TFitterMinuit* minuit) const;
 
+  const string& getName() const { return name; }
+  size_t getL() const { return l; }
+  size_t getM() const { return m; }
   void buildHists(int nBins, double lower, double upper);
   TH1* getHistIntensity() const { return histIntensity; }
   TH1* getHistPhase(const wave& other);

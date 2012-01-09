@@ -16,7 +16,7 @@ using namespace std;
 #include "gHist.h"
 #include "fitModel.h"
 
-const bool flipImag = false;
+const bool flipImag = true; //false;
 
 class chiSquare : public ROOT::Minuit2::FCNBase {
 public:

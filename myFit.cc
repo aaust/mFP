@@ -775,8 +775,13 @@ myFit()
 	{
 	  if (!startingValues[j].fixed)
 	    {
-	      minuit->SetParameter(j, startingValues[j].name.c_str(),
-				   vStartingValues[j], vStartingValues[j]*0.01, 0, 0);
+	      if (j != 0)
+		minuit->SetParameter(j, startingValues[j].name.c_str(),
+				     vStartingValues[j], vStartingValues[j]*0.01, 0, 0);
+	      else
+		minuit->SetParameter(j, startingValues[j].name.c_str(),
+				     vStartingValues[j], vStartingValues[j]*0.01, 0, 10000);
+
 	    }
 	  else
 	    {

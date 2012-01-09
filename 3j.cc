@@ -55,25 +55,24 @@ namespace {
     else
       return sqrt(.5);
   }
+}
 
+double
+getCoefficient(int eps, int L, int M, int l1, int m1, int l2, int m2)
+{
+  double threeJ1 = threeJ(L, l1, l2, 0, 0, 0);
 
-  double
-  getCoefficient(int eps, int L, int M, int l1, int m1, int l2, int m2)
-  {
-    double threeJ1 = threeJ(L, l1, l2, 0, 0, 0);
+  int sign = ((m1 + M) & 0x1) ? -1 : 1;
+  int sign1 = ((m1 + 1) & 0x1) ? -1 : 1;
+  int sign2 = ((m2 + 1) & 0x1) ? -1 : 1;
+  int sign12 = ((m1 + m2) & 0x1) ? -1 : 1;
+  double parentheses = (threeJ(L, l1, l2, -M, -m1, m2)
+			+ threeJ(L, l1, l2, -M, m1, m2) * eps * sign1
+			+ threeJ(L, l1, l2, -M, -m1, -m2) * eps * sign2
+			+ threeJ(L, l1, l2, -M, m1, -m2) * sign12) * sign;
 
-    int sign = ((m1 + M) & 0x1) ? -1 : 1;
-    int sign1 = ((m1 + 1) & 0x1) ? -1 : 1;
-    int sign2 = ((m2 + 1) & 0x1) ? -1 : 1;
-    int sign12 = ((m1 + m2) & 0x1) ? -1 : 1;
-    double parentheses = (threeJ(L, l1, l2, -M, -m1, m2)
-			  + threeJ(L, l1, l2, -M, m1, m2) * eps * sign1
-			  + threeJ(L, l1, l2, -M, -m1, -m2) * eps * sign2
-			  + threeJ(L, l1, l2, -M, m1, -m2) * sign12) * sign;
-
-    return(theta(m1)*theta(m2)*sqrt((2*l1+1)*(2*l2+1))
-	   *threeJ1*parentheses);
-  }
+  return(theta(m1)*theta(m2)*sqrt((2*l1+1)*(2*l2+1))
+	 *threeJ1*parentheses);
 }
 
 
