@@ -19,7 +19,7 @@ main()
   positive.push_back(wave("D+", 2, 1));
   //positive.push_back(wave("F+", 3, 1));
   positive.push_back(wave("G+", 4, 1));
-  positive.push_back(wave("D++", 2, 2));
+  //positive.push_back(wave("D++", 2, 2));
 
   vector<wave> negative;
   negative.push_back(wave("S0", 0, 0));
@@ -38,8 +38,8 @@ main()
   wsNeg.waves = negative;
 
   waveset ws;
-  ws.push_back(wsPos);
-  //ws.push_back(wsNeg);
+  //ws.push_back(wsPos);
+  ws.push_back(wsNeg);
 
   size_t lastIdx = 0;
   for (size_t i = 0; i < ws.size(); i++)
