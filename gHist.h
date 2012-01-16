@@ -55,16 +55,29 @@ namespace {
       return hash;
     }
   public:
+    TH1* getHist(const char* name)
+    {
+      uint64_t hash = hashString(name);
+      std::map<uint64_t, TH1*>::iterator it = mHists.find(hash);
+      if (it == mHists.end())
+	return 0;
+      return dynamic_cast<TH1*>(it->second);
+    }
+    TH1* operator[](const char* name)
+    {
+      return this->getHist(name);
+    }
     TH1* getHist(const char* name, const char* title,
 		 Int_t nBinsX, Double_t lowX, Double_t highX)
     {
       uint64_t hash = hashString(name);
-      if (mHists.find(hash) == mHists.end())
+      std::map<uint64_t, TH1*>::iterator it = mHists.find(hash);
+      if (it == mHists.end())
 	{
-	  mHists[hash] = new TH1D(name, title,
-				  nBinsX, lowX, highX);
+	  return (TH1*)(mHists[hash] = new TH1D(name, title,
+						nBinsX, lowX, highX));
 	}
-      return dynamic_cast<TH1*>(mHists[hash]);
+      return dynamic_cast<TH1*>(it->second);
     }
 
     void Fill(const char* name, const char* title,
@@ -80,10 +93,14 @@ namespace {
 		 Int_t nBinsY, Double_t lowY, Double_t highY)
     {
       uint64_t hash = hashString(name);
-      if (mHists.find(hash) == mHists.end())
-	mHists[hash] = new TH2D(name, title,
-				nBinsX, lowX, highX, nBinsY, lowY, highY);
-      return dynamic_cast<TH2*>(mHists[hash]);
+      std::map<uint64_t, TH1*>::iterator it = mHists.find(hash);
+      if (it == mHists.end())
+	{
+	  return (TH2*)(mHists[hash] = new TH2D(name, title,
+						nBinsX, lowX, highX,
+						nBinsY, lowY, highY));
+	}
+      return dynamic_cast<TH2*>(it->second);
     }
 
     void Fill(const char* name, const char* title,
@@ -101,12 +118,15 @@ namespace {
 		 Int_t nBinsZ, Double_t lowZ, Double_t highZ)
     {
       uint64_t hash = hashString(name);
-      if (mHists.find(hash) == mHists.end())
-	mHists[hash] = new TH3D(name, title,
-				nBinsX, lowX, highX,
-				nBinsY, lowY, highY,
-				nBinsZ, lowZ, highZ);
-      return dynamic_cast<TH3*>(mHists[hash]);
+      std::map<uint64_t, TH1*>::iterator it = mHists.find(hash);
+      if (it == mHists.end())
+	{
+	  return (TH3*)(mHists[hash] = new TH3D(name, title,
+						nBinsX, lowX, highX,
+						nBinsY, lowY, highY,
+						nBinsZ, lowZ, highZ));
+	}
+      return dynamic_cast<TH3*>(it->second);
     }
 
     void Fill(const char* name, const char* title,
