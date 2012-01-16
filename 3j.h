@@ -26,6 +26,7 @@ double threeJ(long j1, long j2, long j3, long m1, long m2, long m3);
 
 std::vector<std::pair<size_t, size_t> > listOfMoments(const waveset& ws);
 
+double getCoefficient(int eps, int L, int M, int l1, int m1, int l2, int m2);
 double decomposeMoment(const std::pair<size_t, size_t>& LM, const waveset& ws, const vector<double>& x);
 double decomposeMoment(const std::pair<size_t, size_t>& LM, const waveset& ws, const double* x);
 double decomposeMoment(int L, int M, const waveset& ws, const vector<double>& x);
