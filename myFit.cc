@@ -83,6 +83,15 @@ public:
     return result;
   }
 
+  void
+  fillPredict(const vector<double>& x, TH2* hth, TH2* hph ) const
+  {
+    cout << "Calculating weighted MC" << endl;
+
+    for (size_t i = 0; i < myLs.size(); i++)
+      myLs[i]->fillPredict(x, hth, hph);
+  }
+
   double
   operator()(const vector<double>& x) const
   {
@@ -431,6 +440,18 @@ myFit()
   outTree->Branch("covMat", "TMatrixDSym", &covMat);
   outTree->GetUserInfo()->Add(new fitInfo(modelName, startingValues, nBins, threshold, binWidth, lastIdx));
 
+  /*  TTree* predictTree = new TTree("predictTree","Weighted MC");
+  double weight(0);
+  float mX(0), mc_theta(0), mc_phi(0), mc_costh(0);
+  if (mc){
+    out->Branch("accepted", &mc_acc, "mc_acc/I");
+    out->Branch("mX", &mc_two, "mc_two/F");
+    out->Branch("tPrime", &tmax, "tmax/F");
+    out->Branch("costhGJ", &mc_costh, "mc_costh/F");
+    out->Branch("phiGJ", &mc_phi, "mc_phi/F");
+  }
+  */
+
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
 
   for (size_t iFile = 0; iFile < dataFiles.size(); iFile++)
@@ -660,6 +681,10 @@ myFit()
 
 	      MCallEvents.reserve(t->GetEntries());
 	      MCevents.reserve(t->GetEntries() / 10);  // Right order of magnitude.
+	      /*	      cout << "reserve " << t->GetEntries()/10 << " accepted MC events out of "
+	       << t->GetEntries() << " total"
+	       << endl;*/
+
 	      for (Long_t i = 0; i < t->GetEntries(); i++)
 		{
 		  t->GetEntry(i);
@@ -700,7 +725,7 @@ myFit()
 	    }
 	  cout << "read " << MCevents.size() << " accepted MC events out of "
 	       << MCallEvents.size() << " total ("
-	       << 100.*MCevents.size() / MCallEvents.size()
+	       << 100LL*MCevents.size() / MCallEvents.size()
 	       << "% overall acceptance)"
 	       << endl;
 	}
@@ -731,6 +756,9 @@ myFit()
   minuit->SetMinuitFCN(&myL);
 
   //TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
+
+  TH2* hthpre = new TH2D("hthpre", "prediction for cos(#theta)", nBins, threshold, threshold + nBins*binWidth, 100, -1, 1);
+  TH2* hphpre = new TH2D("hphpre", "prediction for #phi", nBins, threshold, threshold + nBins*binWidth, 100, -M_PI, M_PI);
 
   TH1* hBR = new TH1D("hBR", "relative Branching Ratio",
 		      nBins, lower, upper);
@@ -787,7 +815,7 @@ myFit()
 	  if (!startingValues[j].fixed)
 	    {
 	      minuit->SetParameter(j, startingValues[j].name.c_str(),
-				   vStartingValues[j], 1/*vStartingValues[j]*0.01*/, 0, 0);
+				   vStartingValues[j], 10/*vStartingValues[j]*0.01*/, 0, 0);
 	    }
 	  else
 	    {
@@ -890,7 +918,7 @@ myFit()
 	      {
 		vector<wave>& waves = ws[iCoherent].getWaves();
 		for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
-		  {
+ 		  {
 		    waves[iWave1].fillHistIntensity(iBin, minuit);
 		    if (iWave1 != waves.size()-1)
 		      {
@@ -935,6 +963,14 @@ myFit()
 	    }
 	  hIntensity->SetBinContent(iBin + 1, intensity / 10000);
 #endif
+	  
+
+	  // Fill predict histograms if wanted
+	  // (relatively time consuming)
+	  if (predict)
+	    {
+	      myL.fillPredict(result, hthpre, hphpre);	      
+	    }
 	  
 	  // Ambiguities only for negative reflectivities
 	  // for the moment hard-wired for this wave set: P+, D+, S0, P0, P-, D0, D-
@@ -1002,7 +1038,7 @@ myFit()
 		    if (!startingValues[j].fixed /*&& j > 3*/)
 		      {
 			minuit->SetParameter(j, startingValues[j].name.c_str(),
-					     ambiguous[n][j], 1/*ambiguous[n][j]*0.01*/, 0, 0);
+					     ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
 		      }
 		    else
 		      {
@@ -1042,8 +1078,8 @@ myFit()
 			  }
 		      }
 		    
-		    // plot result for solution 0
-		    if (n==0){
+		    // plot result for solution 5
+		    if (n==5){
 		      for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)  
 			{
 			  vector<wave>& waves = ws[iCoherent].getWaves();

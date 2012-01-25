@@ -9,6 +9,8 @@
 #include "wave.h"
 #include "event.h"
 
+class TH2;
+
 class likelihood : public ROOT::Minuit2::FCNBase {
   std::vector<coherent_waves> ws;
 
@@ -58,6 +60,9 @@ public:
 
   double
   calc_likelihood(const std::vector<double>& x) const;
+  
+  void
+  fillPredict(const std::vector<double>& x, TH2* hth, TH2* hph) const;
 
   double
   operator()(const std::vector<double>& x) const;

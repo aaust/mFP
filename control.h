@@ -13,6 +13,7 @@ extern double binWidth;
 extern int nFits;
 extern bool continuous;
 extern bool ambiguous;
+extern bool predict;
 extern std::string modelName;
 
 bool

@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "TH1.h"
+#include "TH2.h"
 #include "TStopwatch.h"
 
 #include "control.h"
@@ -136,11 +137,11 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
     }
 
   /*
-  cout << "calculated MCweight " << sum / pMCevents.size()
-       << " from " << pMCevents.size() << " MC events for "
-       << "(l1,m1,l2,m2) = "
-       << "(" << w1.l << "," << w1.m << "," << w2.l << "," << w2.m << ")"
-       << endl;
+    cout << "calculated MCweight " << sum / pMCevents.size()
+    << " from " << pMCevents.size() << " MC events for "
+    << "(l1,m1,l2,m2) = "
+    << "(" << w1.l << "," << w1.m << "," << w2.l << "," << w2.m << ")"
+    << endl;
   */
 
   return weights[id] = sum / pMCevents.size();
@@ -261,4 +262,66 @@ likelihood::calcMoment(int L, int M) const
       sum = t;
     }
   return sum;
+}
+
+
+void
+likelihood::fillPredict(const vector<double>& x, TH2* hth, TH2* hph ) const
+{
+  // loop over accepted MC events
+  const vector<event>& pMCevents
+    = flatMC ? flatMCevents : binnedMCevents[currentBin];
+  size_t nEv = pMCevents.size();
+  for (size_t i = 0; i < nEv; i++)
+    {
+      if (!pMCevents[i].accepted()) continue;
+      
+      // loop over wave set and calculate coherent sum independently for each reflectivity
+      double weight = 0;
+      waveset::const_iterator it;
+      for (it = ws.begin(); it != ws.end(); it++)
+	{
+	  vector<wave>::const_iterator wave1, wave2;
+	  for (wave1 = it->waves.begin();
+	       wave1 != it->waves.end();
+	       wave1++)
+	    {
+	      complex<double> a1(x[wave1->getIndex()], x[wave1->getIndex()+1]);
+	      for (wave2 = it->waves.begin();
+		   wave2 != it->waves.end();
+		   wave2++)
+		{
+		  complex<double> conj_a2(x[wave2->getIndex()], -x[wave2->getIndex()+1]);
+		  weight +=  real(a1 * conj_a2
+				  * pMCevents[i].decayAmplitude(it->reflectivity, *wave1)
+				  * pMCevents[i].decayAmplitude(it->reflectivity, *wave2));
+		}
+	    }
+	}
+      
+      // fill histograms
+      hth->Fill(pMCevents[i].mass, cos(pMCevents[i].theta), weight);
+      hph->Fill(pMCevents[i].mass, pMCevents[i].phi, weight);
+    }
+  
+  /*
+    vector<wave>::const_iterator wave1, wave2;
+    for (wave1 = it->waves.begin();
+    wave1 != it->waves.end();
+    wave1++)
+    {
+    complex<double> a1(x[wave1->getIndex()], x[wave1->getIndex()+1]);
+    for (wave2 = it->waves.begin();
+    wave2 != it->waves.end();
+    wave2++)
+    {
+    complex<double> conj_a2(x[wave2->getIndex()], -x[wave2->getIndex()+1]);
+    sumMC +=  real(a1*conj_a2
+    *MCweight(it->reflectivity, *wave1, *wave2));
+    }
+    }
+    }
+
+    return sumMC * binnedEtaAcc[currentBin];
+  */
 }
