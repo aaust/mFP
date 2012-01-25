@@ -6,11 +6,13 @@
 using namespace std;
 
 #include "TFitterMinuit.h"
+#include "Math/SpecFunc.h"
 
 #include "wave.h"
 #include "3j.h"
 
 namespace {
+#if ROOT_VERSION_CODE < ROOT_VERSION(5,28,0)
   long long
   fac(long long n)
   {
@@ -45,6 +47,7 @@ namespace {
     //cout << "prefactor = " << result << endl;
     return result;
   }
+#endif
 
 
   double
@@ -79,6 +82,9 @@ getCoefficient(int eps, int L, int M, int l1, int m1, int l2, int m2)
 double
 threeJ(long j1, long j2, long j3, long m1, long m2, long m3)
 {
+#if ROOT_VERSION_CODE >= ROOT_VERSION(5,28,0)
+  return ROOT::Math::wigner_3j(2*j1, 2*j2, 2*j3, 2*m1, 2*m2, 2*m3);
+#else
   if (j1 < 0 || j2 < 0 || j3 < 0)
     return 0;
   if (j1 > j2 + j3)
@@ -121,6 +127,7 @@ threeJ(long j1, long j2, long j3, long m1, long m2, long m3)
     }
 
   return prefactor(j1,j2,j3,m1,m2,m3)*sum;
+#endif
 }
 
 
