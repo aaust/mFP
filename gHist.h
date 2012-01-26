@@ -21,8 +21,6 @@
 //
 // TODO: give Fill a return value?  Either return hist or whatever
 // TH1::Fill returns
-//
-// TODO: filling with weights?
 
 #include <map>
 #include <stdint.h>
