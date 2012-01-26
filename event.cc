@@ -31,7 +31,6 @@ event::decayAmplitude(int reflectivity, int l, int m) const
   //int id = (reflectivity + 1) + ((l << 3) | (m << 2));
   //if (lookupTable[id] != -1)
   //return lookupTable[id];
-
   double spherical;
   if (l < 3 && m <= l && ampls)
     spherical = ampls[l*(l+1)/2 + m];

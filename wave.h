@@ -44,7 +44,11 @@ struct wave {
   TH1* getHistPhase(const wave& other);
   void fillHistIntensity(int iBin, const TFitterMinuit* minuit);
   void fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit);
+
+  ClassDefNV(wave, 1)
 };
+
+#include "event.h"
 
 class event;
 
@@ -53,17 +57,24 @@ struct coherent_waves {
   int spinflip;
   std::vector<wave> waves;
 
-  coherent_waves() {}
+  coherent_waves() {};
   coherent_waves(const coherent_waves& o) { reflectivity = o.reflectivity; spinflip = o.spinflip; waves = o.waves; }
 
   std::complex<double> sum(const std::vector<double>& x, const event& e) const;
   std::vector<wave>& getWaves() { return waves; }
   const std::vector<wave>& getWaves() const { return waves; }
   size_t getNwaves() const { return waves.size(); }
+
+  double getEventWeight(const std::vector<double>& x, const event& e) const;
+  void print() { cout << "| ";for (size_t i = 0; i < waves.size(); i++) { cout << waves[i].getName() << " "; } cout << endl; }
+
+  ClassDefNV(coherent_waves, 1)
 };
 
 struct waveset : public std::vector<coherent_waves> {
 public:
+  waveset();
+
   size_t getNwaves() const {
     size_t count = 0;
     for (size_t i = 0; i < this->size(); i++)
@@ -86,6 +97,15 @@ public:
       }
     return count;
   }
+
+  double getEventWeight(const std::vector<double>& x, event& e) const {
+    double result = 0;
+    for (size_t i = 0; i < this->size(); i++)
+      result += (*this)[i].getEventWeight(x, e);
+    return result;
+  }
+
+  ClassDefNV(waveset, 1)
 };
 
 #endif

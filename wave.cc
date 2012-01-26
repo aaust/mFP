@@ -305,3 +305,33 @@ coherent_waves::sum(const vector<double>& x, const event& e) const
 
   return result;
 }
+
+
+double
+coherent_waves::getEventWeight(const vector<double>& x, const event& e) const
+{
+  double weight = 0;
+  vector<wave>::const_iterator wave1, wave2;
+  for (wave1 = this->waves.begin();
+       wave1 != this->waves.end();
+       wave1++)
+    {
+      complex<double> a1(x[wave1->getIndex()], x[wave1->getIndex()+1]);
+      for (wave2 = this->waves.begin();
+	   wave2 != this->waves.end();
+	   wave2++)
+	{
+	  complex<double> conj_a2(x[wave2->getIndex()], -x[wave2->getIndex()+1]);
+	  weight += real(a1 * conj_a2
+			 * e.decayAmplitude(this->reflectivity, *wave1)
+			 * e.decayAmplitude(this->reflectivity, *wave2));
+	}
+    }
+  return weight;
+}
+
+waveset::waveset() { return; }
+
+ClassImp(wave)
+ClassImp(coherent_waves)
+ClassImp(waveset)
