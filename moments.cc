@@ -38,7 +38,7 @@ main()
   wsNeg.waves = negative;
 
   waveset ws;
-  //ws.push_back(wsPos);
+  ws.push_back(wsPos);
   ws.push_back(wsNeg);
 
   size_t lastIdx = 0;

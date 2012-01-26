@@ -9,7 +9,7 @@
 
 using namespace std;
 
-#include "complexMatrix.h"
+//#include "complexMatrix.h"
 #include "bw.h"
 
 double
@@ -231,6 +231,7 @@ BW_exotic_pieta(double s)
   return BW(s, mPi, mEta, 1, 1.597, 0.340);
 }
 
+#if 0
 complex<double>
 Kmatrix_2_to_1(double s, double m1, double m2, int J,
 	       double mA, double GammaA0, double mB, double GammaB0)
@@ -519,6 +520,7 @@ Kmatrix_2_to_3(size_t iChannel, double s,
   return T[iChannel];
 }
 
+
 /*
 double
 fitFunc(double *x, double *p)
@@ -710,4 +712,6 @@ bw()
   g4->Draw("L");
   g5->Draw("L");
 }
+#endif
+
 #endif
