@@ -16,7 +16,7 @@ using namespace std;
 #include "gHist.h"
 #include "fitModel.h"
 
-const bool flipImag = false;
+const bool flipImag = true; //false;
 
 class chiSquare : public ROOT::Minuit2::FCNBase {
 public:
@@ -293,9 +293,9 @@ int main(int argc, char **argv)
   minuit->SetParameter(0, "D strength", vals[0], .1, 0, 0);
   //minuit->FixParameter(0);
   minuit->SetParameter(1, "a_2 mass", vals[1], 0.01, 0, 0);
-  //minuit->FixParameter(1);
+  minuit->FixParameter(1);
   minuit->SetParameter(2, "a_2 width", vals[2], 0.01, 0.0, 0.);
-  //minuit->FixParameter(2);
+  minuit->FixParameter(2);
   minuit->SetParameter(3, "a_2' mass", vals[3], 0.05, 1.5, 2.2);
   minuit->FixParameter(3);
   minuit->SetParameter(4, "a_2' width", vals[4], 0.2, 0.3, 1.);
@@ -315,13 +315,13 @@ int main(int argc, char **argv)
   //minuit->FixParameter(10);
 
   minuit->SetParameter(11, "G strength Re", vals[11], 0.1, 0, 0);
-  minuit->FixParameter(11);
+  //minuit->FixParameter(11);
   minuit->SetParameter(12, "G strength Im", vals[12], 0.1, 0, 0);
-  minuit->FixParameter(12);
+  //minuit->FixParameter(12);
   minuit->SetParameter(13, "a_4 mass", vals[13], 0.01, 0, 0);
-  minuit->FixParameter(13);
+  //minuit->FixParameter(13);
   minuit->SetParameter(14, "a_4 width", vals[14], 0.02, 0, 0);
-  minuit->FixParameter(14);
+  //minuit->FixParameter(14);
   minuit->SetParameter(15, "a_4' mass", vals[15], 0.01, 2.1, 10);
   minuit->FixParameter(15);
   minuit->SetParameter(16, "a_4' width", vals[16], 0.01, 0, 10);
@@ -331,14 +331,25 @@ int main(int argc, char **argv)
   minuit->SetParameter(18, "a_4' strength Im", vals[18], 0.1, 0, 0);
   minuit->FixParameter(18);
 
-  minuit->SetParameter(19, "D BG exp width", 3.25205, 0.1, 0, 10);
-  //minuit->FixParameter(19);
-  minuit->SetParameter(20, "D BG const", 0.38502, 0.1, 0, 0);
-  //minuit->FixParameter(20);
-  minuit->SetParameter(21, "D BG linear", 16.3077 / 26.3039, 0.1, 0, 0);
+  minuit->SetParameter(19, "D BG exp width", 3.246672960364, 0.1, 0, 10);
+  minuit->FixParameter(19);
+  minuit->SetParameter(20, "D BG const", 0.3924742977682, 0.1, 0, 0);
+  minuit->FixParameter(20);
+  minuit->SetParameter(21, "D BG linear", 15.89705694124, 0.1, 0, 0);
   //minuit->FixParameter(21);
-  minuit->SetParameter(22, "D BG quadratic", -13.71648 / 26.3039, 0.1, 0, 0);
-  //minuit->FixParameter(22);
+  minuit->SetParameter(22, "D BG quadratic", -13.36962331843, 0.1, 0, 0);
+  minuit->FixParameter(22);
+
+  /*
+  minuit->SetParameter(19, "D BG exp width", 0, 0.1, 0, 10);
+  minuit->FixParameter(19);
+  minuit->SetParameter(20, "D BG const", 0, 0.1, 0, 0);
+  minuit->FixParameter(20);
+  minuit->SetParameter(21, "D BG linear", 0, 0.1, 0, 0);
+  minuit->FixParameter(21);
+  minuit->SetParameter(22, "D BG quadratic", 0, 0.1, 0, 0);
+  minuit->FixParameter(22);
+  */
   /*
   minuit->SetParameter(23, "G BG exp width", 9.02584, 0.1, 0, 10);
   minuit->FixParameter(23);

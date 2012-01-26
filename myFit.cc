@@ -814,7 +814,8 @@ myFit()
 	{
 	  if (!startingValues[j].fixed)
 	    {
-	      minuit->SetParameter(j, startingValues[j].name.c_str(),
+	      //if (j != 0)
+		minuit->SetParameter(j, startingValues[j].name.c_str(),
 				   vStartingValues[j], 10/*vStartingValues[j]*0.01*/, 0, 0);
 	    }
 	  else
@@ -834,7 +835,7 @@ myFit()
 
       // Run minimizer.
       minuit->CreateMinimizer();
-      int iret = minuit->Minimize();//10000000, 1);
+      int iret = minuit->Minimize();
       sw.Stop();
       cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
 
@@ -1057,7 +1058,7 @@ myFit()
 	      
 		// Run minimizer.
 		minuit->CreateMinimizer();
-		iret = minuit->Minimize();//10000000,1);
+		iret = minuit->Minimize();
 		sw.Stop();
 		cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
 	    
