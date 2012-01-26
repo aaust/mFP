@@ -351,8 +351,8 @@ myFit()
   positive.push_back(wave("P+", 1, 1, nBins, lower, upper, true));
   positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
   //positive.push_back(wave("F+", 3, 1, nBins, lower, upper));
-  //positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
-  //positive.push_back(wave("D++", 2, 2, nBins, lower, upper));
+  positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
+  positive.push_back(wave("D++", 2, 2, nBins, lower, upper));
 
   vector<wave> negative;
   negative.push_back(wave("S0", 0, 0, nBins, lower, upper, true));
@@ -438,7 +438,7 @@ myFit()
   outTree->Branch("massHigh", &massHigh, "massHigh/D");
   outTree->Branch("values", values, branchDesc);
   outTree->Branch("covMat", "TMatrixDSym", &covMat);
-  outTree->GetUserInfo()->Add(new fitInfo(modelName, startingValues, nBins, threshold, binWidth, lastIdx));
+  outTree->GetUserInfo()->Add(new fitInfo(modelName, ws, startingValues, nBins, threshold, binWidth, lastIdx));
 
   /*  TTree* predictTree = new TTree("predictTree","Weighted MC");
   double weight(0);

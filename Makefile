@@ -1,5 +1,5 @@
 MYFIT_OBJECTS=myFit.o control.o wave.o event.o likelihood.o 3j.o fitInfo.o fitInfoDict.o
-MASSDEP_OBJECTS=massDep.o bw.o fitInfo.o fitInfoDict.o fitModel.o
+MASSDEP_OBJECTS=massDep.o bw.o fitInfo.o fitInfoDict.o fitModel.o wave.o event.o
 PREDICT_OBJECTS=predict.o bw.o
 MOMENTS_OBJECTS=moments.o 3j.o wave.o event.o
 OBJECTS=${MYFIT_OBJECTS} ${MASSDEP_OBJECTS} ${PREDICT_OBJECTS} ${MOMENTS_OBJECTS}
