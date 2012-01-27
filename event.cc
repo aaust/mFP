@@ -19,7 +19,7 @@ event::initAmpls()
 {
   // Surprisingly, it helps if only slightly to parallelize this loop,
   // spherical harmonics are expensive.
-#pragma omp parallel for
+  //#pragma omp parallel for
   for (size_t l = 0; l < 3; l++)
     for (size_t m = 0; m <= l; m++)
       ampls[l*(l+1)/2 + m] = ROOT::Math::sph_legendre(l, m, this->theta);
