@@ -124,7 +124,7 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
     = flatMC ? flatMCevents : binnedMCevents[currentBin];
 
   size_t nEv = pMCevents.size();
-#pragma omp parallel for reduction (+:sum)
+  //#pragma omp parallel for reduction (+:sum)
   for (size_t i = 0; i < nEv; i++)
     {
       // Forming this sum as REAL sum and with no conjugate, because
@@ -137,14 +137,14 @@ likelihood::MCweight(int reflectivity, const wave& w1, const wave& w2) const
     }
 
   /*
-    cout << "calculated MCweight " << sum / pMCevents.size()
+  cout << "calculated MCweight " << 16*atan(1) * sum / nEv
     << " from " << pMCevents.size() << " MC events for "
     << "(l1,m1,l2,m2) = "
     << "(" << w1.l << "," << w1.m << "," << w2.l << "," << w2.m << ")"
     << endl;
   */
 
-  return weights[id] = sum / pMCevents.size();
+  return weights[id] = 4*M_PI * sum / nEv;
 }
 
 #if 0

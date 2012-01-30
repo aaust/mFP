@@ -79,6 +79,9 @@ public:
   size_t
   eventsInBin() const { return binnedRDevents[currentBin].size(); }
 
+  size_t
+  MCeventsInBin() const { return (size_t)(binnedMCevents[currentBin].size()/* / binnedEtaAcc[currentBin]*/); }
+
   void
   clearWeights() { weights.clear(); }
 

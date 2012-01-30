@@ -8,30 +8,10 @@ using namespace std;
 
 #include "TFile.h"
 #include "TTree.h"
-#include "TRandom1.h"
+#include "TLorentzVector.h"
 
 #include "gHist.h"
 #include "fitInfo.h"
-
-
-double
-decayAmplitude(int reflectivity, int l, int m, double costh, double phi)
-{
-  double spherical;
-  spherical = ROOT::Math::sph_legendre(l, m, acos(costh));
-  double factor = .5; //sqrt(nrdevents);
-  if (m != 0)
-    factor *= sqrt(2.);
-
-  double result;
-  if (reflectivity == +1)
-    result = factor*spherical*sin(m*phi);
-  else
-    result = factor*spherical*cos(m*phi);
-
-  //lookupTable[id] = result;
-  return result; // * this->tPrime*exp(-7.*this->tPrime);
-}
 
 
 int
@@ -71,13 +51,17 @@ main()
 
   double *values = new double[info->getNvars()];
   double massLow, massHigh;
+  UInt_t NMCevents;
   treeResult->SetBranchAddress("massLow", &massLow);
   treeResult->SetBranchAddress("massHigh", &massHigh);
   treeResult->SetBranchAddress("values", values);
+  treeResult->SetBranchAddress("NMCevents", &NMCevents);
+
 
   vector<double> lowerBounds;
   vector<double> upperBounds;
   vector<vector<double> > allValues;
+  vector<UInt_t> NMCperBin;
   for (Long_t i = 0; i < treeResult->GetEntries(); i++)
     {
       // This assumes the bins are sorted.
@@ -85,6 +69,7 @@ main()
       lowerBounds.push_back(massLow);
       upperBounds.push_back(massHigh);
       allValues.push_back(vector<double>(values,values+info->getNvars()));
+      NMCperBin.push_back(NMCevents);
     }
 
   const char *fnMC = "/data/zup/diefenbach/trees/EtaPr3Pi.root";
@@ -139,6 +124,18 @@ main()
   float pg2Y; t->SetBranchAddress("pg2Y", &pg2Y);
   float pg2Z; t->SetBranchAddress("pg2Z", &pg2Z);
   float pg2E; t->SetBranchAddress("pg2E", &pg2E);
+  float pPim3X; t->SetBranchAddress("pPim3X", &pPim3X);
+  float pPim3Y; t->SetBranchAddress("pPim3Y", &pPim3Y);
+  float pPim3Z; t->SetBranchAddress("pPim3Z", &pPim3Z);
+  float pPim3E; t->SetBranchAddress("pPim3E", &pPim3E);
+  float pPip3X; t->SetBranchAddress("pPip3X", &pPip3X);
+  float pPip3Y; t->SetBranchAddress("pPip3Y", &pPip3Y);
+  float pPip3Z; t->SetBranchAddress("pPip3Z", &pPip3Z);
+  float pPip3E; t->SetBranchAddress("pPip3E", &pPip3E);
+  float pEta3X; t->SetBranchAddress("pEta3X", &pEta3X);
+  float pEta3Y; t->SetBranchAddress("pEta3Y", &pEta3Y);
+  float pEta3Z; t->SetBranchAddress("pEta3Z", &pEta3Z);
+  float pEta3E; t->SetBranchAddress("pEta3E", &pEta3E);
   float pPimX; t->SetBranchAddress("pPimX", &pPimX);
   float pPimY; t->SetBranchAddress("pPimY", &pPimY);
   float pPimZ; t->SetBranchAddress("pPimZ", &pPimZ);
@@ -146,10 +143,11 @@ main()
   
   TFile *fOutput = TFile::Open("predict.root", "RECREATE");
 
-  for (Long_t i = 0; i < t->GetEntries(); i++)
+  Long_t nTotal = t->GetEntries();
+  for (Long_t i = 0; i < nTotal; i++)
     {
-      if ((i+1)*10LL/t->GetEntries() > i*10/t->GetEntries())
-	cout << (i+1)*100/t->GetEntries() << "% " << flush;
+      if ((i+1)*10LL/nTotal > i*10/nTotal)
+	cout << (i+1)*100/nTotal << "% " << flush;
 
       t->GetEntry(i);
       if (!acc)
@@ -181,24 +179,37 @@ main()
 	  continue;
 	}
 
-      double weight = info->getWaveSet().getEventWeight(allValues[idx], e);
+      TLorentzVector lvEta3(pEta3X, pEta3Y, pEta3Z, pEta3E);
+      TLorentzVector lvPim3(pPim3X, pPim3Y, pPim3Z, pPim3E);
+      TLorentzVector lvPip3(pPip3X, pPip3Y, pPip3Z, pPip3E);
+
+      double weight = info->getWaveSet()[0].getEventWeight(allValues[idx], e) / NMCperBin[idx];
       gHist.Fill("hMvsCosth", "m vs cos th",
 		 info->getNbins(), info->getLower(), info->getUpper(), 100, -1, 1,
 		 mX, costh, weight);
-      gHist.Fill("hpvz", "pvz", 500, -100, 0,
-		 pvz, weight);
-      gHist.Fill("htPr", "t'", 1000, 0, 1,
-		 tPr, weight);
-      gHist.Fill("hXYECAL", "XY ECAL", 200, -.04, .04, 200, -0.04, 0.04,
-		 pg1X / pg1Z, pg1Y / pg1Z, weight);
-      gHist.Fill("hXYECAL", "XY ECAL", 200, -.04, .04, 200, -0.04, 0.04,
-		 pg2X / pg2Z, pg2Y / pg2Z, weight);
-      gHist.Fill("hEvsAngle", "E vs angle", 200, 0, 200, 100, 0, 0.06,
-		 pg1E, hypot(pg1X, pg1Y) / pg1Z, weight);
-      gHist.Fill("hEvsAngle", "E vs angle", 200, 0, 200, 100, 0, 0.06,
-		 pg2E, hypot(pg2X, pg2Y) / pg2Z, weight);
-      if (mX < 2)
+      //if (1.9 < mX && mX < 2.1)
 	{
+	  gHist.Fill("hpvz", "pvz", 500, -100, 0,
+		     pvz, weight);
+	  gHist.Fill("htPr", "t'", 1000, 0, 1,
+		     tPr, weight);
+	  gHist.Fill("hXYECAL", "XY ECAL", 200, -.04, .04, 200, -0.04, 0.04,
+		     pg1X / pg1Z, pg1Y / pg1Z, weight);
+	  gHist.Fill("hXYECAL", "XY ECAL", 200, -.04, .04, 200, -0.04, 0.04,
+		     pg2X / pg2Z, pg2Y / pg2Z, weight);
+	  gHist.Fill("hEvsAngle", "E vs angle", 200, 0, 200, 100, 0, 0.06,
+		     pg1E, hypot(pg1X, pg1Y) / pg1Z, weight);
+	  gHist.Fill("hEvsAngle", "E vs angle", 200, 0, 200, 100, 0, 0.06,
+		     pg2E, hypot(pg2X, pg2Y) / pg2Z, weight);
+
+	  gHist.Fill("hDalitz", "Dalitz Plot;pi+eta;pi-eta", 50, 0.45, 0.7, 50, 0.45, 0.7,
+		     (lvEta3 + lvPip3).M2(), (lvEta3 + lvPim3).M2());
+	  gHist.Fill("hDalitzFlipped", "Dalitz Plot;pi+eta;pi-pi+", 50, 0.45, 0.75, 50, 0.06, 0.18,
+		     (lvEta3 + lvPip3).M2(), (lvPip3 + lvPim3).M2());
+		     
+	  //}
+	  //      if (mX < 2)
+	  //{
 	  gHist.Fill("hpPimE", "energy of non-eta' #pi-",
 		     500, 0, 200,
 		     pPimE, weight);

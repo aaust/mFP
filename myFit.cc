@@ -123,11 +123,13 @@ public:
 	// RD likelihood calculation as follows.
 	result += (myLs[i]->eventsInBin()*log(BR) + myLs[i]->calc_rd_likelihood(x)
 		   - BR*myLs[i]->calc_mc_likelihood(x));
+	//cout << "nevents = " << myLs[i]->eventsInBin() << " likelihood = " << myLs[i]->calc_rd_likelihood(x) << " - " << myLs[i]->calc_mc_likelihood(x) << endl;
       }
     return -result;
   }
 
   size_t getNChannels() const { return myLs.size(); }
+  size_t MCeventsInBin() const { size_t sum = 0; for (size_t i = 0; i < myLs.size(); i++) sum += myLs[i]->MCeventsInBin(); return sum; }
 };
 
 
@@ -432,12 +434,14 @@ myFit()
   TTree *outTree = new TTree("tFitResults", "fit results tree");
   double *values = new double[lastIdx];
   TMatrixDSym *covMat = new TMatrixDSym(lastIdx);
+  UInt_t NMCevents;
   char branchDesc[99];
   snprintf(branchDesc, 99, "values[%zd]/D", lastIdx);
   outTree->Branch("massLow", &massLow, "massLow/D");
   outTree->Branch("massHigh", &massHigh, "massHigh/D");
   outTree->Branch("values", values, branchDesc);
   outTree->Branch("covMat", "TMatrixDSym", &covMat);
+  outTree->Branch("NMCevents", &NMCevents, "NMCevents/i");
   outTree->GetUserInfo()->Add(new fitInfo(modelName, ws, startingValues, nBins, threshold, binWidth, lastIdx));
 
   /*  TTree* predictTree = new TTree("predictTree","Weighted MC");
@@ -734,7 +738,10 @@ myFit()
 	  MCevents.reserve(NFLATMCEVENTS);
 	  for (int iMC = 0; iMC < NFLATMCEVENTS; iMC++)
 	    {
-	      event e(acos(gRandom->Uniform(-1,1)), gRandom->Uniform(-M_PI, M_PI));
+	      double costh = gRandom->Uniform(-1,1);
+	      double phi = gRandom->Uniform(-M_PI, M_PI);
+	      //cout << costh << " " << acos(costh) << " " << phi << endl;
+	      event e(acos(costh), phi);
 	      MCevents.push_back(e);
 	    }
 	}
@@ -906,6 +913,7 @@ myFit()
 		    }
 	      }
 
+	  NMCevents = myL.MCeventsInBin();
 	  outTree->Fill();
 
 	  for (int j = 0; j < minuit->GetNumberTotalParameters(); j++)
