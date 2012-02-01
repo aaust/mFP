@@ -14,9 +14,22 @@ using namespace std;
 #include "fitInfo.h"
 
 
-namespace {
+class plotter 
+{
+public:
+  virtual Long_t getEntries() = 0;
+  virtual void fillHistograms(const fitInfo* info, double weight) = 0;
+  virtual void getEntry(Long_t n) = 0;
+  virtual bool isAccepted() = 0;
+  virtual event getEvent() = 0;
+};
 
+
+class tobiPlotter : public plotter
+{
+ private:
   TTree *trMC;
+  TFile *fMC;
 
   // General
   int acc;
@@ -58,111 +71,110 @@ namespace {
   TLorentzVector lvPim3;
   TLorentzVector lvPip3;
 
-  void
-  prepareInTree(const char* fnMC)
-  {
-    TDirectory *oldDir = gDirectory;
-    TFile *fMC = TFile::Open(fnMC, "READ");
-    if (!fMC)
-      {
-	cerr << "Can't open input file '" << fnMC << "'." << endl;
-	abort();
-      }
+ public:
+  tobiPlotter(const char* fnMC)
+    {
+      TDirectory *oldDir = gDirectory;
+      fMC = TFile::Open(fnMC, "READ");
+      if (!fMC)
+	{
+	  cerr << "Can't open input file '" << fnMC << "'." << endl;
+	  abort();
+	}
 
-    fMC->GetObject("trMC", trMC);
-    if (!trMC)
-      {
-	cerr << "Can't find tree 'trMC' in file '" << fnMC << "'." << endl;
-	abort();
-      }
-    oldDir->cd();
+      fMC->GetObject("trMC", trMC);
+      if (!trMC)
+	{
+	  cerr << "Can't find tree 'trMC' in file '" << fnMC << "'." << endl;
+	  abort();
+	}
+      oldDir->cd();
 
-    TTree *t = trMC;
-    t->SetBranchAddress("accepted", &acc);
-    t->SetBranchAddress("mX", &mX);
-    t->SetBranchAddress("tPrime", &tPr);
-    t->SetBranchAddress("costhGJ", &costh);
-    t->SetBranchAddress("phiGJ", &phi);
+      TTree *t = trMC;
+      t->SetBranchAddress("accepted", &acc);
+      t->SetBranchAddress("mX", &mX);
+      t->SetBranchAddress("tPrime", &tPr);
+      t->SetBranchAddress("costhGJ", &costh);
+      t->SetBranchAddress("phiGJ", &phi);
 
-    t->SetBranchAddress("pvx", &pvx);
-    t->SetBranchAddress("pvy", &pvy);
-    t->SetBranchAddress("pvz", &pvz);
-    t->SetBranchAddress("pg1X", &pg1X);
-    t->SetBranchAddress("pg1Y", &pg1Y);
-    t->SetBranchAddress("pg1Z", &pg1Z);
-    t->SetBranchAddress("pg1E", &pg1E);
-    t->SetBranchAddress("pg2X", &pg2X);
-    t->SetBranchAddress("pg2Y", &pg2Y);
-    t->SetBranchAddress("pg2Z", &pg2Z);
-    t->SetBranchAddress("pg2E", &pg2E);
-    t->SetBranchAddress("pPim3X", &pPim3X);
-    t->SetBranchAddress("pPim3Y", &pPim3Y);
-    t->SetBranchAddress("pPim3Z", &pPim3Z);
-    t->SetBranchAddress("pPim3E", &pPim3E);
-    t->SetBranchAddress("pPip3X", &pPip3X);
-    t->SetBranchAddress("pPip3Y", &pPip3Y);
-    t->SetBranchAddress("pPip3Z", &pPip3Z);
-    t->SetBranchAddress("pPip3E", &pPip3E);
-    t->SetBranchAddress("pEta3X", &pEta3X);
-    t->SetBranchAddress("pEta3Y", &pEta3Y);
-    t->SetBranchAddress("pEta3Z", &pEta3Z);
-    t->SetBranchAddress("pEta3E", &pEta3E);
-    t->SetBranchAddress("pPimX", &pPimX);
-    t->SetBranchAddress("pPimY", &pPimY);
-    t->SetBranchAddress("pPimZ", &pPimZ);
-    t->SetBranchAddress("pPimE", &pPimE);
-  }
+      t->SetBranchAddress("pvx", &pvx);
+      t->SetBranchAddress("pvy", &pvy);
+      t->SetBranchAddress("pvz", &pvz);
+      t->SetBranchAddress("pg1X", &pg1X);
+      t->SetBranchAddress("pg1Y", &pg1Y);
+      t->SetBranchAddress("pg1Z", &pg1Z);
+      t->SetBranchAddress("pg1E", &pg1E);
+      t->SetBranchAddress("pg2X", &pg2X);
+      t->SetBranchAddress("pg2Y", &pg2Y);
+      t->SetBranchAddress("pg2Z", &pg2Z);
+      t->SetBranchAddress("pg2E", &pg2E);
+      t->SetBranchAddress("pPim3X", &pPim3X);
+      t->SetBranchAddress("pPim3Y", &pPim3Y);
+      t->SetBranchAddress("pPim3Z", &pPim3Z);
+      t->SetBranchAddress("pPim3E", &pPim3E);
+      t->SetBranchAddress("pPip3X", &pPip3X);
+      t->SetBranchAddress("pPip3Y", &pPip3Y);
+      t->SetBranchAddress("pPip3Z", &pPip3Z);
+      t->SetBranchAddress("pPip3E", &pPip3E);
+      t->SetBranchAddress("pEta3X", &pEta3X);
+      t->SetBranchAddress("pEta3Y", &pEta3Y);
+      t->SetBranchAddress("pEta3Z", &pEta3Z);
+      t->SetBranchAddress("pEta3E", &pEta3E);
+      t->SetBranchAddress("pPimX", &pPimX);
+      t->SetBranchAddress("pPimY", &pPimY);
+      t->SetBranchAddress("pPimZ", &pPimZ);
+      t->SetBranchAddress("pPimE", &pPimE);
+    }
 
-  // This not also reads the next entry from the tree, it also does
-  // stuff like translating between MC and RD representations.  Right
-  // now it only gets the event from the tree and fills the
-  // TLorentzVectors.
-  void
-  getEntry(Long_t iEntry)
-  {
-    trMC->GetEntry(iEntry);
+  ~tobiPlotter() {
+  delete fMC;
+}
+;
 
-    lvEta3.SetXYZT(pEta3X, pEta3Y, pEta3Z, pEta3E);
-    lvPim3.SetXYZT(pPim3X, pPim3Y, pPim3Z, pPim3E);
-    lvPip3.SetXYZT(pPip3X, pPip3Y, pPip3Z, pPip3E);
-  }
+  Long_t getEntries()
+  { return trMC->GetEntries(); }
+  void getEntry(Long_t n)
+  { trMC->GetEntry(n); }
 
-  void
-  fillHistograms(const fitInfo* info, double weight)
+  bool isAccepted() { return acc; }
+
+  event getEvent() { return event(mX, tPr, acos(costh), phi); }
+
+  void fillHistograms(const fitInfo* info, double weight)
   {
     gHist.Fill("hMvsCosth", "m vs cos th",
 	       info->getNbins(), info->getLower(), info->getUpper(), 100, -1, 1,
 	       mX, costh, weight);
     //if (1.9 < mX && mX < 2.1)
-      {
-	gHist.Fill("hpvz", "pvz", 500, -100, 0,
-		   pvz, weight);
-	gHist.Fill("htPr", "t'", 1000, 0, 1,
-		   tPr, weight);
-	gHist.Fill("hXYECAL", "XY ECAL", 200, -.04, .04, 200, -0.04, 0.04,
-		   pg1X / pg1Z, pg1Y / pg1Z, weight);
-	gHist.Fill("hXYECAL", "XY ECAL", 200, -.04, .04, 200, -0.04, 0.04,
-		   pg2X / pg2Z, pg2Y / pg2Z, weight);
-	gHist.Fill("hEvsAngle", "E vs angle", 200, 0, 200, 100, 0, 0.06,
-		   pg1E, hypot(pg1X, pg1Y) / pg1Z, weight);
-	gHist.Fill("hEvsAngle", "E vs angle", 200, 0, 200, 100, 0, 0.06,
-		   pg2E, hypot(pg2X, pg2Y) / pg2Z, weight);
+    {
+      gHist.Fill("hpvz", "pvz", 500, -100, 0,
+		 pvz, weight);
+      gHist.Fill("htPr", "t'", 1000, 0, 1,
+		 tPr, weight);
+      gHist.Fill("hXYECAL", "XY ECAL", 200, -.04, .04, 200, -0.04, 0.04,
+		 pg1X / pg1Z, pg1Y / pg1Z, weight);
+      gHist.Fill("hXYECAL", "XY ECAL", 200, -.04, .04, 200, -0.04, 0.04,
+		 pg2X / pg2Z, pg2Y / pg2Z, weight);
+      gHist.Fill("hEvsAngle", "E vs angle", 200, 0, 200, 100, 0, 0.06,
+		 pg1E, hypot(pg1X, pg1Y) / pg1Z, weight);
+      gHist.Fill("hEvsAngle", "E vs angle", 200, 0, 200, 100, 0, 0.06,
+		 pg2E, hypot(pg2X, pg2Y) / pg2Z, weight);
 
-	gHist.Fill("hDalitz", "Dalitz Plot;pi+eta;pi-eta", 50, 0.45, 0.7, 50, 0.45, 0.7,
-		   (lvEta3 + lvPip3).M2(), (lvEta3 + lvPim3).M2());
-	gHist.Fill("hDalitzFlipped", "Dalitz Plot;pi+eta;pi-pi+", 50, 0.45, 0.75, 50, 0.06, 0.18,
-		   (lvEta3 + lvPip3).M2(), (lvPip3 + lvPim3).M2());
+      gHist.Fill("hDalitz", "Dalitz Plot;pi+eta;pi-eta", 50, 0.45, 0.7, 50, 0.45, 0.7,
+		 (lvEta3 + lvPip3).M2(), (lvEta3 + lvPim3).M2());
+      gHist.Fill("hDalitzFlipped", "Dalitz Plot;pi+eta;pi-pi+", 50, 0.45, 0.75, 50, 0.06, 0.18,
+		 (lvEta3 + lvPip3).M2(), (lvPip3 + lvPim3).M2());
 		     
-	//}
-	//      if (mX < 2)
-	//{
-	gHist.Fill("hpPimE", "energy of non-eta' #pi-",
-		   500, 0, 200,
-		   pPimE, weight);
-      }
+      //}
+      //      if (mX < 2)
+      //{
+      gHist.Fill("hpPimE", "energy of non-eta' #pi-",
+		 500, 0, 200,
+		 pPimE, weight);
+    }
   }
+};
 
-}
 
 int
 main()
@@ -223,48 +235,46 @@ main()
     }
 
   const char *fnMC = "/data/zup/diefenbach/trees/EtaPr3Pi.root";
-  prepareInTree(fnMC);
+  plotter *currentPlotter = new tobiPlotter(fnMC);
   
   TFile *fOutput = TFile::Open("predict.root", "RECREATE");
 
-  Long_t nTotal = trMC->GetEntries();
+  Long_t nTotal = currentPlotter->getEntries();
   for (Long_t i = 0; i < nTotal; i++)
     {
-      if ((i+1)*10LL/nTotal > i*10/nTotal)
-	cout << (i+1)*100/nTotal << "% " << flush;
+      if ((i+1)*10LL/nTotal > i*10LL/nTotal)
+	cout << (i+1)*100LL/nTotal << "% " << flush;
 
-      getEntry(i);
-      if (!acc)
+      currentPlotter->getEntry(i);
+      if (!currentPlotter->isAccepted())
 	continue;
-      event e(mX, tPr, acos(costh), phi);
+      event e = currentPlotter->getEvent();
 
-      if (mX > upperBounds[upperBounds.size() - 1]
-	  || mX < lowerBounds[0])
+      if (e.mass > upperBounds[upperBounds.size() - 1]
+	  || e.mass < lowerBounds[0])
 	continue;
 
       // Find bin containing this event.
       size_t idx = lowerBounds.size() / 2;
       size_t limitLow = 0;
       size_t limitHigh = lowerBounds.size();
-      while (!(mX >= lowerBounds[idx] && mX < upperBounds[idx])
+      while (!(e.mass >= lowerBounds[idx] && e.mass < upperBounds[idx])
 	     && limitLow < limitHigh)
 	{
-	  if (mX < lowerBounds[idx])
+	  if (e.mass < lowerBounds[idx])
 	    limitHigh = idx;
 	  else
 	    limitLow = idx+1;
 	  idx = (limitHigh + limitLow) / 2;
-	  //cout << mX << idx << " " << limitLow << " " << limitHigh
-	  // << " " << lowerBounds[limitLow] << " " << upperBounds[limitHigh-1] << endl;
 	}
       if (limitLow >= limitHigh)
 	{
-	  cout << "no bin found for " << mX << endl;
+	  cout << "no bin found for " << e.mass << endl;
 	  continue;
 	}
 
       double weight = info->getWaveSet().getEventWeight(allValues[idx], e) / NMCperBin[idx];
-      fillHistograms(info, weight);
+      currentPlotter->fillHistograms(info, weight);
     }
   cout << endl;
   fOutput->Write();
