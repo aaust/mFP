@@ -292,7 +292,7 @@ likelihood::fillPredict(const vector<double>& x, TH2* hth, TH2* hph ) const
 		   wave2++)
 		{
 		  complex<double> conj_a2(x[wave2->getIndex()], -x[wave2->getIndex()+1]);
-		  weight +=  real(a1 * conj_a2
+ 		  weight +=  real(a1 * conj_a2
 				  * pMCevents[i].decayAmplitude(it->reflectivity, *wave1)
 				  * pMCevents[i].decayAmplitude(it->reflectivity, *wave2));
 		}

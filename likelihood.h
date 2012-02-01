@@ -80,7 +80,7 @@ public:
   eventsInBin() const { return binnedRDevents[currentBin].size(); }
 
   size_t
-  MCeventsInBin() const { return (size_t)(binnedMCevents[currentBin].size()/* / binnedEtaAcc[currentBin]*/); }
+  MCeventsInBin() const { return (size_t)(binnedMCevents[currentBin].size() / binnedEtaAcc[currentBin]); }
 
   void
   clearWeights() { weights.clear(); }

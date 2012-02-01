@@ -327,7 +327,7 @@ coherent_waves::getEventWeight(const vector<double>& x, const event& e) const
 			 * e.decayAmplitude(this->reflectivity, *wave2));
 	}
     }
-  return weight;
+  return 4 * M_PI * weight;
 }
 
 waveset::waveset() { return; }
