@@ -263,7 +263,7 @@ main()
 	  continue;
 	}
 
-      double weight = info->getWaveSet()[0].getEventWeight(allValues[idx], e) / NMCperBin[idx];
+      double weight = info->getWaveSet().getEventWeight(allValues[idx], e) / NMCperBin[idx];
       fillHistograms(info, weight);
     }
   cout << endl;
