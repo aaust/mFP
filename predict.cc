@@ -12,7 +12,7 @@ using namespace std;
 
 #include "gHist.h"
 #include "fitInfo.h"
-
+#include "control.h"
 
 class plotter 
 {
@@ -24,10 +24,9 @@ public:
   virtual event getEvent() = 0;
 };
 
-
 class tobiPlotter : public plotter
 {
- private:
+private:
   TTree *trMC;
   TFile *fMC;
 
@@ -71,75 +70,75 @@ class tobiPlotter : public plotter
   TLorentzVector lvPim3;
   TLorentzVector lvPip3;
 
- public:
+public:
   tobiPlotter(const char* fnMC)
-    {
-      TDirectory *oldDir = gDirectory;
-      fMC = TFile::Open(fnMC, "READ");
-      if (!fMC)
-	{
-	  cerr << "Can't open input file '" << fnMC << "'." << endl;
-	  abort();
-	}
+  {
+    TDirectory *oldDir = gDirectory;
+    fMC = TFile::Open(fnMC, "READ");
+    if (!fMC)
+      {
+	cerr << "Can't open input file '" << fnMC << "'." << endl;
+	abort();
+      }
 
-      fMC->GetObject("trMC", trMC);
-      if (!trMC)
-	{
-	  cerr << "Can't find tree 'trMC' in file '" << fnMC << "'." << endl;
-	  abort();
-	}
-      oldDir->cd();
+    fMC->GetObject("trMC", trMC);
+    if (!trMC)
+      {
+	cerr << "Can't find tree 'trMC' in file '" << fnMC << "'." << endl;
+	abort();
+      }
+    oldDir->cd();
 
-      TTree *t = trMC;
-      t->SetBranchAddress("accepted", &acc);
-      t->SetBranchAddress("mX", &mX);
-      t->SetBranchAddress("tPrime", &tPr);
-      t->SetBranchAddress("costhGJ", &costh);
-      t->SetBranchAddress("phiGJ", &phi);
+    TTree *t = trMC;
+    t->SetBranchAddress("accepted", &acc);
+    t->SetBranchAddress("mX", &mX);
+    t->SetBranchAddress("tPrime", &tPr);
+    t->SetBranchAddress("costhGJ", &costh);
+    t->SetBranchAddress("phiGJ", &phi);
 
-      t->SetBranchAddress("pvx", &pvx);
-      t->SetBranchAddress("pvy", &pvy);
-      t->SetBranchAddress("pvz", &pvz);
-      t->SetBranchAddress("pg1X", &pg1X);
-      t->SetBranchAddress("pg1Y", &pg1Y);
-      t->SetBranchAddress("pg1Z", &pg1Z);
-      t->SetBranchAddress("pg1E", &pg1E);
-      t->SetBranchAddress("pg2X", &pg2X);
-      t->SetBranchAddress("pg2Y", &pg2Y);
-      t->SetBranchAddress("pg2Z", &pg2Z);
-      t->SetBranchAddress("pg2E", &pg2E);
-      t->SetBranchAddress("pPim3X", &pPim3X);
-      t->SetBranchAddress("pPim3Y", &pPim3Y);
-      t->SetBranchAddress("pPim3Z", &pPim3Z);
-      t->SetBranchAddress("pPim3E", &pPim3E);
-      t->SetBranchAddress("pPip3X", &pPip3X);
-      t->SetBranchAddress("pPip3Y", &pPip3Y);
-      t->SetBranchAddress("pPip3Z", &pPip3Z);
-      t->SetBranchAddress("pPip3E", &pPip3E);
-      t->SetBranchAddress("pEta3X", &pEta3X);
-      t->SetBranchAddress("pEta3Y", &pEta3Y);
-      t->SetBranchAddress("pEta3Z", &pEta3Z);
-      t->SetBranchAddress("pEta3E", &pEta3E);
-      t->SetBranchAddress("pPimX", &pPimX);
-      t->SetBranchAddress("pPimY", &pPimY);
-      t->SetBranchAddress("pPimZ", &pPimZ);
-      t->SetBranchAddress("pPimE", &pPimE);
-    }
-
+    t->SetBranchAddress("pvx", &pvx);
+    t->SetBranchAddress("pvy", &pvy);
+    t->SetBranchAddress("pvz", &pvz);
+    t->SetBranchAddress("pg1X", &pg1X);
+    t->SetBranchAddress("pg1Y", &pg1Y);
+    t->SetBranchAddress("pg1Z", &pg1Z);
+    t->SetBranchAddress("pg1E", &pg1E);
+    t->SetBranchAddress("pg2X", &pg2X);
+    t->SetBranchAddress("pg2Y", &pg2Y);
+    t->SetBranchAddress("pg2Z", &pg2Z);
+    t->SetBranchAddress("pg2E", &pg2E);
+    t->SetBranchAddress("pPim3X", &pPim3X);
+    t->SetBranchAddress("pPim3Y", &pPim3Y);
+    t->SetBranchAddress("pPim3Z", &pPim3Z);
+    t->SetBranchAddress("pPim3E", &pPim3E);
+    t->SetBranchAddress("pPip3X", &pPip3X);
+    t->SetBranchAddress("pPip3Y", &pPip3Y);
+    t->SetBranchAddress("pPip3Z", &pPip3Z);
+    t->SetBranchAddress("pPip3E", &pPip3E);
+    t->SetBranchAddress("pEta3X", &pEta3X);
+    t->SetBranchAddress("pEta3Y", &pEta3Y);
+    t->SetBranchAddress("pEta3Z", &pEta3Z);
+    t->SetBranchAddress("pEta3E", &pEta3E);
+    t->SetBranchAddress("pPimX", &pPimX);
+    t->SetBranchAddress("pPimY", &pPimY);
+    t->SetBranchAddress("pPimZ", &pPimZ);
+    t->SetBranchAddress("pPimE", &pPimE);
+  }
+  
   ~tobiPlotter() {
-  delete fMC;
-}
-;
-
+    delete fMC;
+  }
+  
+  
   Long_t getEntries()
   { return trMC->GetEntries(); }
   void getEntry(Long_t n)
   { trMC->GetEntry(n); }
-
+  
   bool isAccepted() { return acc; }
-
+  
   event getEvent() { return event(mX, tPr, acos(costh), phi); }
-
+  
   void fillHistograms(const fitInfo* info, double weight)
   {
     gHist.Fill("hMvsCosth", "m vs cos th",
@@ -175,10 +174,131 @@ class tobiPlotter : public plotter
   }
 };
 
+class alexPlotter : public plotter
+{
+private:
+  TTree *trMC;
+  TFile *fMC;
 
+  // General
+  int acc;
+  float mX;
+  float tPr;
+  float costh;
+  float phi;
+
+  // specific for event type
+  float pvx;
+  float pvy;
+  float pvz;
+  float pPX;
+  float pPY;
+  float pPZ;
+  float pPE;
+  float pPipX;
+  float pPipY;
+  float pPipZ;
+  float pPipE;
+  float pPimX;
+  float pPimY;
+  float pPimZ;
+  float pPimE;
+  
+public:
+  alexPlotter(const char* fnMC)
+  {
+    TDirectory *oldDir = gDirectory;
+    fMC = TFile::Open(fnMC, "READ");
+    if (!fMC)
+      {
+	cerr << "Can't open input file '" << fnMC << "'." << endl;
+	abort();
+      }
+    
+    fMC->GetObject("trMC", trMC);
+    if (!trMC)
+      {
+	cerr << "Can't find tree 'trMC' in file '" << fnMC << "'." << endl;
+	abort();
+      }
+    oldDir->cd();
+    
+    TTree *t = trMC;
+    t->SetBranchAddress("accepted", &acc);
+    t->SetBranchAddress("mX", &mX);
+    t->SetBranchAddress("tPrime", &tPr);
+    t->SetBranchAddress("costhGJ", &costh);
+    t->SetBranchAddress("phiGJ", &phi);
+    
+    t->SetBranchAddress("pvx", &pvx);
+    t->SetBranchAddress("pvy", &pvy);
+    t->SetBranchAddress("pvz", &pvz);
+    t->SetBranchAddress("pPX", &pPX);
+    t->SetBranchAddress("pPY", &pPY);
+    t->SetBranchAddress("pPZ", &pPZ);
+    t->SetBranchAddress("pPE", &pPE);
+    t->SetBranchAddress("pPipX", &pPipX);
+    t->SetBranchAddress("pPipY", &pPipY);
+    t->SetBranchAddress("pPipZ", &pPipZ);
+    t->SetBranchAddress("pPipE", &pPipE);
+    t->SetBranchAddress("pPimX", &pPimX);
+    t->SetBranchAddress("pPimY", &pPimY);
+    t->SetBranchAddress("pPimZ", &pPimZ);
+    t->SetBranchAddress("pPimE", &pPimE);
+  }
+  
+  ~alexPlotter() {
+    delete fMC;
+  }
+  
+  Long_t getEntries()
+  { return trMC->GetEntries(); }
+  void getEntry(Long_t n)
+  { trMC->GetEntry(n); }
+  
+  bool isAccepted() { return acc; }
+  
+  event getEvent() { return event(mX, tPr, acos(costh), phi); }
+  
+  void fillHistograms(const fitInfo* info, double weight)
+  {
+    gHist.Fill("hMvsCosth", "m(X) vs cos(#theta)",
+	       info->getNbins(), info->getLower(), info->getUpper(), 100, -1, 1,
+	       mX, costh, weight);
+    //if ((fabs(costh)) < 0.85)
+    //if ((fabs(costh)) < (-0.125*mX + 1.05))
+    gHist.Fill("hMvsPhi", "m vs #phi",
+	       info->getNbins(), info->getLower(), info->getUpper(), 100, -M_PI, M_PI,
+	       mX, phi, weight);
+    gHist.Fill("hM", "m",
+	       info->getNbins(), info->getLower(), info->getUpper(),
+	       mX, weight);
+    gHist.Fill("hpvz", "Primary Vertex along Z", 500, -100, 0,
+	       pvz, weight);
+    gHist.Fill("htPr", "t'", 1000, 0, 1,
+	       tPr, weight);
+    gHist.Fill("hpPE", "energy of proton",
+	       500, 0, 200,
+	       pPE, weight);
+    gHist.Fill("hpPipE", "energy of #pi+",
+	       500, 0, 200,
+	       pPipE, weight);
+    gHist.Fill("hpPimE", "energy of #pi-",
+	       500, 0, 200,
+	       pPimE, weight);
+  }
+};
+  
 int
 main()
 {
+  /*const char *controlfn = "control.txt";
+    if (!readControlFile(controlfn))
+    {
+    return 1;
+    }
+  */
+  
   const char *fnResult = "out00.root";
   TFile *fResult = TFile::Open(fnResult, "READ");
   if (!fResult)
@@ -234,8 +354,10 @@ main()
       NMCperBin.push_back(NMCevents);
     }
 
-  const char *fnMC = "/data/zup/diefenbach/trees/EtaPr3Pi.root";
-  plotter *currentPlotter = new tobiPlotter(fnMC);
+  //const char* fnMC = MCFiles[].c_str();
+  //const char *fnMC = "/afs/cern.ch/work/a/aaust/public/200.2000.pf160.15.mc.root";
+  const char *fnMC = "/afs/cern.ch/user/a/aaust/scratch0/KKtrees/950.2450.pf150.KpoKm.mc.root";
+  plotter *currentPlotter = new alexPlotter(fnMC);
   
   TFile *fOutput = TFile::Open("predict.root", "RECREATE");
 
@@ -266,10 +388,12 @@ main()
 	  else
 	    limitLow = idx+1;
 	  idx = (limitHigh + limitLow) / 2;
+	  //cout << mX << idx << " " << limitLow << " " << limitHigh
+	  // << " " << lowerBounds[limitLow] << " " << upperBounds[limitHigh-1] << endl;
 	}
       if (limitLow >= limitHigh)
 	{
-	  cout << "no bin found for " << e.mass << endl;
+	  //cout << "no bin found for " << e.mass << endl;
 	  continue;
 	}
 
