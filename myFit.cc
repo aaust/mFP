@@ -214,10 +214,17 @@ void zroots(const vector<complex<double> > &a, vector<complex<double> > &roots, 
 
 void sortroots(vector<complex<double> > &roots)
 { 
-  if ( imag(roots[0]) > 0 ) roots[0] = conj(roots[0]);
-  if ( imag(roots[1]) > 0 ) roots[1] = conj(roots[1]);
-  if ( imag(roots[2]) < 0 ) roots[2] = conj(roots[2]);
+  if ( real(roots[2]) > real(roots[0]) ) swap(roots[0], roots[2]);
+  if ( real(roots[3]) < real(roots[1]) ) swap(roots[1], roots[3]);
+
+  if ( imag(roots[0]) < 0 ) roots[0] = conj(roots[0]);
   if ( imag(roots[3]) < 0 ) roots[3] = conj(roots[3]);
+  if ( imag(roots[2]) > 0 ) roots[2] = conj(roots[2]);
+  if ( imag(roots[1]) > 0 ) roots[1] = conj(roots[1]);
+
+  if ( imag(roots[0]) > imag(roots[3]) ) swap(roots[0], roots[3]);
+  //if ( imag(roots[2]) < imag(roots[1]) ) swap(roots[2], roots[1]);
+
 }
   
 // from : Techniques of Amplitude Analysis for two-pseudoscalar systems, S.U. Chung, Phys.Rev.D 56, 1997, 7299
@@ -258,8 +265,20 @@ void roots2waves(complex<double> &a4, vector<complex<double> > &roots, vector<do
   complex<double> d0 = a4/(6.*sqrt(5)) * (u1*u2*u3*u4 - u1*u2 - u1*u3 - u1*u4 - u2*u3 - u2*u4 - u3*u4 + 1.);
   complex<double> dm = a4/(4.*sqrt(15))* (u1*u2*u3 + u2*u3*u4 + u3*u4*u1 + u4*u1*u2 - u1 - u2 - u3 - u4);
 
+  // rotate, such that im(s0) == 0
+  // might change sign!
+  complex<double> im (0.,-1.);
+  //  cout << s0 << " " << abs(s0) << endl;
+  s0 *= exp(im*arg(s0));
+  //cout << s0 << " " << abs(s0) << endl;
+  p0 *= exp(im*arg(s0));
+  pm *= exp(im*arg(s0));
+  d0 *= exp(im*arg(s0));
+  dm *= exp(im*arg(s0));
+  
   waves.push_back(real(s0));
-  waves.push_back(imag(s0));
+  waves.push_back(0);
+  //waves.push_back(imag(s0));
   waves.push_back(real(p0));
   waves.push_back(imag(p0));
   waves.push_back(real(pm));
@@ -295,8 +314,11 @@ fillRDhists(const event& e)
 	     nBins, lower, upper,
 	     e.mass);
 
-  gHist.Fill("hMvsCosth", "m vs costh Rd", nBins, lower, upper, 40, -1, 1,
+  gHist.Fill("hMvsCosth", "m vs costh Rd", nBins, lower, upper, 100, -1, 1,
 	     e.mass, cos(e.theta));
+  if (e.accepted())
+    gHist.Fill("hMvsPhi", "m vs phi Rd", nBins, lower, upper, 100, -M_PI, M_PI,
+	       e.mass, e.phi);
 }
 
 void
@@ -344,7 +366,8 @@ fillMChists(const event& e, bool acc)
 void __attribute((noinline))
 myFit()
 {
-  gRandom = new TRandom1;
+  TRandom1* gRandom = new TRandom1();
+  gRandom->SetSeed2(0); // truely random!!!
 
   double lower = threshold;
   double upper = threshold + nBins*binWidth;
@@ -353,8 +376,8 @@ myFit()
   positive.push_back(wave("P+", 1, 1, nBins, lower, upper, true));
   positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
   //positive.push_back(wave("F+", 3, 1, nBins, lower, upper));
-  positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
-  positive.push_back(wave("D++", 2, 2, nBins, lower, upper));
+  //  positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
+  //positive.push_back(wave("D++", 2, 2, nBins, lower, upper));
 
   vector<wave> negative;
   negative.push_back(wave("S0", 0, 0, nBins, lower, upper, true));
@@ -762,6 +785,13 @@ myFit()
   TFitterMinuit* minuit = new TFitterMinuit();
   minuit->SetMinuitFCN(&myL);
 
+  TFitterMinuit* fitamb = new TFitterMinuit();
+  fitamb->SetMinuitFCN(&myL);
+  
+  // Do not show fit results:
+  minuit->SetPrintLevel(0);
+  fitamb->SetPrintLevel(0);
+
   //TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
 
   TH2* hthpre = new TH2D("hthpre", "prediction for cos(#theta)", nBins, threshold, threshold + nBins*binWidth, 100, -1, 1);
@@ -774,15 +804,18 @@ myFit()
   TStopwatch fulltime;
   int failBins = 0;
   fulltime.Start();
+  // possibiliy to start from high mass end
+  //for (iBin = nBins-1; iBin >= 0; iBin--)
   for (iBin = 0; iBin < nBins; iBin++)
     {
-
+      
       cout << "Bin " << iBin << " : " << lower+(iBin*binWidth) << "GeV" << endl;
 
       sw.Start();
       myL.setBin(iBin);
 
       minuit->Clear();
+      fitamb->Clear();
       if (!flatMC)
 	// flat MCweights are the same in different mass bins for the
 	// two-body amplitudes.
@@ -843,8 +876,40 @@ myFit()
       // Run minimizer.
       minuit->CreateMinimizer();
       int iret = minuit->Minimize();
+
+      while ( iret != 0 ){
+	// if fit did not converge, use random starting values until it does
+	for (size_t iSV = 0; iSV < nParams; iSV++)
+	  {
+	    if (!startingValues[iSV].fixed)
+	      startingValues[iSV].value = gRandom->Uniform(1);
+	  }
+	for (size_t iSV = 0; iSV < nParams; iSV++)
+	  {
+	    vStartingValues[iSV] = startingValues[iSV].value;
+	  }
+
+	// Set starting values.
+	for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
+	  {
+	    if (!startingValues[j].fixed)
+	      {
+		//if (j != 0)
+		minuit->SetParameter(j, startingValues[j].name.c_str(),
+				     vStartingValues[j], 10/*vStartingValues[j]*0.01*/, 0, 0);
+	      }
+	    else
+	      {
+		minuit->SetParameter(j, startingValues[j].name.c_str(),
+				     vStartingValues[j], 1, 0, 0);
+		minuit->FixParameter(j);
+	      }
+	  }
+	
+	iret = minuit->Minimize();
+      }
       sw.Stop();
-      cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
+      //      cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
 
       if (iret == 0)
 	{
@@ -863,65 +928,67 @@ myFit()
 		values[idx+1] = minuit->GetParameter(idx+1);
 	      }
 
-	  for (size_t i1 = 0; i1 < ws.size(); i1++)
-	    for (size_t j1 = 0; j1 < ws[i1].waves.size(); j1++)
-	      {
-		const wave& w1 = ws[i1].waves[j1];
-		size_t idx1 = w1.getIndex();
-		size_t idx1Cov = w1.idxInCovariance(minuit);
-
-		for (size_t i2 = 0; i2 < ws.size(); i2++)
-		  for (size_t j2 = 0; j2 < ws[i2].waves.size(); j2++)
-		    {
-		      const wave& w2 = ws[i2].waves[j2];
-		      size_t idx2 = w2.getIndex();
-		      size_t idx2Cov = w2.idxInCovariance(minuit);
-
-		      // Four possibilities:
-		      // 1) both free -> simply copy values to covMat
-		      if (!w1.phaseLocked && !w2.phaseLocked)
-			{
-			  (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-			  (*covMat)(idx1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
-			  (*covMat)(idx1+1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
-			  (*covMat)(idx1+1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov+1);
-			}
-		      // 2) first free, second fixed -> covariances with Im(w1) are zero
-		      else if (!w1.phaseLocked && w2.phaseLocked)
-			{
-			  (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-			  (*covMat)(idx1,idx2+1) = 0;
-			  (*covMat)(idx1+1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
-			  (*covMat)(idx1+1,idx2+1) = 0;
-			}
-		      // 3) vice versa
-		      else if (w1.phaseLocked && !w2.phaseLocked)
-			{
-			  (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-			  (*covMat)(idx1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
-			  (*covMat)(idx1+1,idx2) = 0;
-			  (*covMat)(idx1+1,idx2+1) = 0;
-			}
-		      // 4) both fixed (impossible)
-		      else
-			{
-			  (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-			  (*covMat)(idx1,idx2+1) = 0;
-			  (*covMat)(idx1+1,idx2) = 0;
-			  (*covMat)(idx1+1,idx2+1) = 0;
-			}
-		    }
-	      }
-
-	  NMCevents = myL.MCeventsInBin();
-	  outTree->Fill();
-
+	  if (!ambiguous){
+	    for (size_t i1 = 0; i1 < ws.size(); i1++)
+	      for (size_t j1 = 0; j1 < ws[i1].waves.size(); j1++)
+		{
+		  const wave& w1 = ws[i1].waves[j1];
+		  size_t idx1 = w1.getIndex();
+		  size_t idx1Cov = w1.idxInCovariance(minuit);
+		  
+		  for (size_t i2 = 0; i2 < ws.size(); i2++)
+		    for (size_t j2 = 0; j2 < ws[i2].waves.size(); j2++)
+		      {
+			const wave& w2 = ws[i2].waves[j2];
+			size_t idx2 = w2.getIndex();
+			size_t idx2Cov = w2.idxInCovariance(minuit);
+			
+			// Four possibilities:
+			// 1) both free -> simply copy values to covMat
+			if (!w1.phaseLocked && !w2.phaseLocked)
+			  {
+			    (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+			    (*covMat)(idx1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
+			    (*covMat)(idx1+1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
+			    (*covMat)(idx1+1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov+1);
+			  }
+			// 2) first free, second fixed -> covariances with Im(w1) are zero
+			else if (!w1.phaseLocked && w2.phaseLocked)
+			  {
+			    (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+			    (*covMat)(idx1,idx2+1) = 0;
+			    (*covMat)(idx1+1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
+			    (*covMat)(idx1+1,idx2+1) = 0;
+			  }
+			// 3) vice versa
+			else if (w1.phaseLocked && !w2.phaseLocked)
+			  {
+			    (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+			    (*covMat)(idx1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
+			    (*covMat)(idx1+1,idx2) = 0;
+			    (*covMat)(idx1+1,idx2+1) = 0;
+			  }
+			// 4) both fixed (impossible)
+			else
+			  {
+			    (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+			    (*covMat)(idx1,idx2+1) = 0;
+			    (*covMat)(idx1+1,idx2) = 0;
+			    (*covMat)(idx1+1,idx2+1) = 0;
+			  }
+		      }
+		}
+	    
+	    NMCevents = myL.MCeventsInBin();
+	    outTree->Fill();
+	  }
+	  
 	  for (int j = 0; j < minuit->GetNumberTotalParameters(); j++)
 	    startingValues[j].value = minuit->GetParameter(j);
-
+	  
 	  gHist.getHist("hMClikelihood", "MC likelihood of result", nBins, lower, upper)
 	    ->SetBinContent(iBin+1, myL.calc_mc_likelihood(vStartingValues));
-
+	  
 	  if (!ambiguous){
 	    for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)  
 	      {
@@ -996,7 +1063,7 @@ myFit()
 	      // find 4 complex roots
 	      vector<complex<double> > roots(4);
 	      zroots(input, roots, true);
-
+	      
 	      sortroots(roots);
 
 	      for (int l=0; l<4; l++){
@@ -1009,7 +1076,7 @@ myFit()
 		  ->SetBinContent(iBin+1, real(roots[l]));
 		gHist.getHist(("hIm"+num).c_str(), "Imaginary part of root",
 			      nBins, threshold, threshold + nBins*binWidth)
-		  ->SetBinContent(iBin+1, TMath::Abs(imag(roots[l])));
+		  ->SetBinContent(iBin+1, /*TMath::Abs(*/imag(roots[l]));
 	      }
 
 	      // calculate 8 ambiguous solutions by complex conjugating
@@ -1038,79 +1105,143 @@ myFit()
 
 	      // now run fit again with 8 solutions as starting value
 	      for (int n = 0; n < 8; n++){
-		stringstream ss;         // conversion int to string
-		ss << n;
-		string amb = ss.str();
-	      
-		for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
-		  {
-		    if (!startingValues[j].fixed /*&& j > 3*/)
-		      {
-			minuit->SetParameter(j, startingValues[j].name.c_str(),
-					     ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
-		      }
-		    else
-		      {
-			minuit->SetParameter(j, startingValues[j].name.c_str(),
-					     ambiguous[n][j], 1, 0, 0);
-			minuit->FixParameter(j);
-		      }
-		  }
-		for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
-		  {
-		    minuit->SetParameter(j, startingValues[j].name.c_str(),
-					 vStartingValues[j], .1, 0, 1);
-		    if (startingValues[j].fixed)
-		      minuit->FixParameter(j);
-		  }
-	      
-		// Run minimizer.
-		minuit->CreateMinimizer();
-		iret = minuit->Minimize();
-		sw.Stop();
-		cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
-	    
-		if (iret == 0)
-		  {
-		    for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
-		      {
+		// only run and plot result for solution 3
+		if (n==3){
+		  stringstream ss;         // conversion int to string
+		  ss << n;
+		  string amb = ss.str();
+		  
+		  for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
+		    {
+		      if (!startingValues[j].fixed /*&& j > 3*/)
+			{
+			  fitamb->SetParameter(j, startingValues[j].name.c_str(),
+					       ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
+			}
+		      else
+			{
+			  fitamb->SetParameter(j, startingValues[j].name.c_str(),
+					       ambiguous[n][j], 1, 0, 0);
+			  fitamb->FixParameter(j);
+			}
+		    }
+		  for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
+		    {
+		      fitamb->SetParameter(j, startingValues[j].name.c_str(),
+					   vStartingValues[j], .1, 0, 1);
+		      if (startingValues[j].fixed)
+			fitamb->FixParameter(j);
+		    }
+		  
+		  // Run minimizer.
+		  fitamb->CreateMinimizer();
+		  int amret = fitamb->Minimize();
+		  if ( amret != 0 )
+		    amret = fitamb->Minimize();
+		  //		  cout << "amret = " << amret << " after " << sw.CpuTime() << " s." << endl;
+		  
+		  if (amret == 0)
+		    {
+		      //	  vector<double> vStartingValue(nParams);
+		      
+		      for (size_t i = 0; i < ws.size(); i++)
+			for (size_t j = 0; j < ws[i].waves.size(); j++)
+			  {
+			    size_t idx = ws[i].waves[j].getIndex();
+			    values[idx] = fitamb->GetParameter(idx);
+			    values[idx+1] = fitamb->GetParameter(idx+1);
+			  }
+		      
+		      for (size_t i1 = 0; i1 < ws.size(); i1++)
+			for (size_t j1 = 0; j1 < ws[i1].waves.size(); j1++)
+			  {
+			    const wave& w1 = ws[i1].waves[j1];
+			    size_t idx1 = w1.getIndex();
+			    size_t idx1Cov = w1.idxInCovariance(fitamb);
+			    
+			    for (size_t i2 = 0; i2 < ws.size(); i2++)
+			      for (size_t j2 = 0; j2 < ws[i2].waves.size(); j2++)
+				{
+				  const wave& w2 = ws[i2].waves[j2];
+				  size_t idx2 = w2.getIndex();
+				  size_t idx2Cov = w2.idxInCovariance(fitamb);
+				  
+				  // Four possibilities:
+				  // 1) both free -> simply copy values to covMat
+				  if (!w1.phaseLocked && !w2.phaseLocked)
+				    {
+				      (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+				      (*covMat)(idx1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
+				      (*covMat)(idx1+1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
+				      (*covMat)(idx1+1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov+1);
+				    }
+				  // 2) first free, second fixed -> covariances with Im(w1) are zero
+				  else if (!w1.phaseLocked && w2.phaseLocked)
+				    {
+				      (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+				      (*covMat)(idx1,idx2+1) = 0;
+				      (*covMat)(idx1+1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
+				      (*covMat)(idx1+1,idx2+1) = 0;
+				    }
+				  // 3) vice versa
+				  else if (w1.phaseLocked && !w2.phaseLocked)
+				    {
+				      (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+				      (*covMat)(idx1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
+				      (*covMat)(idx1+1,idx2) = 0;
+				      (*covMat)(idx1+1,idx2+1) = 0;
+				    }
+				  // 4) both fixed (impossible)
+				  else
+				    {
+				      (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+				      (*covMat)(idx1,idx2+1) = 0;
+				      (*covMat)(idx1+1,idx2) = 0;
+				      (*covMat)(idx1+1,idx2+1) = 0;
+				    }
+				}
+			  }
+		    
+		      NMCevents = myL.MCeventsInBin();
+		      outTree->Fill();
+		      
+		      /*		      for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
+			{
 			vector<wave>& waves = ws[iCoherent].getWaves();
 			for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
-			  {
-			    complex<double> a(minuit->GetParameter(waves[iWave1].getIndex()),
-					      minuit->GetParameter(waves[iWave1].getIndex() + 1));
-			    
-			    gHist.getHist(("hAmbi"+waves[iWave1].name+"sol"+amb).c_str(),
-					  ("fit results for this wave, solution "+amb).c_str(),
-					  nBins, threshold, threshold + nBins*binWidth)
-			      ->SetBinContent(iBin+1, norm(a));
-			  }
-		      }
-		    
-		    // plot result for solution 5
-		    if (n==5){
+			{
+			complex<double> a(minuit->GetParameter(waves[iWave1].getIndex()),
+			minuit->GetParameter(waves[iWave1].getIndex() + 1));
+			
+			gHist.getHist(("hAmbi"+waves[iWave1].name+"sol"+amb).c_str(),
+			("fit results for this wave, solution "+amb).c_str(),
+			nBins, threshold, threshold + nBins*binWidth)
+			->SetBinContent(iBin+1, norm(a));
+			}
+			}*/
+		      
 		      for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)  
 			{
 			  vector<wave>& waves = ws[iCoherent].getWaves();
 			  for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
 			    {
-			      waves[iWave1].fillHistIntensity(iBin, minuit);
+			      waves[iWave1].fillHistIntensity(iBin, fitamb);
 			      if (iWave1 != waves.size()-1)
 				{
 				  for (size_t iWave2 = iWave1 + 1; iWave2 < waves.size(); iWave2++)
-				    waves[iWave1].fillHistPhase(iBin, waves[iWave2], minuit);
+				    waves[iWave1].fillHistPhase(iBin, waves[iWave2], fitamb);
 				}
 			    }  
 			  
 			}
 		    }  
-		  }
+		}
 	      }
 	    }	      
 	}
       else failBins++;
     }
-
+  
   fulltime.Stop();
   cout << "Took " << fulltime.CpuTime() << " s CPU time, " << fulltime.RealTime() << " s wall time." << endl;
   cout << "In " << failBins << " bins TFitterMinuit::Minimization DID not converge !" << endl;
