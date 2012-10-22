@@ -269,16 +269,16 @@ void roots2waves(complex<double> &a4, vector<complex<double> > &roots, vector<do
   // might change sign!
   complex<double> im (0.,-1.);
   //  cout << s0 << " " << abs(s0) << endl;
-  s0 *= exp(im*arg(s0));
+  //s0 *= exp(im*arg(s0));
   //cout << s0 << " " << abs(s0) << endl;
-  p0 *= exp(im*arg(s0));
+  /*  p0 *= exp(im*arg(s0));
   pm *= exp(im*arg(s0));
   d0 *= exp(im*arg(s0));
-  dm *= exp(im*arg(s0));
+  dm *= exp(im*arg(s0));*/
   
   waves.push_back(real(s0));
-  waves.push_back(0);
-  //waves.push_back(imag(s0));
+  //waves.push_back(0);
+  waves.push_back(imag(s0));
   waves.push_back(real(p0));
   waves.push_back(imag(p0));
   waves.push_back(real(pm));
@@ -376,7 +376,7 @@ myFit()
   positive.push_back(wave("P+", 1, 1, nBins, lower, upper, true));
   positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
   //positive.push_back(wave("F+", 3, 1, nBins, lower, upper));
-  //  positive.push_back(wave("G+", 4, 1, nBins, lower, upper));
+  //positive.push_back(wave("G+", 4, 1, 78, 1.7, upper));
   //positive.push_back(wave("D++", 2, 2, nBins, lower, upper));
 
   vector<wave> negative;
@@ -385,7 +385,9 @@ myFit()
   negative.push_back(wave("P-", 1, 1, nBins, lower, upper));
   negative.push_back(wave("D0", 2, 0, nBins, lower, upper));
   negative.push_back(wave("D-", 2, 1, nBins, lower, upper));
-
+  //negative.push_back(wave("G0", 4, 0, 78, 1.7, upper));
+  //negative.push_back(wave("G-", 4, 1, 78, 1.7, upper));
+ 
   coherent_waves wsPos, wsNeg;
   wsPos.reflectivity = +1;
   wsPos.spinflip = +1;
@@ -478,6 +480,13 @@ myFit()
     out->Branch("phiGJ", &mc_phi, "mc_phi/F");
   }
   */
+
+  // for second fit with calculated solution, take positive result from last bin ('continuous')
+  vector<double> positiveStart(4);
+  positiveStart.push_back(gRandom->Uniform(5));
+  positiveStart.push_back(gRandom->Uniform(5));
+  positiveStart.push_back(gRandom->Uniform(5));
+  positiveStart.push_back(gRandom->Uniform(5));
 
   combinedLikelihood myL(ws, nBins, threshold, binWidth);
 
@@ -829,7 +838,7 @@ myFit()
 	for (size_t iSV = 0; iSV < nParams; iSV++)
 	  {
 	    if (!startingValues[iSV].fixed)
-	      startingValues[iSV].value = gRandom->Uniform(1);
+	      startingValues[iSV].value = gRandom->Uniform(5);
 	  }
       for (size_t iSV = 0; iSV < nParams; iSV++)
 	{
@@ -882,7 +891,7 @@ myFit()
 	for (size_t iSV = 0; iSV < nParams; iSV++)
 	  {
 	    if (!startingValues[iSV].fixed)
-	      startingValues[iSV].value = gRandom->Uniform(1);
+	      startingValues[iSV].value = gRandom->Uniform(5);
 	  }
 	for (size_t iSV = 0; iSV < nParams; iSV++)
 	  {
@@ -1084,10 +1093,10 @@ myFit()
 	      for (int j=0; j<8; j++){
 
 		// first, fill positive reflectivity
-		ambiguous[j].push_back(values[0]);
-		ambiguous[j].push_back(values[1]);
-		ambiguous[j].push_back(values[2]);
-		ambiguous[j].push_back(values[3]);
+		ambiguous[j].push_back(positiveStart[0]);
+		ambiguous[j].push_back(positiveStart[1]);
+		ambiguous[j].push_back(positiveStart[2]);
+		ambiguous[j].push_back(positiveStart[3]);
 
 		vector<complex<double> > solution(roots);      
 		// 1 3 5 7
@@ -1107,13 +1116,10 @@ myFit()
 	      for (int n = 0; n < 8; n++){
 		// only run and plot result for solution 3
 		if (n==3){
-		  stringstream ss;         // conversion int to string
-		  ss << n;
-		  string amb = ss.str();
 		  
 		  for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
 		    {
-		      if (!startingValues[j].fixed /*&& j > 3*/)
+		      if (!startingValues[j].fixed /*|| j < 4*/)
 			{
 			  fitamb->SetParameter(j, startingValues[j].name.c_str(),
 					       ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
@@ -1136,13 +1142,47 @@ myFit()
 		  // Run minimizer.
 		  fitamb->CreateMinimizer();
 		  int amret = fitamb->Minimize();
-		  if ( amret != 0 )
+
+		  // if fit did not converge, use new random starting values until it does
+		  while ( amret != 0 ){
+		    ambiguous[n][0] = gRandom->Uniform(10);
+		    ambiguous[n][1] = gRandom->Uniform(10);
+		    ambiguous[n][2] = gRandom->Uniform(10);
+		    ambiguous[n][3] = gRandom->Uniform(10);
+
+		    for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
+		      {
+			if (!startingValues[j].fixed /*|| j < 4*/)
+			  {
+			    fitamb->SetParameter(j, startingValues[j].name.c_str(),
+						 ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
+			  }
+			else
+			  {
+			    fitamb->SetParameter(j, startingValues[j].name.c_str(),
+						 ambiguous[n][j], 1, 0, 0);
+			    fitamb->FixParameter(j);
+			  }
+		      }
+		    for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
+		      {
+			fitamb->SetParameter(j, startingValues[j].name.c_str(),
+					     vStartingValues[j], .1, 0, 1);
+			if (startingValues[j].fixed)
+			  fitamb->FixParameter(j);
+		      }
 		    amret = fitamb->Minimize();
+		  }
 		  //		  cout << "amret = " << amret << " after " << sw.CpuTime() << " s." << endl;
 		  
 		  if (amret == 0)
 		    {
 		      //	  vector<double> vStartingValue(nParams);
+		      
+		      for (int i = 0; i < 4; i++)
+			{
+			  positiveStart[i] = fitamb->GetParameter(i);
+			}
 		      
 		      for (size_t i = 0; i < ws.size(); i++)
 			for (size_t j = 0; j < ws[i].waves.size(); j++)
