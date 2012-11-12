@@ -216,39 +216,55 @@ void sortroots(vector<complex<double> > &roots)
 { 
   if ( real(roots[2]) > real(roots[0]) ) swap(roots[0], roots[2]);
   if ( real(roots[3]) < real(roots[1]) ) swap(roots[1], roots[3]);
-
+  
   if ( imag(roots[0]) < 0 ) roots[0] = conj(roots[0]);
   if ( imag(roots[3]) < 0 ) roots[3] = conj(roots[3]);
   if ( imag(roots[2]) > 0 ) roots[2] = conj(roots[2]);
   if ( imag(roots[1]) > 0 ) roots[1] = conj(roots[1]);
-
+  
   if ( imag(roots[0]) > imag(roots[3]) ) swap(roots[0], roots[3]);
   //if ( imag(roots[2]) < imag(roots[1]) ) swap(roots[2], roots[1]);
-
 }
   
 // from : Techniques of Amplitude Analysis for two-pseudoscalar systems, S.U. Chung, Phys.Rev.D 56, 1997, 7299
 
 void waves2coeff(vector<double> &values, vector<complex<double> > &coeff)
 {
-   complex<double> S0(values[4], values[5]);
-   complex<double> P0(values[6], values[7]);
-   complex<double> PM(values[8], values[9]);
-   complex<double> D0(values[10],values[11]);
-   complex<double> DM(values[12],values[13]);
-
-   complex<double> a0 = S0 + sqrt(3)*P0 + sqrt(5)*D0;
-   complex<double> a1 = -2.*sqrt(3)*(PM + sqrt(5)*DM);
-   complex<double> a2 = 2.*S0 - 4.*sqrt(5)*D0;
-   complex<double> a3 = -2.*sqrt(3)*(PM - sqrt(5)*DM);
-   complex<double> a4 = S0 - sqrt(3)*P0 + sqrt(5)*D0;
-   
-   coeff.push_back(a0);
-   coeff.push_back(a1);
-   coeff.push_back(a2);
-   coeff.push_back(a3);
-   coeff.push_back(a4);
-
+  
+  if (values.size() == 14){
+    complex<double> S0(values[4], values[5]);
+    complex<double> P0(values[6], values[7]);
+    complex<double> PM(values[8], values[9]);
+    complex<double> D0(values[10],values[11]);
+    complex<double> DM(values[12],values[13]);
+    
+    complex<double> a0 = S0 + sqrt(3)*P0 + sqrt(5)*D0;
+    complex<double> a1 = -2.*sqrt(3)*(PM + sqrt(5)*DM);
+    complex<double> a2 = 2.*S0 - 4.*sqrt(5)*D0;
+    complex<double> a3 = -2.*sqrt(3)*(PM - sqrt(5)*DM);
+    complex<double> a4 = S0 - sqrt(3)*P0 + sqrt(5)*D0;
+    
+    coeff.push_back(a0);
+    coeff.push_back(a1);
+    coeff.push_back(a2);
+    coeff.push_back(a3);
+    coeff.push_back(a4);
+  }
+  
+  else if (values.size() == 8){
+    complex<double> S0(values[2], values[3]);
+    complex<double> D0(values[4],values[5]);
+    complex<double> DM(values[6],values[7]);
+    
+    complex<double> a0 = 4.*S0 - 2.*sqrt(5)*D0;
+    complex<double> a1 = 2.*sqrt(15)*DM;
+    complex<double> a2 = S0 + sqrt(5)*D0;
+    
+    coeff.push_back(a0);
+    coeff.push_back(a1);
+    coeff.push_back(a2);
+  } 
+  
 };
 
 
@@ -373,7 +389,7 @@ myFit()
   double upper = threshold + nBins*binWidth;
 
   vector<wave> positive;
-  positive.push_back(wave("P+", 1, 1, nBins, lower, upper, true));
+  //positive.push_back(wave("P+", 1, 1, nBins, lower, upper, true));
   positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
   //positive.push_back(wave("F+", 3, 1, nBins, lower, upper));
   //positive.push_back(wave("G+", 4, 1, 78, 1.7, upper));
@@ -381,10 +397,11 @@ myFit()
 
   vector<wave> negative;
   negative.push_back(wave("S0", 0, 0, nBins, lower, upper, true));
-  negative.push_back(wave("P0", 1, 0, nBins, lower, upper));
-  negative.push_back(wave("P-", 1, 1, nBins, lower, upper));
+  //negative.push_back(wave("P0", 1, 0, nBins, lower, upper));
+  //negative.push_back(wave("P-", 1, 1, nBins, lower, upper));
   negative.push_back(wave("D0", 2, 0, nBins, lower, upper));
   negative.push_back(wave("D-", 2, 1, nBins, lower, upper));
+  //  negative.push_back(wave("G0", 4, 0, nBins, lower, upper));
   //negative.push_back(wave("G0", 4, 0, 78, 1.7, upper));
   //negative.push_back(wave("G-", 4, 1, 78, 1.7, upper));
  
@@ -1058,24 +1075,32 @@ myFit()
 	    }
 	  
 	  // Ambiguities only for negative reflectivities
-	  // for the moment hard-wired for this wave set: P+, D+, S0, P0, P-, D0, D-
-	  if (ambiguous && lastIdx == 14)
+	  // for the moment hard-wired for this wave set: P+, D+, S0, P0, P-, D0, D- (2x7=14 parameters)
+	  // or this wave set: D+, S0, D0, D- (2x4=8 parameters)
+	  if (ambiguous && (lastIdx == 14 || lastIdx == 8))
 	    {
 	      // calculate coefficients
 	      vector<double> amplitudes;
-	      for (int k = 0; k < 14; k++)
+	      for (int k = 0; k < lastIdx; k++)
 		amplitudes.push_back(values[k]);
 	    
 	      vector<complex<double> > input;
 	      waves2coeff(amplitudes, input);
 
-	      // find 4 complex roots
+	      // find complex roots
 	      vector<complex<double> > roots(4);
 	      zroots(input, roots, true);
-	      
-	      sortroots(roots);
 
-	      for (int l=0; l<4; l++){
+	      if (lastIdx == 14)
+		sortroots(roots);
+
+	      else {
+		if ( imag(roots[0]) < 0 ) roots[0] = conj(roots[0]);
+		if ( imag(roots[1]) < 0 ) roots[1] = conj(roots[1]);
+		if ( imag(roots[0]) > imag(roots[1]) ) swap(roots[0], roots[1]);
+	      }
+
+	      /*for (int l=0; l<4; l++){
 		stringstream ss;         // conversion int to string
 		ss << l;
 		string num = ss.str();
@@ -1085,198 +1110,210 @@ myFit()
 		  ->SetBinContent(iBin+1, real(roots[l]));
 		gHist.getHist(("hIm"+num).c_str(), "Imaginary part of root",
 			      nBins, threshold, threshold + nBins*binWidth)
-		  ->SetBinContent(iBin+1, /*TMath::Abs(*/imag(roots[l]));
-	      }
+		  ->SetBinContent(iBin+1, imag(roots[l]));
+	      }*/
 
 	      // calculate 8 ambiguous solutions by complex conjugating
 	      vector<double> ambiguous[8];
-	      for (int j=0; j<8; j++){
-
-		// first, fill positive reflectivity
-		ambiguous[j].push_back(positiveStart[0]);
-		ambiguous[j].push_back(positiveStart[1]);
-		ambiguous[j].push_back(positiveStart[2]);
-		ambiguous[j].push_back(positiveStart[3]);
-
-		vector<complex<double> > solution(roots);      
-		// 1 3 5 7
-		if (j&0x1) solution[3] = conj(solution[3]);
-		// 2 3 6 7
-		if (j&0x2) solution[2] = conj(solution[2]);
-		// 4 5 6 7
-		if (j&0x4) solution[1] = conj(solution[1]);
-	      
-		//      vector<double> waves;
-		roots2waves(input[4], solution, ambiguous[j]);
-		// for (int m=0; m<14; m++)
-		// cout << values[m] << " " << ambiguous[j][m] << endl;
-	      }
-
-	      // now run fit again with 8 solutions as starting value
-	      for (int n = 0; n < 8; n++){
-		// only run and plot result for solution 3
-		if (n==3){
+	      if (lastIdx == 14){
+		for (int j=0; j<8; j++){
 		  
-		  for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
-		    {
-		      if (!startingValues[j].fixed /*|| j < 4*/)
-			{
-			  fitamb->SetParameter(j, startingValues[j].name.c_str(),
-					       ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
-			}
-		      else
-			{
-			  fitamb->SetParameter(j, startingValues[j].name.c_str(),
-					       ambiguous[n][j], 1, 0, 0);
-			  fitamb->FixParameter(j);
-			}
-		    }
-		  for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
-		    {
-		      fitamb->SetParameter(j, startingValues[j].name.c_str(),
-					   vStartingValues[j], .1, 0, 1);
-		      if (startingValues[j].fixed)
-			fitamb->FixParameter(j);
-		    }
+		  // first, fill positive reflectivity
+		  ambiguous[j].push_back(positiveStart[0]);
+		  ambiguous[j].push_back(positiveStart[1]);
+		  ambiguous[j].push_back(positiveStart[2]);
+		  ambiguous[j].push_back(positiveStart[3]);
 		  
-		  // Run minimizer.
-		  fitamb->CreateMinimizer();
-		  int amret = fitamb->Minimize();
-
-		  // if fit did not converge, use new random starting values until it does
-		  while ( amret != 0 ){
-		    ambiguous[n][0] = gRandom->Uniform(10);
-		    ambiguous[n][1] = gRandom->Uniform(10);
-		    ambiguous[n][2] = gRandom->Uniform(10);
-		    ambiguous[n][3] = gRandom->Uniform(10);
-
-		    for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
-		      {
-			if (!startingValues[j].fixed /*|| j < 4*/)
-			  {
-			    fitamb->SetParameter(j, startingValues[j].name.c_str(),
-						 ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
-			  }
-			else
-			  {
-			    fitamb->SetParameter(j, startingValues[j].name.c_str(),
-						 ambiguous[n][j], 1, 0, 0);
-			    fitamb->FixParameter(j);
-			  }
-		      }
-		    for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
-		      {
-			fitamb->SetParameter(j, startingValues[j].name.c_str(),
-					     vStartingValues[j], .1, 0, 1);
-			if (startingValues[j].fixed)
-			  fitamb->FixParameter(j);
-		      }
-		    amret = fitamb->Minimize();
-		  }
-		  //		  cout << "amret = " << amret << " after " << sw.CpuTime() << " s." << endl;
+		  vector<complex<double> > solution(roots);      
+		  // 1 3 5 7
+		  if (j&0x1) solution[3] = conj(solution[3]);
+		  // 2 3 6 7
+		  if (j&0x2) solution[2] = conj(solution[2]);
+		  // 4 5 6 7
+		  if (j&0x4) solution[1] = conj(solution[1]);
 		  
-		  if (amret == 0)
-		    {
-		      //	  vector<double> vStartingValue(nParams);
-		      
-		      for (int i = 0; i < 4; i++)
-			{
-			  positiveStart[i] = fitamb->GetParameter(i);
-			}
-		      
-		      for (size_t i = 0; i < ws.size(); i++)
-			for (size_t j = 0; j < ws[i].waves.size(); j++)
-			  {
-			    size_t idx = ws[i].waves[j].getIndex();
-			    values[idx] = fitamb->GetParameter(idx);
-			    values[idx+1] = fitamb->GetParameter(idx+1);
-			  }
-		      
-		      for (size_t i1 = 0; i1 < ws.size(); i1++)
-			for (size_t j1 = 0; j1 < ws[i1].waves.size(); j1++)
-			  {
-			    const wave& w1 = ws[i1].waves[j1];
-			    size_t idx1 = w1.getIndex();
-			    size_t idx1Cov = w1.idxInCovariance(fitamb);
-			    
-			    for (size_t i2 = 0; i2 < ws.size(); i2++)
-			      for (size_t j2 = 0; j2 < ws[i2].waves.size(); j2++)
-				{
-				  const wave& w2 = ws[i2].waves[j2];
-				  size_t idx2 = w2.getIndex();
-				  size_t idx2Cov = w2.idxInCovariance(fitamb);
-				  
-				  // Four possibilities:
-				  // 1) both free -> simply copy values to covMat
-				  if (!w1.phaseLocked && !w2.phaseLocked)
-				    {
-				      (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-				      (*covMat)(idx1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
-				      (*covMat)(idx1+1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
-				      (*covMat)(idx1+1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov+1);
-				    }
-				  // 2) first free, second fixed -> covariances with Im(w1) are zero
-				  else if (!w1.phaseLocked && w2.phaseLocked)
-				    {
-				      (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-				      (*covMat)(idx1,idx2+1) = 0;
-				      (*covMat)(idx1+1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
-				      (*covMat)(idx1+1,idx2+1) = 0;
-				    }
-				  // 3) vice versa
-				  else if (w1.phaseLocked && !w2.phaseLocked)
-				    {
-				      (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-				      (*covMat)(idx1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
-				      (*covMat)(idx1+1,idx2) = 0;
-				      (*covMat)(idx1+1,idx2+1) = 0;
-				    }
-				  // 4) both fixed (impossible)
-				  else
-				    {
-				      (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-				      (*covMat)(idx1,idx2+1) = 0;
-				      (*covMat)(idx1+1,idx2) = 0;
-				      (*covMat)(idx1+1,idx2+1) = 0;
-				    }
-				}
-			  }
-		    
-		      NMCevents = myL.MCeventsInBin();
-		      outTree->Fill();
-		      
-		      /*		      for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
-			{
-			vector<wave>& waves = ws[iCoherent].getWaves();
-			for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
-			{
-			complex<double> a(minuit->GetParameter(waves[iWave1].getIndex()),
-			minuit->GetParameter(waves[iWave1].getIndex() + 1));
-			
-			gHist.getHist(("hAmbi"+waves[iWave1].name+"sol"+amb).c_str(),
-			("fit results for this wave, solution "+amb).c_str(),
-			nBins, threshold, threshold + nBins*binWidth)
-			->SetBinContent(iBin+1, norm(a));
-			}
-			}*/
-		      
-		      for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)  
-			{
-			  vector<wave>& waves = ws[iCoherent].getWaves();
-			  for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
-			    {
-			      waves[iWave1].fillHistIntensity(iBin, fitamb);
-			      if (iWave1 != waves.size()-1)
-				{
-				  for (size_t iWave2 = iWave1 + 1; iWave2 < waves.size(); iWave2++)
-				    waves[iWave1].fillHistPhase(iBin, waves[iWave2], fitamb);
-				}
-			    }  
-			  
-			}
-		    }  
+		  roots2waves(input[4], solution, ambiguous[j]);
 		}
 	      }
+	      else if (lastIdx == 8){
+		for (int j=0; j<2; j++){
+		  
+		  // first, fill positive reflectivity
+		  ambiguous[j].push_back(positiveStart[0]);
+		  ambiguous[j].push_back(positiveStart[1]);
+		  
+		  vector<complex<double> > solution(roots);      
+		  // 1
+		  if (j == 1) solution[1] = conj(solution[1]);
+		  
+		  roots2waves(input[2], solution, ambiguous[j]);
+		}
+	      }
+	      
+	      // now run fit again with 1 solutions as starting value
+	      int n = 1;
+	      
+	      for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
+		{
+		  if (!startingValues[j].fixed /*|| j < 4*/)
+		    {
+		      fitamb->SetParameter(j, startingValues[j].name.c_str(),
+					   ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
+		    }
+		  else
+		    {
+		      fitamb->SetParameter(j, startingValues[j].name.c_str(),
+					   ambiguous[n][j], 1, 0, 0);
+		      fitamb->FixParameter(j);
+		    }
+		}
+	      for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
+		{
+		  fitamb->SetParameter(j, startingValues[j].name.c_str(),
+				       vStartingValues[j], .1, 0, 1);
+		  if (startingValues[j].fixed)
+		    fitamb->FixParameter(j);
+		}
+	      
+	      // Run minimizer.
+	      fitamb->CreateMinimizer();
+	      int amret = fitamb->Minimize();
+	      
+	      // if fit did not converge, use new random starting values until it does
+	      while ( amret != 0 ){
+		ambiguous[n][0] = gRandom->Uniform(10);
+		ambiguous[n][1] = gRandom->Uniform(10);
+		if (lastIdx == 14){
+		  ambiguous[n][2] = gRandom->Uniform(10);
+		  ambiguous[n][3] = gRandom->Uniform(10);
+		}
+		
+		for (size_t j= 0; j < nParams - myL.getNChannels(); j++)
+		  {
+		    if (!startingValues[j].fixed /*|| j < 4*/)
+		      {
+			fitamb->SetParameter(j, startingValues[j].name.c_str(),
+					     ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
+		      }
+		    else
+		      {
+			fitamb->SetParameter(j, startingValues[j].name.c_str(),
+					     ambiguous[n][j], 1, 0, 0);
+			fitamb->FixParameter(j);
+		      }
+		  }
+		for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
+		  {
+		    fitamb->SetParameter(j, startingValues[j].name.c_str(),
+					 vStartingValues[j], .1, 0, 1);
+		    if (startingValues[j].fixed)
+		      fitamb->FixParameter(j);
+		  }
+		amret = fitamb->Minimize();
+	      }
+	      //		  cout << "amret = " << amret << " after " << sw.CpuTime() << " s." << endl;
+	      
+	      if (amret == 0)
+		{
+		  //	  vector<double> vStartingValue(nParams);
+		  
+		  for (int i = 0; i < 4; i++)
+		    {
+		      positiveStart[i] = fitamb->GetParameter(i);
+		    }
+		  
+		  for (size_t i = 0; i < ws.size(); i++)
+		    for (size_t j = 0; j < ws[i].waves.size(); j++)
+		      {
+			size_t idx = ws[i].waves[j].getIndex();
+			values[idx] = fitamb->GetParameter(idx);
+			values[idx+1] = fitamb->GetParameter(idx+1);
+		      }
+		  
+		  for (size_t i1 = 0; i1 < ws.size(); i1++)
+		    for (size_t j1 = 0; j1 < ws[i1].waves.size(); j1++)
+		      {
+			const wave& w1 = ws[i1].waves[j1];
+			size_t idx1 = w1.getIndex();
+			size_t idx1Cov = w1.idxInCovariance(fitamb);
+			
+			for (size_t i2 = 0; i2 < ws.size(); i2++)
+			  for (size_t j2 = 0; j2 < ws[i2].waves.size(); j2++)
+			    {
+			      const wave& w2 = ws[i2].waves[j2];
+			      size_t idx2 = w2.getIndex();
+			      size_t idx2Cov = w2.idxInCovariance(fitamb);
+			      
+			      // Four possibilities:
+			      // 1) both free -> simply copy values to covMat
+			      if (!w1.phaseLocked && !w2.phaseLocked)
+				{
+				  (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+				  (*covMat)(idx1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
+				  (*covMat)(idx1+1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
+				  (*covMat)(idx1+1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov+1);
+				}
+			      // 2) first free, second fixed -> covariances with Im(w1) are zero
+			      else if (!w1.phaseLocked && w2.phaseLocked)
+				{
+				  (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+				  (*covMat)(idx1,idx2+1) = 0;
+				  (*covMat)(idx1+1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
+				  (*covMat)(idx1+1,idx2+1) = 0;
+				}
+			      // 3) vice versa
+			      else if (w1.phaseLocked && !w2.phaseLocked)
+				{
+				  (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+				  (*covMat)(idx1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
+				  (*covMat)(idx1+1,idx2) = 0;
+				  (*covMat)(idx1+1,idx2+1) = 0;
+				}
+			      // 4) both fixed (impossible)
+			      else
+				{
+				  (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+				  (*covMat)(idx1,idx2+1) = 0;
+				  (*covMat)(idx1+1,idx2) = 0;
+				  (*covMat)(idx1+1,idx2+1) = 0;
+				}
+			    }
+		      }
+		  
+		  NMCevents = myL.MCeventsInBin();
+		  outTree->Fill();
+		  
+		  /*		      for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)
+				      {
+				      vector<wave>& waves = ws[iCoherent].getWaves();
+				      for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
+				      {
+				      complex<double> a(minuit->GetParameter(waves[iWave1].getIndex()),
+				      minuit->GetParameter(waves[iWave1].getIndex() + 1));
+				      
+				      gHist.getHist(("hAmbi"+waves[iWave1].name+"sol"+amb).c_str(),
+				      ("fit results for this wave, solution "+amb).c_str(),
+				      nBins, threshold, threshold + nBins*binWidth)
+				      ->SetBinContent(iBin+1, norm(a));
+			}
+			}*/
+		  
+		  for (size_t iCoherent = 0; iCoherent < ws.size(); iCoherent++)  
+		    {
+		      vector<wave>& waves = ws[iCoherent].getWaves();
+		      for (size_t iWave1 = 0; iWave1 < waves.size(); iWave1++)
+			{
+			  waves[iWave1].fillHistIntensity(iBin, fitamb);
+			  if (iWave1 != waves.size()-1)
+			    {
+			      for (size_t iWave2 = iWave1 + 1; iWave2 < waves.size(); iWave2++)
+				waves[iWave1].fillHistPhase(iBin, waves[iWave2], fitamb);
+			    }
+			}  
+		      
+		    }  
+		}
+	      
 	    }	      
 	}
       else failBins++;
