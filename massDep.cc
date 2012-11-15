@@ -10,13 +10,14 @@ using namespace std;
 #include "TVectorD.h"
 #include "TMatrixDSym.h"
 #include "TDecompChol.h"
+#include "TRandom1.h"
 
 #include "bw.h"
 #include "fitInfo.h"
 #include "gHist.h"
 #include "fitModel.h"
 
-const bool flipImag = true; //false;
+const bool flipImag = true;
 
 class chiSquare : public ROOT::Minuit2::FCNBase {
 public:
@@ -79,63 +80,40 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
   // x[11] ... x[18] : params of G-wave
 
   double m = .5*(massLow + massHigh);
-  if (m < 0.77+mPi || m > 2.7)
+  if (m < 2*mK || m > 2.45)
     return 0;
 
   model->evaluateAt(m, x);
-  complex<double> Dwave = model->valueForWave("D+");
-  complex<double> Pwave = model->valueForWave("P+");
-  complex<double> Gwave = model->valueForWave("G+");
+  complex<double> Swave = model->valueForWave("S0");
+  complex<double> Dwave = model->valueForWave("D0");
 
-  TVectorD eps(5);
-  eps[0] = values[0] - real(Dwave);
-  assert(values[1] == 0);
+  TVectorD eps(3);
+  eps[0] = values[2] - real(Swave);
+  assert(values[3] == 0);
 
-  if (m < 2.)
-    {
-      eps[1] = values[2] - real(Pwave);
-      eps[2] = (flipImag ? -1 : 1) * values[3] - imag(Pwave);
-    }
-  else
-    eps[1] = eps[2] = 0;
-  if (m > 1.5 && m < 2.7)
-    {
-      eps[3] = values[4] - real(Gwave);
-      eps[4] =  (flipImag ? -1 : 1) * values[5] - imag(Gwave);
-    }
-  else
-    eps[3] = eps[4] = 0;
-  //eps[1] = eps[2] = eps[3] = eps[4] = 0;
-
-  gHist.Fill("hDwaveEvolution", "evolution of Dwave",
+  eps[1] = values[4] - real(Dwave);
+  eps[2] = fabs(values[5]) - imag(Dwave);
+  
+  gHist.Fill("hSwaveEvolution", "evolution of Swave",
 	     info->getNbins(), info->getLower(), info->getLower() + (info->getNbins()+1) * info->getBinWidth(), 1000, 500, -500,
+	     m, real(Swave));
+  gHist.Fill("hDwaveReEvolution", "evolution of Re Dwave",
+	     info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
 	     m, real(Dwave));
-  gHist.Fill("hPwaveReEvolution", "evolution of Re Pwave",
+  gHist.Fill("hDwaveImEvolution", "evolution of Im Dwave",
 	     info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
-	     m, real(Pwave));
-  gHist.Fill("hPwaveImEvolution", "evolution of Im Pwave",
-	     info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
-	     m, (flipImag ? -1 : 1)*imag(Pwave));
-  if (1 || m > 1.4)
-    {
-      gHist.Fill("hGwaveReEvolution", "evolution of Re Gwave",
-		 info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
-		 m, real(Gwave));
-      gHist.Fill("hGwaveImEvolution", "evolution of Im Gwave",
-		 info->getNbins(), info->getLower(), info->getUpper(), 1000, 500, -500,
-		 m, (flipImag ? -1 : 1) * imag(Gwave));
-    }
+	     m, (flipImag ? -1 : 1)*imag(Dwave));
 
-  TMatrixDSym cov(14);
+  TMatrixDSym cov(6);
   int colSkipped = 0, rowSkipped = 0;
-  for (int i = 0; i < 14; i++)
+  for (int i = 0; i < 6; i++)
     {
-      if (i == 1 || i == 6)
+      if ( i==1 || i==2 )
 	rowSkipped++;
       colSkipped = 0;
-      for (int j = 0; j < 14; j++)
+      for (int j = 0; j < 6; j++)
 	{
-	  if (j == 1 || j == 6)
+	  if ( j==1 || j==2 )
 	    colSkipped++;
 	  cov(i,j) = (*covMat)(i + rowSkipped, j + colSkipped);
 	}
@@ -147,18 +125,19 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
       cout << "non-positive-definite covariance matrix in bin " << iBin << endl;
       abort();
     }
+  
+  TMatrixDSym G(3);
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++)
+      // i am looking only at S0 and D0
+      G(i,j) = weight(i+1,j+1);
 
-  TMatrixDSym G(5);
-  for (int i = 0; i < 5; i++)
-    for (int j = 0; j < 5; j++)
-      G(i,j) = weight(i,j);
-
-  if (G.Similarity(eps) > 10000)
+  /*if (G.Similarity(eps) > 10000)
     {
       cout << "Gigantic value " << G.Similarity(eps) << " in bin " << iBin << endl;
       G.Print();
       eps.Print();
-    }
+      }*/
   if (G.Similarity(eps) < 0)
     {
       cout << "negative value " << G.Similarity(eps) << " in bin " << iBin << endl;
@@ -236,6 +215,9 @@ int main(int argc, char **argv)
       return 1;
     }
 
+  TRandom1* gRandom = new TRandom1();
+  gRandom->SetSeed2(0); // truely random!!!
+
   TFile *fout = TFile::Open("outMassDep.root", "RECREATE");
   fout->cd();
 
@@ -263,7 +245,7 @@ int main(int argc, char **argv)
       cout << "bin " << i << " m = [" << massLow << "," << massHigh << "]" << endl;
       for (size_t j = 0; j < info->getNvars(); j++)
 	{
-	  vhPar[j]->SetBinContent(i, values[j]);
+	  vhPar[j]->SetBinContent(i, fabs(values[j]));
 	  vhPar[j]->SetBinError(i, sqrt((*covMat)[j][j]));
 	}
       cout << endl;
@@ -287,88 +269,85 @@ int main(int argc, char **argv)
   //{13.7333, 1.3183, 0.107, 2.99991, 0.782959, 0, 0, -19237.9, 8934.96, 1.99998, 1.1686e-06, -0.965659, -0.348415, 2.001, 0.235, 4.64518, 0.0361006, 0, 0,  }
     //{234, 1.3183, 0.107, 1.9, .5, 0, 0, 100, -18, 1.4, 0.4, 121.445, 43.7584, 2.0253, 0.28722, 5, 0.7, 0, 0 } // 2.001, 0.235, 5., 0.7, 0, 0 }
     //    { 493.863, 1.313, 0.1057, 1.8, 0.6, 0, 0, 142.454, -94.109, 1.35, 0.3, 130.12059638, 24.3762, 1.99, 0.236181, 5, 0.4, 1.3, -1.5, }
-    { 315.601, 1.31176, 0.106659, 1.8, 0.6, 0, 0, 95.8984, -54.8463, 1.38494, 0.43218, 76.5587, 35.9412, 2.07055, 0.643189, 5, 0.4, 1.3, -1.5, }
+  //    { 315.601, 1.31176, 0.106659, 1.8, 0.6, 0, 0, 95.8984, -54.8463, 1.38494, 0.43218, 76.5587, 35.9412, 2.07055, 0.643189, 5, 0.4, 1.3, -1.5, }
+    { 76, -80, 1.305, 0.132, 80, -80, 1.515, 0.07, 50, -50, 2.13, .27, /*0, 0, 0, 0, 0,*/ 200, 0, 1, .065, 100, 0, 1.5, 0.104, 100, 0, 1.730, 0.100/*, 0, 0, 0, 0, 0*/}
   ;
 
-  minuit->SetParameter(0, "D strength", vals[0], .1, 0, 0);
+  minuit->SetParameter(0, "f_2/a_2 strength Re", vals[0], 1, 0, 0);
   //minuit->FixParameter(0);
-  minuit->SetParameter(1, "a_2 mass", vals[1], 0.01, 0, 0);
-  minuit->FixParameter(1);
-  minuit->SetParameter(2, "a_2 width", vals[2], 0.01, 0.0, 0.);
+  minuit->SetParameter(1, "f_2/a_2 strength Im", vals[1], 1, 0, 0);
+  //minuit->FixParameter(1);
+  minuit->SetParameter(2, "f_2/a_2 mass", vals[2], 0.01, 0, 0);
   minuit->FixParameter(2);
-  minuit->SetParameter(3, "a_2' mass", vals[3], 0.05, 1.5, 2.2);
+  minuit->SetParameter(3, "f_2/a_2 width", vals[3], 0.01, 0.0, 0.);
   minuit->FixParameter(3);
-  minuit->SetParameter(4, "a_2' width", vals[4], 0.2, 0.3, 1.);
-  minuit->FixParameter(4);
-  minuit->SetParameter(5, "a_2' strength Re", vals[5], 0.1, 0, 0);
-  minuit->FixParameter(5);
-  minuit->SetParameter(6, "a_2' strength Im", vals[6], 0., 0, 0);
+  minuit->SetParameter(4, "f_2' strength Re", vals[4], 1, 0, 0);
+  //minuit->FixParameter(4);
+  minuit->SetParameter(5, "f_2' strength Im", vals[5], 1, 0, 0);
+  //minuit->FixParameter(5);
+  minuit->SetParameter(6, "f_2' mass", vals[6], 0.01, 0, 0);
   minuit->FixParameter(6);
-
-  minuit->SetParameter(7, "P strength Re", vals[7], 1, 0, 0);
-  //minuit->FixParameter(7);
-  minuit->SetParameter(8, "P strength Im", vals[8], 1, 0, 0);
+  minuit->SetParameter(7, "f_2' width", vals[7], 0.01, 0, 0);
+  minuit->FixParameter(7);
+  minuit->SetParameter(8, "f_2'' strength Re", vals[8], 1, 0, 0);
   //minuit->FixParameter(8);
-  minuit->SetParameter(9, "P-wave mass", vals[9], 0.02, 0, 2);
+  minuit->SetParameter(9, "f_2'' strength Im", vals[9], 1, 0, 0);
   //minuit->FixParameter(9);
-  minuit->SetParameter(10, "P-wave width", vals[10], 0.25, 0, 1.5);
+  minuit->SetParameter(10, "f_2'' mass", vals[10], 0.01, 0, 0);
+  minuit->FixParameter(10);
+  minuit->SetParameter(11, "f_2'' width", vals[11], 0.01, 0, 0);
+  minuit->FixParameter(11);
+
+  /*minuit->SetParameter(8, "D BG strength Re", gRandom->Uniform(1)-0.5, 1, 0, 0);
+  //minuit->FixParameter(8);
+  minuit->SetParameter(9, "D BG strength Im", gRandom->Uniform(1)-0.5, 1, 0, 0);
+  //minuit->FixParameter(9);
+  minuit->SetParameter(10, "D BG const", gRandom->Uniform(1)-0.5, 1, 0, 0);
   //minuit->FixParameter(10);
-
-  minuit->SetParameter(11, "G strength Re", vals[11], 0.1, 0, 0);
+  minuit->SetParameter(11, "D BG linear", gRandom->Uniform(1)-0.5, 1, 0, 0);
   //minuit->FixParameter(11);
-  minuit->SetParameter(12, "G strength Im", vals[12], 0.1, 0, 0);
+  minuit->SetParameter(12, "D BG quadratic", gRandom->Uniform(1)-0.5, 1, 0, 0);
   //minuit->FixParameter(12);
-  minuit->SetParameter(13, "a_4 mass", vals[13], 0.01, 0, 0);
-  //minuit->FixParameter(13);
-  minuit->SetParameter(14, "a_4 width", vals[14], 0.02, 0, 0);
-  //minuit->FixParameter(14);
-  minuit->SetParameter(15, "a_4' mass", vals[15], 0.01, 2.1, 10);
+  */
+
+  
+  minuit->SetParameter(12, "f_0(980) strength Re", vals[12], 1, 0, 0);
+  //minuit->FixParameter(12);
+  minuit->SetParameter(13, "f_0(980) strength Im", vals[13], 1, 0, 0);
+  minuit->FixParameter(13);
+  minuit->SetParameter(14, "f_0(980) mass", vals[14], 0.01, 0, 0);
+  minuit->FixParameter(14);
+  minuit->SetParameter(15, "f_0(980) width", vals[15], 0.01, 0, 0);
   minuit->FixParameter(15);
-  minuit->SetParameter(16, "a_4' width", vals[16], 0.01, 0, 10);
-  minuit->FixParameter(16);
-  minuit->SetParameter(17, "a_4' strength Re", vals[17], 0.1, 0, 0);
+  minuit->SetParameter(16, "f_0(1500) strength Re", vals[16], 1, 0, 0);
+  //minuit->FixParameter(16);
+  minuit->SetParameter(17, "f_0(1500) strength Im", vals[17], 1, 0, 0);
   minuit->FixParameter(17);
-  minuit->SetParameter(18, "a_4' strength Im", vals[18], 0.1, 0, 0);
+  minuit->SetParameter(18, "f_0(1500) mass", vals[18], 0.01, 0, 0);
   minuit->FixParameter(18);
-
-  minuit->SetParameter(19, "D BG exp width", 3.246672960364, 0.1, 0, 10);
+  minuit->SetParameter(19, "f_0(1500) width", vals[19], 0.01, 0, 0);
   minuit->FixParameter(19);
-  minuit->SetParameter(20, "D BG const", 0.3924742977682, 0.1, 0, 0);
-  minuit->FixParameter(20);
-  minuit->SetParameter(21, "D BG linear", 15.89705694124, 0.1, 0, 0);
-  //minuit->FixParameter(21);
-  minuit->SetParameter(22, "D BG quadratic", -13.36962331843, 0.1, 0, 0);
-  minuit->FixParameter(22);
-
-  /*
-  minuit->SetParameter(19, "D BG exp width", 0, 0.1, 0, 10);
-  minuit->FixParameter(19);
-  minuit->SetParameter(20, "D BG const", 0, 0.1, 0, 0);
-  minuit->FixParameter(20);
-  minuit->SetParameter(21, "D BG linear", 0, 0.1, 0, 0);
+  minuit->SetParameter(20, "f_0(1710) strength Re", vals[20], 1, 0, 0);
+  //minuit->FixParameter(20);
+  minuit->SetParameter(21, "f_0(1710) strength Im", vals[21], 1, 0, 0);
   minuit->FixParameter(21);
-  minuit->SetParameter(22, "D BG quadratic", 0, 0.1, 0, 0);
+  minuit->SetParameter(22, "f_0(1710) mass", vals[22], 0.01, 0, 0);
   minuit->FixParameter(22);
-  */
-  /*
-  minuit->SetParameter(23, "G BG exp width", 9.02584, 0.1, 0, 10);
+  minuit->SetParameter(23, "f_0(1710) width", vals[23], 0.01, 0, 0);
   minuit->FixParameter(23);
-  minuit->SetParameter(24, "G BG const", -148.13, 0.1, 0, 0);
-  minuit->FixParameter(24);
-  minuit->SetParameter(25, "G BG linear", -56.0833, 0.1, 0, 0);
-  minuit->FixParameter(25);
-  minuit->SetParameter(26, "G BG quadratic", 8.77022, 0.1, 0, 0);
-  minuit->FixParameter(26);
-  */
-  minuit->SetParameter(23, "G BG exp width", 0, 0.1, 0, 10);
-  minuit->FixParameter(23);
-  minuit->SetParameter(24, "G BG const", 0, 0.1, 0, 0);
-  minuit->FixParameter(24);
-  minuit->SetParameter(25, "G BG linear", 0, 0.1, 0, 0);
-  minuit->FixParameter(25);
-  minuit->SetParameter(26, "G BG quadratic", 0, 0.1, 0, 0);
-  minuit->FixParameter(26);
 
+  /*  minuit->SetParameter(21, "S BG strength Re", gRandom->Uniform(1)-0.5, 1, 0, 0);
+  //minuit->FixParameter(21);
+  minuit->SetParameter(22, "S BG strength Im", gRandom->Uniform(1)-0.5, 1, 0, 0);
+  //minuit->FixParameter(22);
+  minuit->SetParameter(23, "S BG const", gRandom->Uniform(1)-0.5, 1, 0, 0);
+  //minuit->FixParameter(23);
+  minuit->SetParameter(24, "S BG linear", gRandom->Uniform(1)-0.5, 1, 0, 0);
+  //minuit->FixParameter(24);
+  minuit->SetParameter(25, "S BG quadratic", gRandom->Uniform(1)-0.5, 1, 0, 0);
+  //minuit->FixParameter(25);
+  */
+    
   TStopwatch sw;
   sw.Start();
   minuit->CreateMinimizer();
@@ -390,36 +369,36 @@ int main(int argc, char **argv)
 	{
 	  double m = info->getThreshold() + info->getBinWidth()*(i + 0.5);
 
-	  if (m < 0.77+mPi)
+	  if (m < 2*mK || m > 2.45)
 	    continue;
 
 	  model->evaluateAt(m, x);
-	  complex<double> phaseD = model->valueForWave("phaseD");
-	  complex<double> Dwave = model->valueForWave("D+");
-	  complex<double> DwaveBG = model->valueForWave("D+BG");
-	  complex<double> Pwave = model->valueForWave("P+");
-	  complex<double> Gwave = model->valueForWave("G+");
-	  if (flipImag)
-	    {
-	      Pwave = conj(Pwave);
-	      Gwave = conj(Gwave);
-	    }
+	  //complex<double> phaseD = model->valueForWave("phaseD");
+	  complex<double> Dwave = model->valueForWave("D0");
+	  complex<double> DwaveBG = model->valueForWave("D0BG");
+	  complex<double> Swave = model->valueForWave("S0");
+	  complex<double> SwaveBG = model->valueForWave("S0BG");
 
-	  gHist.getHist("hPhaseD", "#phi(D)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,arg(phaseD));
+	  //gHist.getHist("hPhaseD", "#phi(D)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,arg(phaseD));
+	  gHist.getHist("hSwaveRe", "Swave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Swave));
 	  gHist.getHist("hDwaveRe", "Dwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Dwave));
-	  gHist.getHist("hDwaveBG", "DwaveBG", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,abs(DwaveBG));
-	  gHist.getHist("hPwaveRe", "Re Pwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Pwave));
-	  gHist.getHist("hPwaveIm", "Im Pwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,(flipImag ? -1 : 1) * imag(Pwave));
+	  gHist.getHist("hDwaveIm", "Dwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,fabs(imag(Dwave)));
+	  //gHist.getHist("hDwaveBG", "DwaveBG", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,abs(DwaveBG));
+	  /*	  gHist.getHist("hPwaveRe", "Re Pwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Pwave));
+		  gHist.getHist("hPwaveIm", "Im Pwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,(flipImag ? -1 : 1) * imag(Pwave));
 	  gHist.getHist("hGwaveRe", "Re Gwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Gwave));
-	  gHist.getHist("hGwaveIm", "Im Gwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,(flipImag ? -1 : 1) * imag(Gwave));
+	  gHist.getHist("hGwaveIm", "Im Gwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,(flipImag ? -1 : 1) * imag(Gwave));*/
 
-	  gHist.getHist("hDwaveInt", "int DWave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,norm(Dwave));
-	  gHist.getHist("hPwaveInt", "int Pwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,norm(Pwave));
-	  gHist.getHist("hGwaveInt", "int Gwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,norm(Gwave));
+	  gHist.getHist("hSwaveInt", "int SWave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,norm(Swave));
+	  gHist.getHist("hSwaveBG", "int SWave BG", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,norm(SwaveBG));
+	  
+	  gHist.getHist("hDwaveInt", "int Dwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,norm(Dwave));
+	  gHist.getHist("hDwaveBG", "int DwaveBG", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,norm(DwaveBG));
 
-	  gHist.getHist("hPhaseDP", "phase P - D", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, arg(Pwave));
-	  gHist.getHist("hPhaseDG", "phase G - D", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, arg(Gwave));
-	  gHist.getHist("hPhasePG", "phase P - G", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, arg(Pwave / Gwave));
+	  gHist.getHist("hPhaseSD", "phase D - S", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, arg(Swave/Dwave));
+	  
+	  /*gHist.getHist("hPhaseDG", "phase G - D", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, arg(Gwave));
+	  gHist.getHist("hPhasePG", "phase P - G", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, arg(Pwave / Gwave));*/
 	}
     }
 

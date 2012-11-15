@@ -163,6 +163,58 @@ fitModelEtaPpi::valueForWave(const char* name) const
   exit(1);
 }
 
+class fitModelKKbarSD : public fitModel {
+public:
+  fitModelKKbarSD() : mass(0), Swave(0), SwaveBG(0), Dwave(0), DwaveBG(0) {};
+  void evaluateAt(double mass_, const std::vector<double>& x);
+  std::complex<double> valueForWave(const char* name) const;
+private:
+  double mass;
+  std::complex<double> Swave;
+  std::complex<double> SwaveBG;
+  std::complex<double> Dwave;
+  std::complex<double> DwaveBG;
+};
+
+void
+fitModelKKbarSD::evaluateAt(double mass_, const vector<double>& x)
+{
+  mass = mass_;
+  
+  double m1 = mK;
+  double m2 = mK;
+  //  double phaseSpace = breakupMomentum(mass*mass, m1, m2);
+
+  Dwave = complex<double>(x[0],x[1])*BW(mass*mass, m1, m2, 2, x[2], x[3])
+    + complex<double>(x[4], x[5])*BW(mass*mass, m1, m2, 2, x[6], x[7])
+    + complex<double>(x[8], x[9])*BW(mass*mass, m1, m2, 2, x[10], x[11]);
+  
+  //DwaveBG = complex<double>(x[8],x[9])*(x[10] + mass*x[11] + mass*mass*x[12]);
+  
+  Swave = complex<double>(x[12],x[13])*BW(mass*mass, m1, m2, 0, x[14], x[15])
+    + complex<double>(x[16], x[17])*BW(mass*mass, m1, m2, 0, x[18], x[19])
+    + complex<double>(x[20], x[21])*BW(mass*mass, m1, m2, 0, x[22], x[23]);
+    
+  //SwaveBG = complex<double>(x[21],x[22])*(x[23] + mass*x[24] + mass*mass*x[25]);
+}
+
+
+complex<double>
+fitModelKKbarSD::valueForWave(const char* name) const
+{
+  if (!strcmp(name, "S0"))
+    return Swave;
+  else if (!strcmp(name, "S0BG"))
+    return SwaveBG;
+  else if (!strcmp(name, "D0"))
+    return Dwave;
+  else if (!strcmp(name, "D0BG"))
+    return DwaveBG;
+
+  cerr << "unknown wave '" << name << "' requested" << endl;
+  exit(1);
+}
+
 fitModel*
 fitModel::getFitModelForName(const string& name)
 {
@@ -171,6 +223,9 @@ fitModel::getFitModelForName(const string& name)
 
   if (!strcmp(name.c_str(), "etaPpi"))
     return new fitModelEtaPpi();
+
+  if (!strcmp(name.c_str(), "KKbarSD"))
+    return new fitModelKKbarSD();
 
   cerr << "No fit model with modelName == '" << name << "' known" << endl;
   abort();
