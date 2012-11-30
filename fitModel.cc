@@ -174,6 +174,14 @@ private:
   std::complex<double> SwaveBG;
   std::complex<double> Dwave;
   std::complex<double> DwaveBG;
+  std::complex<double> phaseS;
+
+  std::complex<double> f2;
+  std::complex<double> f2prime;
+
+  std::complex<double> f01370;
+  std::complex<double> f01500;
+  std::complex<double> f01710;
 };
 
 void
@@ -183,17 +191,35 @@ fitModelKKbarSD::evaluateAt(double mass_, const vector<double>& x)
   
   double m1 = mK;
   double m2 = mK;
-  //  double phaseSpace = breakupMomentum(mass*mass, m1, m2);
+  //double phaseSpace = breakupMomentum(mass*mass, m1, m2);
+  
+  //par = &x[13];
+  
+  DwaveBG = complex<double>(x[8],x[9]) /** pow(mass-2*mK, x[26])*/ * exp(-1*x[10]*mass - x[11]*mass*mass);
 
-  Dwave = complex<double>(x[0],x[1])*BW(mass*mass, m1, m2, 2, x[2], x[3])
-    + complex<double>(x[4], x[5])*BW(mass*mass, m1, m2, 2, x[6], x[7])
-    + complex<double>(x[8], x[9])*BW(mass*mass, m1, m2, 2, x[10], x[11]);
+  f2 = complex<double>(x[0],x[1]) * BW(mass*mass, m1, m2, 2, x[2], x[3]);
+  f2prime = complex<double>(x[4], x[5]) * BW(mass*mass, m1, m2, 2, x[6], x[7]);
   
-  //DwaveBG = complex<double>(x[8],x[9])*(x[10] + mass*x[11] + mass*mass*x[12]);
+  Dwave = f2 + f2prime + DwaveBG;
   
-  Swave = complex<double>(x[12],x[13])*BW(mass*mass, m1, m2, 0, x[14], x[15])
-    + complex<double>(x[16], x[17])*BW(mass*mass, m1, m2, 0, x[18], x[19])
-    + complex<double>(x[20], x[21])*BW(mass*mass, m1, m2, 0, x[22], x[23]);
+  //  SwaveBG = complex<double>(x[29],x[30]) * pow(mass - 2*mK,x[31]) + exp(-1*x[32]*mass - x[33]*mass*mass);    
+
+  f01370 = complex<double>(x[16], x[17])*BW(mass*mass, m1, m2, 0, x[18], x[19]);
+  f01500 = complex<double>(x[20], x[21])*BW(mass*mass, m1, m2, 0, x[22], x[23]);
+  f01710 = complex<double>(x[24],x[25])*BW(mass*mass, m1, m2, 0, x[26], x[27]);
+  
+  Swave = complex<double>(x[12], x[13])*BW(mass*mass, m1, m2, 0, x[14], x[15])
+    + f01500
+    + f01710
+    + f01370;
+  //+ SwaveBG;
+  
+  phaseS = 1;
+  if (abs(Swave) != 0)
+    phaseS = Swave / abs(Swave);
+  Swave /= phaseS;
+
+  Dwave /= phaseS;
     
   //SwaveBG = complex<double>(x[21],x[22])*(x[23] + mass*x[24] + mass*mass*x[25]);
 }
@@ -210,6 +236,16 @@ fitModelKKbarSD::valueForWave(const char* name) const
     return Dwave;
   else if (!strcmp(name, "D0BG"))
     return DwaveBG;
+  else if (!strcmp(name, "f2"))
+    return f2;
+  else if (!strcmp(name, "f2prime"))
+    return f2prime;
+  else if (!strcmp(name, "f01370"))
+    return f01370;
+  else if (!strcmp(name, "f01500"))
+    return f01500;
+  else if (!strcmp(name, "f01710"))
+    return f01710;
 
   cerr << "unknown wave '" << name << "' requested" << endl;
   exit(1);

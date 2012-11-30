@@ -80,7 +80,7 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
   // x[11] ... x[18] : params of G-wave
 
   double m = .5*(massLow + massHigh);
-  if (m < 2*mK || m > 2.45)
+  if (m < .98 || m > 2.5)
     return 0;
 
   model->evaluateAt(m, x);
@@ -245,7 +245,8 @@ int main(int argc, char **argv)
       cout << "bin " << i << " m = [" << massLow << "," << massHigh << "]" << endl;
       for (size_t j = 0; j < info->getNvars(); j++)
 	{
-	  vhPar[j]->SetBinContent(i, fabs(values[j]));
+	  if (j==5) vhPar[j]->SetBinContent(i, fabs(values[j]));
+	  else vhPar[j]->SetBinContent(i, values[j]);
 	  vhPar[j]->SetBinError(i, sqrt((*covMat)[j][j]));
 	}
       cout << endl;
@@ -256,30 +257,26 @@ int main(int argc, char **argv)
   TFitterMinuit* minuit = new TFitterMinuit();
   minuit->SetMinuitFCN(&fitFunc);
 
-  double vals[] = //{12.5161, 1.3183, 0.107, 1.90331, 0.99997, 10.2365, 29.0293, -192.712, 237.324, 1.37779, 0.400319, -1.42882, -0.294888, 2.001, 0.235, 2.71232, 0.153474, -1.84574, -12.2434,  }
-  //{77.728, 1.3183, 0.107, 6.82604, 0.470435, -51.0442, 23.7011, -297.761, -23.8848, 1.39258, 0.400842, -0.965659, -0.348415, 2.001, 0.235, 4.64518, 0.0361006, -84.1068, -172.716,  } 
-  //{77.688, 1.3183, 0.107, 7.71038, 0.415327, -61.8941, 28.4093, -297.45, -24.1899, 1.39193, 0.400172, -0.996119, -0.372143, 2.001, 0.235, 8.30321, 0.0033461, -1047.66, -2202.12,  } 
-  //{13.1807, 1.3183, 0.107, 9.98529, 0.999804, -257.594, 1157.81, -1152.6, -1647.65, 3.07546, 7.26251, -0.965659, -0.348415, 2.001, 0.235, 4.64518, 0.0361006, -84.1068, -242.008,  } 
-    //  {13.7333, 1.3183, 0.107, 2.99991, 0.782959, -152.037, 59.0287, -19237.9, 8934.96, 1.99998, 1.1686e-06, -0.965659, -0.348415, 2.001, 0.235, 4.64518, 0.0361006, -84.1068, -242.008,  }
-  //{91.2756, 1.28142, 0.0888551, 2.99993, 0.00757554, -17.8072, 9.42176, -400282, 609404, 1.89095, 5.39743e-10, 46.211, -8.99411, 2.001, 0.235, 9.98809, 0.0106126, -575.415, -105.118,  }
-  //{144.564, 1.31293, 0.129749, 1.76617, 5.55112e-17, -17.8247, -1.58795e+06, -213947, 313149, 1.92468, 1.52465e-09, -108.293, -20.1702, 2.001, 0.235, 9.99909, 0.010058, -568.593, -167.354,  } 
-  //{112.217, 1.29986, 0.0999167, 1.76678, 6.99046e-12, -39651.9, 58861.1, 165077, -134251, 1.1064, 3.88578e-16, -0.00484132, -0.337098, 2.001, 0.235, 9.23719, 0.935933, 374.254, -85.3632,  } 
-  //{134.733, 1.31361, 0.119147, 1.79072, 0.00399844, 7700.92, 5441.68, 17827.8, 31456.4, 1.10929, 0.0231332, 0.474292, 4.70543, 2.001, 0.235, 9.38998, 7.48521e-05, 817.705, -434.581,  }
-  //{137.706, 1.31412, 0.132691, 1.78024, 0.00239979, -0.0639616, 0.793151, 25.5136, 5.09123, 1.6503, 0.307946,  }
-  //{13.7333, 1.3183, 0.107, 2.99991, 0.782959, 0, 0, -19237.9, 8934.96, 1.99998, 1.1686e-06, -0.965659, -0.348415, 2.001, 0.235, 4.64518, 0.0361006, 0, 0,  }
-    //{234, 1.3183, 0.107, 1.9, .5, 0, 0, 100, -18, 1.4, 0.4, 121.445, 43.7584, 2.0253, 0.28722, 5, 0.7, 0, 0 } // 2.001, 0.235, 5., 0.7, 0, 0 }
-    //    { 493.863, 1.313, 0.1057, 1.8, 0.6, 0, 0, 142.454, -94.109, 1.35, 0.3, 130.12059638, 24.3762, 1.99, 0.236181, 5, 0.4, 1.3, -1.5, }
-  //    { 315.601, 1.31176, 0.106659, 1.8, 0.6, 0, 0, 95.8984, -54.8463, 1.38494, 0.43218, 76.5587, 35.9412, 2.07055, 0.643189, 5, 0.4, 1.3, -1.5, }
-    { 76, -80, 1.305, 0.132, 80, -80, 1.515, 0.07, 50, -50, 2.13, .27, /*0, 0, 0, 0, 0,*/ 200, 0, 1, .065, 100, 0, 1.5, 0.104, 100, 0, 1.730, 0.100/*, 0, 0, 0, 0, 0*/}
+  double vals[] = //{ 50, 50 , 1.275, 0.185, 50, 50, 1.515, 0.07, 50, 50, 2.13, .27, 200, 0, 1, .065, 50, 50, 1.5, 0.104, 0, 100, 1.730, 0.100, 50, 50, 1.37, .3, 50, 50, 0.5, 0.5, -0.5, 50, 50, 0.5, 0.5, -0.5} //WA102 
+  //{ 50, 50, 1.275, 0.185, 50, 50, 1.32, .107, 50, 50, 1.515, 0.07, 200, 0, 1, .065, 100, 0, 1.5, 0.104, 100, 0, 1.730, 0.100, 50, 50, 0.5, -0.5, 0.5, 50, 50, 0.5, -0.5, 0.5} // f2/a2
+  //{ 0, -80, 1.275, 0.185, 0, -80, 1.525, 0.073, 0, -50, 2.3, .150, /*0, 0, 0, 0, 0,*/ 200, 0, 1, .100, 100, 0, 1.505, 0.109, 100, 0, 1.720, 0.135/*, 0, 0, 0, 0, 0*/} //PDG
+  //{-79, 30, 1.275, 0.185, -44, -50, 1.515, 0.07, 14, -31, 2.13, 0.27, -130, -539, 1.061, 0.200, -26, 90, 1.5, 0.104, -28, 49, 1.66, 0.196, -159, 395, 1.28, 0.358} //fit results without bg, fixed mass and width of f01500 and D
+  //  {-79, 35, 1.275, 0.185, -44, -46, 1.515, 0.07, 12, -31, 2.13, 0.2, -133, -537, 1.062, 0.200, 22, 106, 1.486, 0.139, -12, 43, 1.667, 0.131, -182, 400, 1.290, 0.365, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}  //fit results without bg, fixed mass and width of D
+  //{-138, -22, 1.275, 0.185, 32, -24, 1.515, 0.07, 40, 27, 2.5, 6.6, -50, -458, 1.09, 0.358, -62, -4, 1.486, 0.108, 8, -41, 1.712, 0.197, -182, 500, 1.290, 0.18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}  //fit results without bg, fixed mass and width of f and f'
+    //{40, 27, 1.275, 0.185, 38, -95, 1.515, 0.07, 239, -249, 1.09, 0.358, -333, -14, 1.486, 0.108, 34, -24, 1.712, 0.197, 26, -44, 1.290, 0.18, 0.15, 6, -2, .5, 1, 0, 0, 0, 0, 0}  //fit results without bg, no f'', fixed all mass and width
+    //    {-57, -22, 1.275, 0.185, 75, -124, 1.515, 0.07, 4, 2, -2.5, 0.6,
+  // 239, -249, 1.09, 0.358, -33.3, -14, 1.486, 0.108, 34, -24, 1.712, 0.197, 26, -44, 1.290, 0.18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// D with BG
+    {8, -21, 1.275, 0.185, 50, 2, 1.515, 0.07, -0.5, 3, -2.5, 0.6,
+     -147, -283, 1.09, 0.358, -39, -30, 1.486, 0.108, 21, -15, 1.712, 0.197, 32, -22, 1.290, 0.18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// D with BG
   ;
 
   minuit->SetParameter(0, "f_2/a_2 strength Re", vals[0], 1, 0, 0);
   //minuit->FixParameter(0);
   minuit->SetParameter(1, "f_2/a_2 strength Im", vals[1], 1, 0, 0);
   //minuit->FixParameter(1);
-  minuit->SetParameter(2, "f_2/a_2 mass", vals[2], 0.01, 0, 0);
+  minuit->SetParameter(2, "f_2/a_2 mass", vals[2], 0.01, 1.25, 1.35);
   minuit->FixParameter(2);
-  minuit->SetParameter(3, "f_2/a_2 width", vals[3], 0.01, 0.0, 0.);
+  minuit->SetParameter(3, "f_2/a_2 width", vals[3], 0.01, 0, 0);
   minuit->FixParameter(3);
   minuit->SetParameter(4, "f_2' strength Re", vals[4], 1, 0, 0);
   //minuit->FixParameter(4);
@@ -289,32 +286,22 @@ int main(int argc, char **argv)
   minuit->FixParameter(6);
   minuit->SetParameter(7, "f_2' width", vals[7], 0.01, 0, 0);
   minuit->FixParameter(7);
-  minuit->SetParameter(8, "f_2'' strength Re", vals[8], 1, 0, 0);
-  //minuit->FixParameter(8);
-  minuit->SetParameter(9, "f_2'' strength Im", vals[9], 1, 0, 0);
-  //minuit->FixParameter(9);
-  minuit->SetParameter(10, "f_2'' mass", vals[10], 0.01, 0, 0);
-  minuit->FixParameter(10);
-  minuit->SetParameter(11, "f_2'' width", vals[11], 0.01, 0, 0);
-  minuit->FixParameter(11);
-
-  /*minuit->SetParameter(8, "D BG strength Re", gRandom->Uniform(1)-0.5, 1, 0, 0);
-  //minuit->FixParameter(8);
-  minuit->SetParameter(9, "D BG strength Im", gRandom->Uniform(1)-0.5, 1, 0, 0);
-  //minuit->FixParameter(9);
-  minuit->SetParameter(10, "D BG const", gRandom->Uniform(1)-0.5, 1, 0, 0);
-  //minuit->FixParameter(10);
-  minuit->SetParameter(11, "D BG linear", gRandom->Uniform(1)-0.5, 1, 0, 0);
-  //minuit->FixParameter(11);
-  minuit->SetParameter(12, "D BG quadratic", gRandom->Uniform(1)-0.5, 1, 0, 0);
-  //minuit->FixParameter(12);
-  */
-
   
+  minuit->SetParameter(8, "D BG strength Re", vals[8], 1, 0, 0);
+  //minuit->FixParameter(8);
+  minuit->SetParameter(9, "D BG strength Im", vals[9], 1, 0, 0);
+  //minuit->FixParameter(9);
+  //minuit->SetParameter(26, "D BG const", vals[26], .01, 0, 0);
+  //minuit->FixParameter(26);
+  minuit->SetParameter(10, "D BG linear", vals[10], .01, 0, 0);
+  minuit->FixParameter(10);
+  minuit->SetParameter(11, "D BG quadratic", vals[11], .01, 0, 0);
+  minuit->FixParameter(11);
+    
   minuit->SetParameter(12, "f_0(980) strength Re", vals[12], 1, 0, 0);
   //minuit->FixParameter(12);
   minuit->SetParameter(13, "f_0(980) strength Im", vals[13], 1, 0, 0);
-  minuit->FixParameter(13);
+  //minuit->FixParameter(13);
   minuit->SetParameter(14, "f_0(980) mass", vals[14], 0.01, 0, 0);
   minuit->FixParameter(14);
   minuit->SetParameter(15, "f_0(980) width", vals[15], 0.01, 0, 0);
@@ -322,7 +309,7 @@ int main(int argc, char **argv)
   minuit->SetParameter(16, "f_0(1500) strength Re", vals[16], 1, 0, 0);
   //minuit->FixParameter(16);
   minuit->SetParameter(17, "f_0(1500) strength Im", vals[17], 1, 0, 0);
-  minuit->FixParameter(17);
+  //minuit->FixParameter(17);
   minuit->SetParameter(18, "f_0(1500) mass", vals[18], 0.01, 0, 0);
   minuit->FixParameter(18);
   minuit->SetParameter(19, "f_0(1500) width", vals[19], 0.01, 0, 0);
@@ -330,22 +317,36 @@ int main(int argc, char **argv)
   minuit->SetParameter(20, "f_0(1710) strength Re", vals[20], 1, 0, 0);
   //minuit->FixParameter(20);
   minuit->SetParameter(21, "f_0(1710) strength Im", vals[21], 1, 0, 0);
-  minuit->FixParameter(21);
+  //minuit->FixParameter(21);
   minuit->SetParameter(22, "f_0(1710) mass", vals[22], 0.01, 0, 0);
   minuit->FixParameter(22);
   minuit->SetParameter(23, "f_0(1710) width", vals[23], 0.01, 0, 0);
-  minuit->FixParameter(23);
-
-  /*  minuit->SetParameter(21, "S BG strength Re", gRandom->Uniform(1)-0.5, 1, 0, 0);
-  //minuit->FixParameter(21);
-  minuit->SetParameter(22, "S BG strength Im", gRandom->Uniform(1)-0.5, 1, 0, 0);
-  //minuit->FixParameter(22);
-  minuit->SetParameter(23, "S BG const", gRandom->Uniform(1)-0.5, 1, 0, 0);
   //minuit->FixParameter(23);
-  minuit->SetParameter(24, "S BG linear", gRandom->Uniform(1)-0.5, 1, 0, 0);
+  
+  
+  minuit->SetParameter(24, "f_0(1370) strength Re", vals[24], 1, 0, 0);
   //minuit->FixParameter(24);
-  minuit->SetParameter(25, "S BG quadratic", gRandom->Uniform(1)-0.5, 1, 0, 0);
+  minuit->SetParameter(25, "f_0(1370) strength Im", vals[25], 1, 0, 0);
   //minuit->FixParameter(25);
+  minuit->SetParameter(26, "f_0(1370) mass", vals[26], 0.01, 0, 0);
+  minuit->FixParameter(26);
+  minuit->SetParameter(27, "f_0(1370) width", vals[27], 0.01, 0, 0);
+  minuit->FixParameter(27);
+  
+  
+  
+  
+  /*
+  minuit->SetParameter(28, "S BG strength Re", vals[28], 1, 0, 0);
+  //minuit->FixParameter(28);
+  minuit->SetParameter(29, "S BG strength Im", vals[29], 1, 0, 0);
+  //minuit->FixParameter(29);
+  minuit->SetParameter(30, "S BG const", vals[30], .01, 0, 0);
+  //minuit->FixParameter(30);
+  minuit->SetParameter(31, "S BG linear", vals[31], .01, 0, 0);
+  //minuit->FixParameter(31);
+  minuit->SetParameter(32, "S BG quadratic", vals[32], .01, 0, 0);
+  //minuit->FixParameter(32);
   */
     
   TStopwatch sw;
@@ -369,7 +370,7 @@ int main(int argc, char **argv)
 	{
 	  double m = info->getThreshold() + info->getBinWidth()*(i + 0.5);
 
-	  if (m < 2*mK || m > 2.45)
+	  if (m < .98 || m > 2.5)
 	    continue;
 
 	  model->evaluateAt(m, x);
@@ -379,11 +380,19 @@ int main(int argc, char **argv)
 	  complex<double> Swave = model->valueForWave("S0");
 	  complex<double> SwaveBG = model->valueForWave("S0BG");
 
+	  complex<double> f2 = model->valueForWave("f2");
+	  complex<double> f2prime = model->valueForWave("f2prime");
+
+	  complex<double> f01370 = model->valueForWave("f01370");
+	  complex<double> f01500 = model->valueForWave("f01500");
+	  complex<double> f01710 = model->valueForWave("f01710");
+
 	  //gHist.getHist("hPhaseD", "#phi(D)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,arg(phaseD));
-	  gHist.getHist("hSwaveRe", "Swave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Swave));
-	  gHist.getHist("hDwaveRe", "Dwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Dwave));
-	  gHist.getHist("hDwaveIm", "Dwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,fabs(imag(Dwave)));
-	  //gHist.getHist("hDwaveBG", "DwaveBG", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,abs(DwaveBG));
+	  gHist.getHist("hSwaveRe", "Re(Swave)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Swave));
+	  gHist.getHist("hSwaveIm", "Im(Swave)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,imag(Swave));
+	  gHist.getHist("hDwaveRe", "Re(Dwave)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Dwave));
+	  gHist.getHist("hDwaveIm", "Im(Dwave)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,imag(Dwave));
+	  //ist.getHist("hDwaveBG", "DwaveBG", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,abs(DwaveBG));
 	  /*	  gHist.getHist("hPwaveRe", "Re Pwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Pwave));
 		  gHist.getHist("hPwaveIm", "Im Pwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,(flipImag ? -1 : 1) * imag(Pwave));
 	  gHist.getHist("hGwaveRe", "Re Gwave", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i,real(Gwave));
@@ -397,8 +406,12 @@ int main(int argc, char **argv)
 
 	  gHist.getHist("hPhaseSD", "phase D - S", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, arg(Swave/Dwave));
 	  
-	  /*gHist.getHist("hPhaseDG", "phase G - D", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, arg(Gwave));
-	  gHist.getHist("hPhasePG", "phase P - G", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, arg(Pwave / Gwave));*/
+	  gHist.getHist("hf2", "f2(1270)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, norm(f2));
+	  gHist.getHist("hf2prime", "f2'(1525)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, norm(f2prime));
+
+	  gHist.getHist("hf01370", "f0 1370", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, norm(f01370));
+	  gHist.getHist("hf01500", "f01500", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, norm(f01500));
+	  gHist.getHist("hf01710", "f01710", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, norm(f01710));
 	}
     }
 
