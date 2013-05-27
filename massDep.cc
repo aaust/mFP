@@ -80,8 +80,11 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
   // x[11] ... x[18] : params of G-wave
 
   double m = .5*(massLow + massHigh);
-  if (m < .98 || m > 2.5)
+  if (m < 1.05 || m > 2.45)
     return 0;
+
+  //if (iBin == 12)// || iBin<=4)
+  //    return 0;
 
   model->evaluateAt(m, x);
   complex<double> Swave = model->valueForWave("S0");
@@ -129,15 +132,15 @@ chiSquare::valueInBin(Long_t iBin, const vector<double>& x) const
   TMatrixDSym G(3);
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++)
-      // i am looking only at S0 and D0
+      // i am looking only at S0 (real) and D0 (real, imaginary)
       G(i,j) = weight(i+1,j+1);
 
-  /*if (G.Similarity(eps) > 10000)
+  if (G.Similarity(eps) > 10000)
     {
       cout << "Gigantic value " << G.Similarity(eps) << " in bin " << iBin << endl;
       G.Print();
       eps.Print();
-      }*/
+    }
   if (G.Similarity(eps) < 0)
     {
       cout << "negative value " << G.Similarity(eps) << " in bin " << iBin << endl;
@@ -266,38 +269,70 @@ int main(int argc, char **argv)
     //{40, 27, 1.275, 0.185, 38, -95, 1.515, 0.07, 239, -249, 1.09, 0.358, -333, -14, 1.486, 0.108, 34, -24, 1.712, 0.197, 26, -44, 1.290, 0.18, 0.15, 6, -2, .5, 1, 0, 0, 0, 0, 0}  //fit results without bg, no f'', fixed all mass and width
     //    {-57, -22, 1.275, 0.185, 75, -124, 1.515, 0.07, 4, 2, -2.5, 0.6,
   // 239, -249, 1.09, 0.358, -33.3, -14, 1.486, 0.108, 34, -24, 1.712, 0.197, 26, -44, 1.290, 0.18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// D with BG
-    {8, -21, 1.275, 0.185, 50, 2, 1.515, 0.07, -0.5, 3, -2.5, 0.6,
-     -147, -283, 1.09, 0.358, -39, -30, 1.486, 0.108, 21, -15, 1.712, 0.197, 32, -22, 1.290, 0.18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// D with BG
+  //   {21, -8, 1.32, 0.132, 50, 2, 1.515, 0.07, -0.5, 3, 0.4, -0.1, 0.2,//0.4, -2.5, 0.6,
+  //-147, -283, 1.09, 0.358,
+  //7370, 0.05, 2.5, -0.5,
+  //39, 30, 1.486, 0.108, 21, -15, 1.712, 0.197, 32, -22, 1.290, 0.18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// D with BG
+    //-19, -16, 1.32, 0.132, -138, 91, 1.515, 0.07, 37, 75, 0.4, -0.1, 0.2,//0.4, -2.5, 0.6,
+     //-147, -283, 1.09, 0.358,
+    //664, 0.07, 4.2, -0.7,
+  //, 302, 1.52, 0.108, -16, -50, 1.72, 0.100, 32, -22, 1.290, 0.18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// D with BG
+    //    {-60,  60, 1.29, 0.177, -4, -40, 1.515, 0.07, 2256, -50, 1.6, 1.9, //0.2,//0.4, -2.5, 0.6,
+     //-147, -283, 1.09, 0.358,
+    //     14925, 0.12, 3.2, //-0.7,
+  //     -28, 91, 1.52, 0.108, -30, 30, 1.72, 0.100, 17, 384, 1.290, 0.18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// D with BG
+  //{-46,  56, 1.24, 0.177, -28, -14, 1.515, 0.12, 266, -187, -6.4, 4.2,//0.4, -2.5, 0.6,
+  //-147, -283, 1.09, 0.358,
+  //1027, 2.2, 3,
+  //18, 57, 1.52, 0.108, -30, 12, 1.72, 0.100, 70, 377, 1.290, 0.18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// shown on 20130109 with ex    
+  //{-42,  52, 1.27, 0.216, -24, -18, 1.51, 0.1, 4, -3, -8.1, 5.1,//0.4, -2.5, 0.6,
+  //1259, 2.2, 4,
+  //37, 65, 1.48, 0.146, -34, 6, 1.72, 0.17, 69, 320, 1.29, 0.26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// PS
+    {-53,  52, 1.275, 0.185, -10, -30, 1.525, 0.073,
+     11, -5, -6, 4,//0.4, -2.5, 0.6,
+     //-147, -283, 1.09, 0.358,
+     //450, 1.5,3.5,
+     1259, 2.2, 2,
+     13, 78, 1.48, 0.14, -27, 0, 1.72, 0.13, 43, 350, 1.29, 0.26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// PS
+  //{-60,  60, 1.29, 0.177, -4, -40, 1.515, 0.07, 708, -61, 2.2, 0.4, //0.2,//0.4, -2.5, 0.6,
+  //-147, -283, 1.09, 0.358,
+  //13807, 0.13, 3.2, //-0.7,
+  //-28, 91, 1.52, 0.108, -30, 30, 1.72, 0.100, 17, 384, 1.290, 0.18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}//  with exp(-cm*m)
+  //    {10,  10, 1.270, 0.185, 10, 10, 1.525, 0.073, 
+  //708, -61, 1.2, 1.4,
+  //13807, 0.13, 3.2,
+  //10, 10, 1.505, 0.109, 10, 10, 1.72, 0.135, 10, 10, 1.300, 0.350, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// start over with pdg
   ;
-
-  minuit->SetParameter(0, "f_2/a_2 strength Re", vals[0], 1, 0, 0);
+  
+  minuit->SetParameter(0, "f_2 strength Re", vals[0], 1, 0, 0);
   //minuit->FixParameter(0);
-  minuit->SetParameter(1, "f_2/a_2 strength Im", vals[1], 1, 0, 0);
+  minuit->SetParameter(1, "f_2 strength Im", vals[1], 1, 0, 0);
   //minuit->FixParameter(1);
-  minuit->SetParameter(2, "f_2/a_2 mass", vals[2], 0.01, 1.25, 1.35);
-  minuit->FixParameter(2);
-  minuit->SetParameter(3, "f_2/a_2 width", vals[3], 0.01, 0, 0);
-  minuit->FixParameter(3);
+  minuit->SetParameter(2, "f_2 mass", vals[2], 1, 1.20, 1.35);
+  //minuit->FixParameter(2);
+  minuit->SetParameter(3, "f_2 width", vals[3], 1, 0.1, 0.5);
+  //minuit->FixParameter(3);
   minuit->SetParameter(4, "f_2' strength Re", vals[4], 1, 0, 0);
   //minuit->FixParameter(4);
   minuit->SetParameter(5, "f_2' strength Im", vals[5], 1, 0, 0);
   //minuit->FixParameter(5);
-  minuit->SetParameter(6, "f_2' mass", vals[6], 0.01, 0, 0);
-  minuit->FixParameter(6);
-  minuit->SetParameter(7, "f_2' width", vals[7], 0.01, 0, 0);
-  minuit->FixParameter(7);
+  minuit->SetParameter(6, "f_2' mass", vals[6], 1, 1.45, 1.6);
+  //minuit->FixParameter(6);
+  minuit->SetParameter(7, "f_2' width", vals[7], 1, 0.05, 0.5);
+  //minuit->FixParameter(7);
   
   minuit->SetParameter(8, "D BG strength Re", vals[8], 1, 0, 0);
   //minuit->FixParameter(8);
   minuit->SetParameter(9, "D BG strength Im", vals[9], 1, 0, 0);
-  //minuit->FixParameter(9);
-  //minuit->SetParameter(26, "D BG const", vals[26], .01, 0, 0);
-  //minuit->FixParameter(26);
-  minuit->SetParameter(10, "D BG linear", vals[10], .01, 0, 0);
-  minuit->FixParameter(10);
-  minuit->SetParameter(11, "D BG quadratic", vals[11], .01, 0, 0);
-  minuit->FixParameter(11);
-    
+  ///minuit->FixParameter(9);
+  //minuit->SetParameter(10, "D BG const", vals[10], 1, 0, 0);
+  //minuit->FixParameter(10);
+  minuit->SetParameter(10, "D BG linear", vals[10], .1, 0, 0);
+  //minuit->FixParameter(10);
+  minuit->SetParameter(11, "D BG quadratic", vals[11], .1, 0, 0);
+  //minuit->FixParameter(11);
+  
+  /*  
   minuit->SetParameter(12, "f_0(980) strength Re", vals[12], 1, 0, 0);
   //minuit->FixParameter(12);
   minuit->SetParameter(13, "f_0(980) strength Im", vals[13], 1, 0, 0);
@@ -306,24 +341,46 @@ int main(int argc, char **argv)
   minuit->FixParameter(14);
   minuit->SetParameter(15, "f_0(980) width", vals[15], 0.01, 0, 0);
   minuit->FixParameter(15);
-  minuit->SetParameter(16, "f_0(1500) strength Re", vals[16], 1, 0, 0);
+  */
+
+  //minuit->SetParameter(12, "S BG strength Re", vals[12], 1, 0, 0);
+  //minuit->FixParameter(12);
+  minuit->SetParameter(12, "S BG strength Re", vals[12], 1, 0, 0);
+  //minuit->FixParameter(12);
+  //minuit->SetParameter(12, "S BG const", vals[12], 1, 0, 0);
+  //minuit->FixParameter(12);
+  minuit->SetParameter(13, "S BG linear", vals[13], .1, 0, 0);
+  //minuit->FixParameter(13);
+  minuit->SetParameter(14, "S BG quadratic", vals[14], .1, 0, 0);
+  //minuit->FixParameter(14);
+
+  minuit->SetParameter(15, "f_0(1500) strength Re", vals[15], 1, 0, 0);
+  //minuit->FixParameter(15);
+  minuit->SetParameter(16, "f_0(1500) strength Im", vals[16], 1, 0, 0);
   //minuit->FixParameter(16);
-  minuit->SetParameter(17, "f_0(1500) strength Im", vals[17], 1, 0, 0);
+  minuit->SetParameter(17, "f_0(1500) mass", vals[17], 1, 1.45, 1.55);
   //minuit->FixParameter(17);
-  minuit->SetParameter(18, "f_0(1500) mass", vals[18], 0.01, 0, 0);
-  minuit->FixParameter(18);
-  minuit->SetParameter(19, "f_0(1500) width", vals[19], 0.01, 0, 0);
-  minuit->FixParameter(19);
-  minuit->SetParameter(20, "f_0(1710) strength Re", vals[20], 1, 0, 0);
+  minuit->SetParameter(18, "f_0(1500) width", vals[18], 1, 0.05, 0.15);
+  //minuit->FixParameter(18);
+  minuit->SetParameter(19, "f_0(1710) strength Re", vals[19], 1, 0, 0);
+  //minuit->FixParameter(19);
+  minuit->SetParameter(20, "f_0(1710) strength Im", vals[20], 1, 0, 0);
   //minuit->FixParameter(20);
-  minuit->SetParameter(21, "f_0(1710) strength Im", vals[21], 1, 0, 0);
+  minuit->SetParameter(21, "f_0(1710) mass", vals[21], 1, 1.65, 1.75);
   //minuit->FixParameter(21);
-  minuit->SetParameter(22, "f_0(1710) mass", vals[22], 0.01, 0, 0);
-  minuit->FixParameter(22);
-  minuit->SetParameter(23, "f_0(1710) width", vals[23], 0.01, 0, 0);
+  minuit->SetParameter(22, "f_0(1710) width", vals[22], 1, 0.05, 0.2);
+  //minuit->FixParameter(22);
+  
+  minuit->SetParameter(23, "f_0(1370) strength Re", vals[23], 1, 0, 0);
   //minuit->FixParameter(23);
+  minuit->SetParameter(24, "f_0(1370) strength Im", vals[24], 1, 0, 0);
+  //minuit->FixParameter(24);
+  minuit->SetParameter(25, "f_0(1370) mass", vals[25], 1, 1.25, 1.40);
+  //minuit->FixParameter(25);
+  minuit->SetParameter(26, "f_0(1370) width", vals[26], 1, 0.05, 0.40);
+  //minuit->FixParameter(26);
   
-  
+  /*
   minuit->SetParameter(24, "f_0(1370) strength Re", vals[24], 1, 0, 0);
   //minuit->FixParameter(24);
   minuit->SetParameter(25, "f_0(1370) strength Im", vals[25], 1, 0, 0);
@@ -332,21 +389,11 @@ int main(int argc, char **argv)
   minuit->FixParameter(26);
   minuit->SetParameter(27, "f_0(1370) width", vals[27], 0.01, 0, 0);
   minuit->FixParameter(27);
-  
+  */
   
   
   
   /*
-  minuit->SetParameter(28, "S BG strength Re", vals[28], 1, 0, 0);
-  //minuit->FixParameter(28);
-  minuit->SetParameter(29, "S BG strength Im", vals[29], 1, 0, 0);
-  //minuit->FixParameter(29);
-  minuit->SetParameter(30, "S BG const", vals[30], .01, 0, 0);
-  //minuit->FixParameter(30);
-  minuit->SetParameter(31, "S BG linear", vals[31], .01, 0, 0);
-  //minuit->FixParameter(31);
-  minuit->SetParameter(32, "S BG quadratic", vals[32], .01, 0, 0);
-  //minuit->FixParameter(32);
   */
     
   TStopwatch sw;
@@ -370,8 +417,8 @@ int main(int argc, char **argv)
 	{
 	  double m = info->getThreshold() + info->getBinWidth()*(i + 0.5);
 
-	  if (m < .98 || m > 2.5)
-	    continue;
+	  //if (m < 2*mK || m > 2.45)
+	  //continue;
 
 	  model->evaluateAt(m, x);
 	  //complex<double> phaseD = model->valueForWave("phaseD");

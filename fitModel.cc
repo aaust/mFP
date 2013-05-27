@@ -191,35 +191,40 @@ fitModelKKbarSD::evaluateAt(double mass_, const vector<double>& x)
   
   double m1 = mK;
   double m2 = mK;
-  //double phaseSpace = breakupMomentum(mass*mass, m1, m2);
+  double phaseSpace = breakupMomentum(mass*mass, m1, m2);
+
+  double mred = mass-2*mK;
   
   //par = &x[13];
+
+  //cout << x[0] << endl;
   
-  DwaveBG = complex<double>(x[8],x[9]) /** pow(mass-2*mK, x[26])*/ * exp(-1*x[10]*mass - x[11]*mass*mass);
+  DwaveBG = complex<double>(x[8],x[9]) * pow(phaseSpace, 2.5)/mass * exp(-1*x[10]*phaseSpace - x[11]*phaseSpace*phaseSpace);
 
   f2 = complex<double>(x[0],x[1]) * BW(mass*mass, m1, m2, 2, x[2], x[3]);
   f2prime = complex<double>(x[4], x[5]) * BW(mass*mass, m1, m2, 2, x[6], x[7]);
   
   Dwave = f2 + f2prime + DwaveBG;
   
-  //  SwaveBG = complex<double>(x[29],x[30]) * pow(mass - 2*mK,x[31]) + exp(-1*x[32]*mass - x[33]*mass*mass);    
+  // (mass > 2*mK)
+  SwaveBG = x[12] * pow(phaseSpace, 0.5)/mass * exp(-1*x[13]*phaseSpace - x[14]*phaseSpace*phaseSpace);
 
-  f01370 = complex<double>(x[16], x[17])*BW(mass*mass, m1, m2, 0, x[18], x[19]);
-  f01500 = complex<double>(x[20], x[21])*BW(mass*mass, m1, m2, 0, x[22], x[23]);
-  f01710 = complex<double>(x[24],x[25])*BW(mass*mass, m1, m2, 0, x[26], x[27]);
+  f01500 = complex<double>(x[15], x[16])*BW(mass*mass, m1, m2, 0, x[17], x[18]);
+  f01710 = complex<double>(x[19], x[20])*BW(mass*mass, m1, m2, 0, x[21], x[22]);
+  f01370 = complex<double>(x[23], x[24])*BW(mass*mass, m1, m2, 0, x[25], x[26]);
   
-  Swave = complex<double>(x[12], x[13])*BW(mass*mass, m1, m2, 0, x[14], x[15])
-    + f01500
-    + f01710
-    + f01370;
+  Swave = SwaveBG + f01500 + f01710 + f01370;
   //+ SwaveBG;
   
   phaseS = 1;
   if (abs(Swave) != 0)
     phaseS = Swave / abs(Swave);
   Swave /= phaseS;
-
+  
   Dwave /= phaseS;
+  //  f01500 /= phaseS;
+  //  f01370 /= phaseS;
+  //  f01710 /= phaseS;
     
   //SwaveBG = complex<double>(x[21],x[22])*(x[23] + mass*x[24] + mass*mass*x[25]);
 }
