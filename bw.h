@@ -16,6 +16,7 @@ const double hbarc = 0.1973269631; // GeV fm
 
 double blattWeisskopf(int L, double p);
 double breakupMomentum(double s, double m1, double m2);
+std::complex<double> Flatte(double s, double m1, double m2, double m0, double g1);
 std::complex<double> BW(double s, double m1, double m2, int J, double m0, double Gamma0);
 std::complex<double> BW_a2_pietap(double s);
 std::complex<double> BW_a2_pietap_coupled(double s);

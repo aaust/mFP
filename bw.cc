@@ -77,6 +77,27 @@ breakupMomentum2(double s, double m1, double m2)
 
 
 complex<double>
+Flatte(double s, double m1, double m2, double m0, double g1)
+{
+  double m = sqrt(s);
+  double g2 = 4.21 * g1;
+  
+  double rho_pi = 2 * breakupMomentum(s, m1, m2) / m;
+  double rho_K = 0;
+  double rho_K_cont = 0;
+  if ( s > 4*mK*mK )
+    rho_K = 2 * breakupMomentum(s, mK, mK) / m;
+  else
+    rho_K_cont = sqrt(4*mK*mK/s - 1);
+    
+  double numerator = 1.; 
+
+  complex<double> denominator = complex<double>(m0*m0 - s + g2*rho_K_cont, - g1*rho_pi - g2*rho_K);
+
+  return numerator / denominator;
+}
+
+complex<double>
 BW(double s, double m1, double m2,
    int J, double m0, double Gamma0)
 {
