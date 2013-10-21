@@ -75,24 +75,385 @@ breakupMomentum2(double s, double m1, double m2)
   return .25*(s - pow(m1+m2, 2))*(s - pow(m1-m2,2)) / s;
 }
 
+// complex version with analytic continuation below threshold
+complex<double>
+breakupMomentumComplex(double s, double m1, double m2) 
+{
+  double q2 = breakupMomentum2(s, m1, m2);
+  double q  = sqrt(fabs(q2));
+  if (q2 < 0)
+    return complex<double>(0, q);
+  else
+    return complex<double>(q, 0);
+} 
 
 complex<double>
-Flatte(double s, double m1, double m2, double m0, double g1)
+AMP_M(double s, double m1, double m2, double alpha1, double alpha2)
+{    
+  // parameter
+  //matrix<std::complex<double> > T(2, 2);
+  vector<TMatrixD> a(2, TMatrixD(2,2));
+  vector<TMatrixD> c(5, TMatrixD(2,2));
+  vector<TMatrixD> pol(3, TMatrixD(1,2));
+  TMatrixD sP(1,2);
+  int vesSheet(1);
+  int kachaev(1);
+  
+  const double f[2] = {0.1968, -0.0154};  // AMP Table 1, M solution: f_1^1 and f_2^1
+
+  a[0](0, 0) =  0.1131;  // AMP Table 1, M solution: f_2^2 // schmarrn, steht eigentlich fuer a11
+  a[0](0, 1) =  0.0150;  // AMP Table 1, M solution: f_1^3 // a12
+  a[0](1, 0) =  0.0150;  // AMP Table 1, M solution: f_1^3 // a12
+  a[0](1, 1) = -0.3216;  // AMP Table 1, M solution: f_2^3 // a22
+  a[1](0, 0) = f[0] * f[0];
+  a[1](0, 1) = f[0] * f[1];
+  a[1](1, 0) = f[1] * f[0];
+  a[1](1, 1) = f[1] * f[1];
+
+  c[0](0, 0) =  0.0337;                // AMP Table 1, M solution: c_11^0
+  c[1](0, 0) = -0.3185;                // AMP Table 1, M solution: c_11^1
+  c[2](0, 0) = -0.0942;                // AMP Table 1, M solution: c_11^2
+  c[3](0, 0) = -0.5927;                // AMP Table 1, M solution: c_11^3
+  c[4](0, 0) =  0.1957;                // AMP Table 1, M solution: c_11^4
+  c[0](0, 1) = c[0](1, 0) = -0.2826;  // AMP Table 1, M solution: c_12^0
+  c[1](0, 1) = c[1](1, 0) =  0.0918;  // AMP Table 1, M solution: c_12^1
+  c[2](0, 1) = c[2](1, 0) =  0.1669;  // AMP Table 1, M solution: c_12^2
+  c[3](0, 1) = c[3](1, 0) = -0.2082;  // AMP Table 1, M solution: c_12^3
+  c[4](0, 1) = c[4](1, 0) = -0.1386;  // AMP Table 1, M solution: c_12^4
+  c[0](1, 1) =  0.3010;                // AMP Table 1, M solution: c_22^0
+  c[1](1, 1) = -0.5140;                // AMP Table 1, M solution: c_22^1
+  c[2](1, 1) =  0.1176;                // AMP Table 1, M solution: c_22^2
+  c[3](1, 1) =  0.5204;                // AMP Table 1, M solution: c_22^3
+  c[4](1, 1) = -0.3977;                // AMP Table 1, M solution: c_22^4
+
+  pol[0](0, 0) =  0.1393;              // AMP Table 1, M solution: a_1^0
+  pol[1](0, 0) = -0.02775;             // AMP Table 1, M solution: a_1^1
+  pol[2](0, 0) =  0.3952;              // AMP Table 1, M solution: a_1^2
+  pol[0](0, 1) =  3.241;               // AMP Table 1, M solution: a_2^0
+  pol[1](0, 1) = -3.432;               // AMP Table 1, M solution: a_2^1
+  pol[2](0, 1) =  1.141;               // AMP Table 1, M solution: a_2^2
+  
+  sP(0, 0) = -0.0074;  // AMP Table 1, M solution: s_0
+  sP(0, 1) =  0.9828;  // AMP Table 1, M solution: s_1
+  
+  if (kachaev){
+    // change parameters according to Kachaev's prescription                                                                                            
+    c[4](0, 0) = 0; // was 0.1957;                                                                                                                     
+    c[4](1, 1) = 0; // was -0.3977;                                                                                                                    
+    a[0](0, 1) = 0; // was 0.0150                                                                                                                      
+    a[0](1, 0) = 0; // was 0.0150                                                                                                                      
+    // a[1] are the f's from the AMP paper                                                                                                             
+    a[1](0, 0) = 0;
+    a[1](0, 1) = 0;
+    a[1](1, 0) = 0;
+    a[1](1, 1) = 0;
+  }
+  
+  const complex<double> imag(0, 1);
+  
+  double m = sqrt(s);
+  if (fabs(s - sP(0, 1)) < 1e-6) {
+    m += 1e-6;
+    s = m * m;
+  }
+
+  double mKm = (mK+mKs)/2.;
+
+  const complex<double> qPiPi   = breakupMomentumComplex(s, mPi, mPi);
+  const complex<double> qPi0Pi0 = breakupMomentumComplex(s, mPi0, mPi0);
+  const complex<double> qKK     = breakupMomentumComplex(s, mK, mK);
+  const complex<double> qK0K0   = breakupMomentumComplex(s, mKs, mKs);
+  complex<double>       qKmKm   = breakupMomentumComplex(s, mKm, mKm );
+  
+  vector<complex<double> > rho(2);
+  if ( vesSheet ) {
+    if (qKmKm.imag() > 0)
+      qKmKm *= -1;
+    rho[0] = (2. * qPiPi) / m;
+    rho[1] = (2. * qKmKm) / m;
+  } else {
+    rho[0] = ((2. * qPiPi) / m + (2. * qPi0Pi0) / m) / 2.;
+    rho[1] = ((2. * qKK)   / m + (2. * qK0K0)   / m) / 2.;
+  }
+  
+  const double scale = (s / (4 * mKm * mKm)) - 1;
+  
+  vector<complex<double> > M(4);
+  for (unsigned int i = 0; i < 4; ++i) {
+    // translate 1x4 into 2x2
+    int x = i/2;
+    int y = i%2;
+    
+    for (unsigned int j = 0; j < 2; ++j) {
+      const complex<double> fa = 1. / (s - sP(0, j));
+      M[i] += fa * a[j](x,y);
+    }
+    
+    for (unsigned int j = 0; j < 5; ++j) {
+      const complex<double> sc = pow(scale, (int)j);
+      M[i] += sc * c[j](x,y);
+    }
+  }
+  
+  for (unsigned int i = 0; i < 4; ++i) {
+    int index = i/2;
+    if (i == 0 || i ==3)
+      M[i] -= imag*rho[index];
+  }
+  
+  //cout << M[0] << " " << M[1] << " " << M[2] << " " << M[3] << endl;
+  
+  // modification: off-diagonal terms set to 0
+  M[1] = 0;
+  M[2] = 0;
+
+  //vector<complex<double> > T(4);
+  complex<double> det = M[0]*M[3] - M[1]*M[2];
+  //T[0] =    M[3]/det;
+  //T[1] = -1*M[2]/det;
+  //T[2] = -1*M[1]/det;
+  //T[3] =    M[0]/det;
+  complex<double> alpha(alpha1, alpha2);
+  const complex<double> amp = M[3]/det - alpha * M[2]/det;
+  
+  //if (_debug)
+  //printDebug << name() << "(m = " << maxPrecision(mass) << " GeV) = "
+  //<< maxPrecisionDouble(amp) << endl;
+  
+  return amp;
+} 
+
+complex<double>
+AMP_K1_my(double s, double m1, double m2)
+{    
+  // parameter
+  //matrix<std::complex<double> > T(2, 2);
+  vector<TMatrixD> a(2, TMatrixD(2,2));
+  vector<TMatrixD> c(5, TMatrixD(2,2));
+  TMatrixD sP(1,2);
+  
+  sP(0, 0) = -0.0110;  // AMP Table 1, K1 solution: s_0
+  sP(0, 1) =  0.9247;  // AMP Table 1, K1 solution: s_1
+
+  const double f[2] = {-0.2242, 0.5829};  // AMP Table 1, K1 solution: f_1^1 and f_2^1
+
+  c[0](0, 0) =  0.7347;                // AMP Table 1, K1 solution: c_11^0
+  c[1](0, 0) = -0.5266;                // AMP Table 1, K1 solution: c_11^1
+  c[2](0, 0) =  2.6151;                // AMP Table 1, K1 solution: c_11^2
+  c[3](0, 0) = -1.7747;                // AMP Table 1, K1 solution: c_11^3
+  c[4](0, 0) =  0.8031;                // AMP Table 1, K1 solution: c_11^4
+  c[0](0, 1) = c[0](1, 0) = -3.2762;  // AMP Table 1, K1 solution: c_12^0
+  c[1](0, 1) = c[1](1, 0) = -0.6662;  // AMP Table 1, K1 solution: c_12^1
+  c[2](0, 1) = c[2](1, 0) =  0.8778;  // AMP Table 1, K1 solution: c_12^2
+  c[3](0, 1) = c[3](1, 0) = -2.1190;  // AMP Table 1, K1 solution: c_12^3
+  c[4](0, 1) = c[4](1, 0) =  0.2319;  // AMP Table 1, K1 solution: c_12^4
+  c[0](1, 1) = -2.6785;                // AMP Table 1, K1 solution: c_22^0
+  c[1](1, 1) =  7.9951;                // AMP Table 1, K1 solution: c_22^1
+  c[2](1, 1) =  5.5763;                // AMP Table 1, K1 solution: c_22^2
+  c[3](1, 1) = -1.4956;                // AMP Table 1, K1 solution: c_22^3
+  c[4](1, 1) =  0     ;                // AMP Table 1, K1 solution: c_22^4
+  
+  const complex<double> imag(0, 1);
+  
+  double m = sqrt(s);
+
+  double mKm = (mK+mKs)/2.;
+  
+  const complex<double> qPiPi   = breakupMomentumComplex(s, mPi, mPi);
+  const complex<double> qPi0Pi0 = breakupMomentumComplex(s, mPi0, mPi0);
+  const complex<double> qKK     = breakupMomentumComplex(s, mK, mK);
+  const complex<double> qK0K0   = breakupMomentumComplex(s, mKs, mKs);
+  //complex<double>       qKmKm   = breakupMomentumComplex(s, mKm, mKm );
+  
+  vector<complex<double> > rho(2);
+  rho[0] = ((2. * qPiPi) / m + (2. * qPi0Pi0) / m) / 2.;
+  rho[1] = ((2. * qKK)   / m + (2. * qK0K0)   / m) / 2.;
+
+  const double scale = (s / (4 * mKm * mKm)) - 1;
+  
+  vector<complex<double> > K(4);
+  //vector<complex<double> > Khat(4);
+  for (unsigned int i = 0; i < 4; ++i) {
+    // translate 1x4 into 2x2
+    int x = i/2;
+    int y = i%2;
+    
+    K[i] = 1;//( s - sP(0,0) ) / (4*mK*mK); //wrong in paper, comes later
+    K[i] /= ( sP(0,1) - s ) * ( sP(0,1) - sP(0,0) );
+    K[i] = f[x] * f[y];
+    
+    //cout << K[0] << " " << K[1] << " " << K[2] << " " << K[3] << endl;
+    
+    for (unsigned int j = 0; j < 5; ++j) {
+      const complex<double> sc = pow(scale, (int)j);
+      K[i] += sc * c[j](x,y);
+    }
+
+    K[i] *= ( s - sP(0,0) ) / (4*mK*mK);
+
+    //Khat[i] = K[i]/( s - sP(0,0) );
+  }
+
+  // invert
+  vector<complex<double> > M(4);
+  complex<double> det_K = (K[0]*K[3] - K[1]*K[2]);
+  det_K = 1. / det_K;
+  M[0] += det_K * K[3];
+  M[1] -= det_K * K[1];
+  M[2] -= det_K * K[2];
+  M[3] += det_K * K[0];
+
+  for (unsigned int i = 0; i < 4; ++i) {
+    int index = i/2;
+    if (i == 0 || i ==3)
+      M[i] -= imag*rho[index];
+  }
+  
+  // invert
+  vector<complex<double> > T(4);
+  complex<double> det_M = (M[0]*M[3] - M[1]*M[2]);
+  det_M = 1. / det_M;
+  T[0] += det_M * M[3];
+  T[1] -= det_M * M[1];
+  T[2] -= det_M * M[2];
+  T[3] += det_M * M[0];
+
+  // modification: off-diagonal terms set to 0
+  //T[1] = 0;
+  //T[2] = 0;
+  
+  const complex<double> amp = T[0];
+  
+  return amp;
+} 
+
+complex<double>
+AMP_Kred(double s, double m1, double m2, double alpha1, double alpha2)
+{    
+  const complex<double> zi(0, 1);
+  const double pi = 3.1415926;
+  //double pie = pi/180.;
+  //complex<double> zie = zi*pie;
+  complex<double> zieps = zi*0.00001;
+  //double pip = atan(1.)*4;
+  double empic2 = mPi*mPi*4.;
+  //double empi02 = mPi0*mPi0*4.;
+  //double emp = 0.137;        // mPim???
+  //double emrho2 = 0.77*0.77; // mRho???
+  double emK02 = mKs*mKs*4.;
+  double emKc2 = mK*mK*4.;
+  //double emK2 = 0.4956*0.4956*4.; // mKm???
+  //double ehadbot = 0.28;
+  //double ehadtop = 1.6;
+
+  // parameter
+  vector<TMatrixD> c(3, TMatrixD(2,2));
+  TMatrixD f(2,2);
+  
+  double s0 = 0.41*empic2/4.;             // S0
+  const double S[3] = {s0, 0.26261, 1.0811};  // S0, S1, S2
+  //const double S[3] = {s0, 0.26261, alpha1};  // S0, S1, S2
+
+  f(0,0) =  0.38949; // F11
+  f(0,1) =  0.33961; // F12
+  f(1,0) =  0.24150; // F21
+  f(1,1) = -0.78538; // F22
+    
+  c[0](0, 0) =  0.14760;                 // C110
+  c[1](0, 0) =  0.062181;                // C111
+  c[2](0, 0) =  0.029465;                // C112
+  c[0](0, 1) = c[0](1, 0) =  0.10914;    // C120
+  c[1](0, 1) = c[1](1, 0) = -0.17912;    // C121
+  c[2](0, 1) = c[2](1, 0) =  0.10758;    // C122
+  c[0](1, 1) = -0.27253;                 // C220
+  c[1](1, 1) =  0.79442;                 // C221
+  c[2](1, 1) = -0.49529;                 // C222
+  
+  
+  complex<double> zs = s + zieps;
+  complex<double> zrho1 = sqrt(1. - empic2/zs); // does that work??
+  //double rho1 = sqrt(1. - empic2/s);
+  //double rho2;
+  complex<double> zrho2 = sqrt(1. - emK02/zs)*0.5 + sqrt(1. - emKc2/zs)*0.5;
+  complex<double> zf1 = zrho1/pi * log((zrho1+1.)/(zrho1-1.));
+  complex<double> zf2 = zrho2/pi * log((zrho2+1.)/(zrho2-1.));
+  /*if (s > emK02) 
+    rho2 = abs(zrho2);
+  else
+  rho2 = 0;*/
+  double q2 = s/emKc2 - 1;
+  double q4 = q2*q2;
+  double q[3] = {1,q2,q4};
+
+  vector<double> AQL(4);
+  for (unsigned int i = 0; i < 4; ++i) {
+    // translate 1x4 into 2x2
+    int x = i/2;
+    int y = i%2;
+    
+    AQL[i] = 0;
+    for (unsigned int j = 0; j < 3; ++j)
+      AQL[i] += q[j] * c[j](x,y);
+  }
+
+  vector<double> APL1(4);
+  APL1[0] = f(0,0)*f(0,0);
+  APL1[1] = f(0,0)*f(1,0);
+  APL1[2] = f(0,0)*f(1,0);
+  APL1[3] = f(1,0)*f(1,0);
+  for (unsigned int i = 0; i < 4; ++i) 
+    APL1[i] /= (S[1] - s)*(S[1] - S[0]);
+  
+  vector<double> APL2(4);
+  APL2[0] = f(0,1)*f(0,1);
+  APL2[1] = f(0,1)*f(1,1);
+  APL2[2] = f(0,1)*f(1,1);
+  APL2[3] = f(1,1)*f(1,1);
+  for (unsigned int i = 0; i < 4; ++i) 
+    APL2[i] /= (S[2] - s)*(S[2] - S[0]);
+
+  vector<double> ALL(4);
+  for (unsigned int i = 0; i < 4; ++i){
+    ALL[i] = APL1[i] + APL2[i] + AQL[i];
+    ALL[i] *= (s - S[0])/emKc2;
+  }
+  double detLL = ALL[0]*ALL[3] - ALL[1]*ALL[2];
+  
+  complex<double> denominator = 1. + zf1 * ALL[0] + zf2 * ALL[3] + zf1 * zf2 * detLL;
+
+  vector<complex<double> > T(4);
+  for (unsigned int i = 0; i < 4; ++i)
+    T[i] = ALL[i];
+  T[0] += zf2 * detLL;
+  T[3] += zf1 * detLL;
+  
+  for (unsigned int i = 0; i < 4; ++i){
+    T[i] /= denominator;
+    T[i] *= emKc2/(s - S[0]);
+  }
+  
+  complex<double> alpha(alpha1, alpha2);
+  //complex<double> alpha(0.09, -0.5);
+  const complex<double> amp = T[0] + alpha * T[1];
+    
+  //if (sqrt(s) < 1.6) 
+  return amp;
+  //else return zi;
+} 
+
+complex<double>
+Flatte(double s, double m1, double m2, double m0, double g1, double g2)
 {
   double m = sqrt(s);
-  double g2 = 4.21 * g1;
-  
-  double rho_pi = 2 * breakupMomentum(s, m1, m2) / m;
-  double rho_K = 0;
-  double rho_K_cont = 0;
-  if ( s > 4*mK*mK )
-    rho_K = 2 * breakupMomentum(s, mK, mK) / m;
-  else
-    rho_K_cont = sqrt(4*mK*mK/s - 1);
-    
-  double numerator = 1.; 
 
-  complex<double> denominator = complex<double>(m0*m0 - s + g2*rho_K_cont, - g1*rho_pi - g2*rho_K);
+  const complex<double> imag(0, 1);
+  
+  double rho_pi = 2. * breakupMomentum(s, m1, m2) / m;
+  complex<double> rho_K   = 2. * breakupMomentumComplex(s, mK, mK) / m;
+
+  double numerator = m0 * g1*rho_pi; 
+
+  complex<double> denominator = m0*m0 - s - imag * m0 * ( g1*rho_pi + g2*rho_K);
 
   return numerator / denominator;
 }
