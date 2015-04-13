@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 2.6)
 project(mFP)
 
-set(MYFIT_SOURCES myFit.cc control.cc wave.cc event.cc likelihood.cc 3j.cc fitInfo.cc fitInfoDict.cc waveDict.cc)
-set(MASSDEP_SOURCES massDep.cc bw.cc fitInfo.cc fitInfoDict.cc fitModel.cc wave.cc event.cc waveDict.cc)
-set(PREDICT_SOURCES predict.cc bw.cc wave.cc event.cc fitInfo.cc fitInfoDict.cc waveDict.cc)
-set(MOMENTS_SOURCES moments.cc 3j.cc wave.cc event.cc waveDict.cc)
+set(MYFIT_SOURCES myFit.cc control.cc wave.cc event.cc likelihood.cc 3j.cc fitInfo.cc dict.cc)
+set(MASSDEP_SOURCES massDep.cc bw.cc fitInfo.cc fitModel.cc wave.cc event.cc dict.cc)
+set(PREDICT_SOURCES predict.cc bw.cc wave.cc event.cc fitInfo.cc dict.cc)
+set(MOMENTS_SOURCES moments.cc 3j.cc wave.cc event.cc fitInfo.cc dict.cc)
 
 # define path to macros and settings
 LIST( APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
@@ -49,16 +49,14 @@ MACRO (ROOT_GENERATE_DICTIONARY LIBNAME INFILES INCLUDE_DIRS_IN LINKDEF_FILE OUT
   ENDIF()
 ENDMACRO (ROOT_GENERATE_DICTIONARY)
 
+SET(DICTIONARY_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/wave.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/fitInfo.h)
 ROOT_GENERATE_DICTIONARY("${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}"
-                         "${CMAKE_CURRENT_SOURCE_DIR}/wave.h"
-                         "${CMAKE_CURRENT_SOURCE_DIR}"
+                         "${DICTIONARY_SOURCES}"
+	                 "${CMAKE_CURRENT_SOURCE_DIR}"
 			 "${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h"
-			 "${CMAKE_CURRENT_BINARY_DIR}/waveDict.cc")
-ROOT_GENERATE_DICTIONARY("${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}"
-                         "${CMAKE_CURRENT_SOURCE_DIR}/fitInfo.h"
-                         "${CMAKE_CURRENT_SOURCE_DIR}"
-			 "${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h"
-			 "${CMAKE_CURRENT_BINARY_DIR}/fitInfoDict.cc")
+			 "${CMAKE_CURRENT_BINARY_DIR}/dict.cc")
 
 add_executable(myFit ${MYFIT_SOURCES})
 TARGET_LINK_LIBRARIES(myFit ${ROOT_LIBS} -lMinuit2 -lMathMore)

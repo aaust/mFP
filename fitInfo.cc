@@ -20,6 +20,10 @@ fitInfo::fitInfo(const string& modelName_,
     }
 }
 
+fitInfo::~fitInfo()
+{
+}
+
 #ifndef __CINT__
 ClassImp(fitInfo)
 #endif

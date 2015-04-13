@@ -26,6 +26,7 @@ public:
 	  const std::vector<tStartingValue>& fitVars,
 	  size_t nBins_, double threshold_,
 	  double binWidth_, size_t nVars_);
+  ~fitInfo();
 
   size_t getNvars() const { return nVars; }
 
