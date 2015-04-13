@@ -61,6 +61,10 @@ ROOT_GENERATE_DICTIONARY("${CMAKE_SHARED_LIBRARY_PREFIX}${PROJECT_NAME}"
 			 "${CMAKE_CURRENT_BINARY_DIR}/fitInfoDict.cc")
 
 add_executable(myFit ${MYFIT_SOURCES})
+TARGET_LINK_LIBRARIES(myFit ${ROOT_LIBS} -lMinuit2 -lMathMore)
 add_executable(massDep ${MASSDEP_SOURCES})
+TARGET_LINK_LIBRARIES(massDep ${ROOT_LIBS} -lMinuit2 -lMathMore)
 add_executable(predict ${PREDICT_SOURCES})
+TARGET_LINK_LIBRARIES(predict ${ROOT_LIBS} -lMinuit2 -lMathMore)
 add_executable(moments ${MOMENTS_SOURCES})
+TARGET_LINK_LIBRARIES(moments ${ROOT_LIBS} -lMinuit2 -lMathMore)
