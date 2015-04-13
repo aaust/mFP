@@ -7,6 +7,7 @@
 class fitModel {
  public:
   fitModel() {};
+  virtual ~fitModel() {};
   virtual void evaluateAt(double mass_, const std::vector<double>& x) = 0;
   virtual std::complex<double> valueForWave(const char *name) const = 0;
 
