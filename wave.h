@@ -4,6 +4,7 @@
 #include <complex>
 #include <vector>
 #include <map>
+#include <iostream>
 
 #include "TH1.h"
 #include "TFitterMinuit.h"
