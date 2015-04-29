@@ -7,7 +7,6 @@ using namespace std;
 
 #include <string>
 #include <stdio.h>
-#include <omp.h>
 
 #include "TH2.h"
 #include "TH3.h"
