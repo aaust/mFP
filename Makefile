@@ -1,7 +1,7 @@
-MYFIT_OBJECTS=myFit.o control.o wave.o event.o likelihood.o 3j.o fitInfo.o fitInfoDict.o waveDict.o
-MASSDEP_OBJECTS=massDep.o bw.o fitInfo.o fitInfoDict.o fitModel.o wave.o event.o waveDict.o
-PREDICT_OBJECTS=predict.o bw.o wave.o event.o fitInfo.o fitInfoDict.o waveDict.o
-MOMENTS_OBJECTS=moments.o 3j.o wave.o event.o waveDict.o
+MYFIT_OBJECTS=myFit.o control.o wave.o event.o likelihood.o 3j.o fitInfo.o dict.o
+MASSDEP_OBJECTS=massDep.o bw.o fitInfo.o fitModel.o wave.o event.o dict.o
+PREDICT_OBJECTS=predict.o bw.o wave.o event.o fitInfo.o dict.o
+MOMENTS_OBJECTS=moments.o 3j.o wave.o event.o dict.o fitInfo.o
 OBJECTS=${MYFIT_OBJECTS} ${MASSDEP_OBJECTS} ${PREDICT_OBJECTS} ${MOMENTS_OBJECTS}
 DEBUGFLAGS=-g -fopenmp
 LDFLAGS=${DEBUGFLAGS}
@@ -26,19 +26,15 @@ moments: ${MOMENTS_OBJECTS}
 .PHONY: clean
 clean:
 	rm -f ${OBJECTS}
-	rm -f fitInfoDict.cc fitInfoDict.h waveDict.cc waveDict.h
-	rm -f myFit
+	rm -f dict.cc dict.h
+	rm -f myFit massDep predict moments
 
 .cc.o:
 	g++ -c ${CXXFLAGS} $< -o $@
 
-fitInfoDict.o: fitInfoDict.cc
-fitInfoDict.cc: fitInfo.h wave.h startingValue.h
-	rootcint -f $@ -c fitInfo.h+
-
-waveDict.o: waveDict.cc
-waveDict.cc: wave.h LinkDef.h
-	rootcint -f $@ -c wave.h LinkDef.h
+dict.o: dict.cc
+dict.cc: fitInfo.h wave.h startingValue.h LinkDef.h
+	rootcint -f $@ -c wave.h fitInfo.h LinkDef.h
 
 myFit.o: myFit.cc control.h wave.h likelihood.h gHist.h startingValue.h fitInfo.h
 massDep.o: massDep.cc bw.h startingValue.h fitInfo.h fitModel.h
