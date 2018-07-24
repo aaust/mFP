@@ -816,12 +816,17 @@ myFit()
   ROOT::Math::Functor func(myL, 14);
   minuit->SetFunction(func);
 
+  // set tolerance , etc...
+  // minuit->SetMaxFunctionCalls(1000000); // for Minuit/Minuit2
+  // minuit->SetMaxIterations(10000);  // for GSL
+  // minuit->SetTolerance(0.001);
+  //minuit->SetPrintLevel(1);
+
   ROOT::Math::Minimizer* fitamb = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
   fitamb->SetFunction(func);
   
   // Do not show fit results:
-  minuit->SetPrintLevel(0);
-  fitamb->SetPrintLevel(0);
+    fitamb->SetPrintLevel(0);
 
   //TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
 
@@ -906,9 +911,12 @@ myFit()
 
       // Run minimizer.
       //minuit->CreateMinimizer();
+      //minuit->SetPrintLevel(1);
       int iret = minuit->Minimize();
+      //minuit->PrintResults();
 
-      while ( iret != 0 ){
+      
+      while ( iret != 1 ){
 	// if fit did not converge, use random starting values until it does
 	for (size_t iSV = 0; iSV < nParams; iSV++)
 	  {
@@ -927,7 +935,7 @@ myFit()
 	      {
 		//if (j != 0)
 		minuit->SetVariable(j, startingValues[j].name.c_str(),
-				     vStartingValues[j], 10/*vStartingValues[j]*0.01*/);
+				     vStartingValues[j], 10);
 	      }
 	    else
 	      {
@@ -939,10 +947,12 @@ myFit()
 	
 	iret = minuit->Minimize();
       }
+      
       sw.Stop();
-      //      cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
+      cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
+      
 
-      if (iret == 0)
+      if (iret == 1)
 	{
 	  //	  vector<double> vStartingValue(nParams);
 	  
@@ -1326,7 +1336,7 @@ myFit()
   
   fulltime.Stop();
   cout << "Took " << fulltime.CpuTime() << " s CPU time, " << fulltime.RealTime() << " s wall time." << endl;
-  cout << "In " << failBins << " bins TFitterMinuit::Minimization DID not converge !" << endl;
+  cout << "In " << failBins << " bins the minimization DID not converge !" << endl;
 }
 
 
