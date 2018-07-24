@@ -12,7 +12,7 @@ using namespace std;
 #include "TH3.h"
 #include "TCanvas.h"
 #include "TRandom1.h"
-#include "TFitterMinuit.h"
+//#include "TFitterMinuit.h"
 #include "TStopwatch.h"
 #include "TDirectory.h"
 #include "TFile.h"
@@ -51,7 +51,7 @@ public:
   {
   }
 
-  ~combinedLikelihood() { for (size_t i = 0; i < myLs.size(); i++) delete myLs[i]; }
+  //~combinedLikelihood() { for (size_t i = 0; i < myLs.size(); i++) delete myLs[i]; }
 
   void
   addChannel(vector<event>& RDevents,
@@ -125,6 +125,11 @@ public:
 	//cout << "nevents = " << myLs[i]->eventsInBin() << " likelihood = " << myLs[i]->calc_rd_likelihood(x) << " - " << myLs[i]->calc_mc_likelihood(x) << endl;
       }
     return -result;
+  }
+
+  double operator()( const double * x) const {
+    std::vector<double> p(x , x+14);
+    return (*this)(p);
   }
 
   size_t getNChannels() const { return myLs.size(); }
@@ -388,7 +393,7 @@ myFit()
   double upper = threshold + nBins*binWidth;
 
   vector<wave> positive;
-  //positive.push_back(wave("P+", 1, 1, nBins, lower, upper, true));
+  positive.push_back(wave("P+", 1, 1, nBins, lower, upper, true));
   positive.push_back(wave("D+", 2, 1, nBins, lower, upper));
   //positive.push_back(wave("F+", 3, 1, nBins, lower, upper));
   //positive.push_back(wave("G+", 4, 1, 78, 1.7, upper));
@@ -396,8 +401,8 @@ myFit()
 
   vector<wave> negative;
   negative.push_back(wave("S0", 0, 0, nBins, lower, upper, true));
-  //negative.push_back(wave("P0", 1, 0, nBins, lower, upper));
-  //negative.push_back(wave("P-", 1, 1, nBins, lower, upper));
+  negative.push_back(wave("P0", 1, 0, nBins, lower, upper));
+  negative.push_back(wave("P-", 1, 1, nBins, lower, upper));
   negative.push_back(wave("D0", 2, 0, nBins, lower, upper));
   negative.push_back(wave("D-", 2, 1, nBins, lower, upper));
   //  negative.push_back(wave("G0", 4, 0, nBins, lower, upper));
@@ -807,11 +812,12 @@ myFit()
   TStopwatch sw;
   const size_t nParams = lastIdx + myL.getNChannels();
 
-  TFitterMinuit* minuit = new TFitterMinuit();
-  minuit->SetMinuitFCN(&myL);
+  ROOT::Math::Minimizer* minuit = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
+  ROOT::Math::Functor func(myL, 14);
+  minuit->SetFunction(func);
 
-  TFitterMinuit* fitamb = new TFitterMinuit();
-  fitamb->SetMinuitFCN(&myL);
+  ROOT::Math::Minimizer* fitamb = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
+  fitamb->SetFunction(func);
   
   // Do not show fit results:
   minuit->SetPrintLevel(0);
@@ -880,26 +886,26 @@ myFit()
 	  if (!startingValues[j].fixed)
 	    {
 	      //if (j != 0)
-		minuit->SetParameter(j, startingValues[j].name.c_str(),
-				   vStartingValues[j], 10/*vStartingValues[j]*0.01*/, 0, 0);
+	      minuit->SetVariable(j, (startingValues[j].name).c_str(),
+				   vStartingValues[j], 10);
 	    }
 	  else
 	    {
-	      minuit->SetParameter(j, startingValues[j].name.c_str(),
-				   vStartingValues[j], 1, 0, 0);
-	      minuit->FixParameter(j);
+	      minuit->SetVariable(j, startingValues[j].name.c_str(),
+				   vStartingValues[j], 1);
+	      minuit->FixVariable(j);
 	    }
 	}
       for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
 	{
-	  minuit->SetParameter(j, startingValues[j].name.c_str(),
-			       vStartingValues[j], .1, 0, 1);
+	  minuit->SetVariable(j, startingValues[j].name.c_str(),
+			       vStartingValues[j], .1);
 	  if (startingValues[j].fixed)
-	    minuit->FixParameter(j);
+	    minuit->FixVariable(j);
 	}
 
       // Run minimizer.
-      minuit->CreateMinimizer();
+      //minuit->CreateMinimizer();
       int iret = minuit->Minimize();
 
       while ( iret != 0 ){
@@ -920,14 +926,14 @@ myFit()
 	    if (!startingValues[j].fixed)
 	      {
 		//if (j != 0)
-		minuit->SetParameter(j, startingValues[j].name.c_str(),
-				     vStartingValues[j], 10/*vStartingValues[j]*0.01*/, 0, 0);
+		minuit->SetVariable(j, startingValues[j].name.c_str(),
+				     vStartingValues[j], 10/*vStartingValues[j]*0.01*/);
 	      }
 	    else
 	      {
-		minuit->SetParameter(j, startingValues[j].name.c_str(),
-				     vStartingValues[j], 1, 0, 0);
-		minuit->FixParameter(j);
+		minuit->SetVariable(j, startingValues[j].name.c_str(),
+				     vStartingValues[j], 1);
+		minuit->FixVariable(j);
 	      }
 	  }
 	
@@ -942,15 +948,15 @@ myFit()
 	  
 	  for (size_t j = 0; j < nParams; j++)
 	    {
-	      vStartingValues[j] = minuit->GetParameter(j);
+	      vStartingValues[j] = minuit->X()[j];
 	    }
 
 	  for (size_t i = 0; i < ws.size(); i++)
 	    for (size_t j = 0; j < ws[i].waves.size(); j++)
 	      {
 		size_t idx = ws[i].waves[j].getIndex();
-		values[idx] = minuit->GetParameter(idx);
-		values[idx+1] = minuit->GetParameter(idx+1);
+		values[idx] = minuit->X()[idx];
+		values[idx+1] = minuit->X()[idx+1];
 	      }
 
 	  if (!ambiguous){
@@ -972,31 +978,31 @@ myFit()
 			// 1) both free -> simply copy values to covMat
 			if (!w1.phaseLocked && !w2.phaseLocked)
 			  {
-			    (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-			    (*covMat)(idx1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
-			    (*covMat)(idx1+1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
-			    (*covMat)(idx1+1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov+1);
+			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1Cov, idx2Cov);
+			    (*covMat)(idx1,idx2+1) = minuit->CovMatrix(idx1Cov, idx2Cov+1);
+			    (*covMat)(idx1+1,idx2) = minuit->CovMatrix(idx1Cov+1, idx2Cov);
+			    (*covMat)(idx1+1,idx2+1) = minuit->CovMatrix(idx1Cov+1, idx2Cov+1);
 			  }
 			// 2) first free, second fixed -> covariances with Im(w1) are zero
 			else if (!w1.phaseLocked && w2.phaseLocked)
 			  {
-			    (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1Cov, idx2Cov);
 			    (*covMat)(idx1,idx2+1) = 0;
-			    (*covMat)(idx1+1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
+			    (*covMat)(idx1+1,idx2) = minuit->CovMatrix(idx1Cov+1, idx2Cov);
 			    (*covMat)(idx1+1,idx2+1) = 0;
 			  }
 			// 3) vice versa
 			else if (w1.phaseLocked && !w2.phaseLocked)
 			  {
-			    (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-			    (*covMat)(idx1,idx2+1) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
+			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1Cov, idx2Cov);
+			    (*covMat)(idx1,idx2+1) = minuit->CovMatrix(idx1Cov, idx2Cov+1);
 			    (*covMat)(idx1+1,idx2) = 0;
 			    (*covMat)(idx1+1,idx2+1) = 0;
 			  }
 			// 4) both fixed (impossible)
 			else
 			  {
-			    (*covMat)(idx1,idx2) = minuit->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1Cov, idx2Cov);
 			    (*covMat)(idx1,idx2+1) = 0;
 			    (*covMat)(idx1+1,idx2) = 0;
 			    (*covMat)(idx1+1,idx2+1) = 0;
@@ -1008,8 +1014,8 @@ myFit()
 	    outTree->Fill();
 	  }
 	  
-	  for (int j = 0; j < minuit->GetNumberTotalParameters(); j++)
-	    startingValues[j].value = minuit->GetParameter(j);
+	  for (int j = 0; j < 14/*minuit->GetNumberTotalParameters()*/; j++)
+	    startingValues[j].value = minuit->X()[j];
 	  
 	  gHist.getHist("hMClikelihood", "MC likelihood of result", nBins, lower, upper)
 	    ->SetBinContent(iBin+1, myL.calc_mc_likelihood(vStartingValues));
@@ -1032,14 +1038,14 @@ myFit()
 	  
 	  if (myL.getNChannels() == 2)
 	    {
-	      hBR->SetBinContent(iBin+1, minuit->GetParameter(nParams - 1));
-	      hBR->SetBinError(iBin+1, minuit->GetParError(nParams - 1));
+	      hBR->SetBinContent(iBin+1, minuit->X()[nParams - 1]);
+	      //hBR->SetBinError(iBin+1, minuit->GetParError(nParams - 1));
 	    }
 
 	  vector<double> result;
-	  for (int iPar = 0; iPar < minuit->GetNumberTotalParameters(); iPar++)
+	  for (int iPar = 0; iPar < 14/*minuit->GetNumberTotalParameters()*/; iPar++)
 	    {
-	      result.push_back(minuit->GetParameter(iPar));
+	      result.push_back(minuit->X()[iPar]);
 	    }
 
 
@@ -1156,26 +1162,26 @@ myFit()
 		{
 		  if (!startingValues[j].fixed /*|| j < 4*/)
 		    {
-		      fitamb->SetParameter(j, startingValues[j].name.c_str(),
-					   ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
+		      fitamb->SetVariable(j, startingValues[j].name.c_str(),
+					   ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/);
 		    }
 		  else
 		    {
-		      fitamb->SetParameter(j, startingValues[j].name.c_str(),
-					   ambiguous[n][j], 1, 0, 0);
-		      fitamb->FixParameter(j);
+		      fitamb->SetVariable(j, startingValues[j].name.c_str(),
+					   ambiguous[n][j], 1);
+		      fitamb->FixVariable(j);
 		    }
 		}
 	      for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
 		{
-		  fitamb->SetParameter(j, startingValues[j].name.c_str(),
-				       vStartingValues[j], .1, 0, 1);
+		  fitamb->SetVariable(j, startingValues[j].name.c_str(),
+				       vStartingValues[j], .1);
 		  if (startingValues[j].fixed)
-		    fitamb->FixParameter(j);
+		    fitamb->FixVariable(j);
 		}
 	      
 	      // Run minimizer.
-	      fitamb->CreateMinimizer();
+	      //fitamb->CreateMinimizer();
 	      int amret = fitamb->Minimize();
 	      
 	      // if fit did not converge, use new random starting values until it does
@@ -1191,22 +1197,22 @@ myFit()
 		  {
 		    if (!startingValues[j].fixed /*|| j < 4*/)
 		      {
-			fitamb->SetParameter(j, startingValues[j].name.c_str(),
-					     ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/, 0, 0);
+			fitamb->SetVariable(j, startingValues[j].name.c_str(),
+					     ambiguous[n][j], 10/*ambiguous[n][j]*0.01*/);
 		      }
 		    else
 		      {
-			fitamb->SetParameter(j, startingValues[j].name.c_str(),
-					     ambiguous[n][j], 1, 0, 0);
-			fitamb->FixParameter(j);
+			fitamb->SetVariable(j, startingValues[j].name.c_str(),
+					     ambiguous[n][j], 1);
+			fitamb->FixVariable(j);
 		      }
 		  }
 		for (size_t j = nParams - myL.getNChannels(); j < nParams; j++)
 		  {
-		    fitamb->SetParameter(j, startingValues[j].name.c_str(),
-					 vStartingValues[j], .1, 0, 1);
+		    fitamb->SetVariable(j, startingValues[j].name.c_str(),
+					 vStartingValues[j], .1);
 		    if (startingValues[j].fixed)
-		      fitamb->FixParameter(j);
+		      fitamb->FixVariable(j);
 		  }
 		amret = fitamb->Minimize();
 	      }
@@ -1218,15 +1224,15 @@ myFit()
 		  
 		  for (int i = 0; i < 4; i++)
 		    {
-		      positiveStart[i] = fitamb->GetParameter(i);
+		      positiveStart[i] = fitamb->X()[i];
 		    }
 		  
 		  for (size_t i = 0; i < ws.size(); i++)
 		    for (size_t j = 0; j < ws[i].waves.size(); j++)
 		      {
 			size_t idx = ws[i].waves[j].getIndex();
-			values[idx] = fitamb->GetParameter(idx);
-			values[idx+1] = fitamb->GetParameter(idx+1);
+			values[idx] = fitamb->X()[idx];
+			values[idx+1] = fitamb->X()[idx+1];
 		      }
 		  
 		  for (size_t i1 = 0; i1 < ws.size(); i1++)
@@ -1247,31 +1253,31 @@ myFit()
 			      // 1) both free -> simply copy values to covMat
 			      if (!w1.phaseLocked && !w2.phaseLocked)
 				{
-				  (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-				  (*covMat)(idx1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
-				  (*covMat)(idx1+1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
-				  (*covMat)(idx1+1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov+1);
+				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1Cov, idx2Cov);
+				  (*covMat)(idx1,idx2+1) = fitamb->CovMatrix(idx1Cov, idx2Cov+1);
+				  (*covMat)(idx1+1,idx2) = fitamb->CovMatrix(idx1Cov+1, idx2Cov);
+				  (*covMat)(idx1+1,idx2+1) = fitamb->CovMatrix(idx1Cov+1, idx2Cov+1);
 				}
 			      // 2) first free, second fixed -> covariances with Im(w1) are zero
 			      else if (!w1.phaseLocked && w2.phaseLocked)
 				{
-				  (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1Cov, idx2Cov);
 				  (*covMat)(idx1,idx2+1) = 0;
-				  (*covMat)(idx1+1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov+1, idx2Cov);
+				  (*covMat)(idx1+1,idx2) = fitamb->CovMatrix(idx1Cov+1, idx2Cov);
 				  (*covMat)(idx1+1,idx2+1) = 0;
 				}
 			      // 3) vice versa
 			      else if (w1.phaseLocked && !w2.phaseLocked)
 				{
-				  (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
-				  (*covMat)(idx1,idx2+1) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov+1);
+				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1Cov, idx2Cov);
+				  (*covMat)(idx1,idx2+1) = fitamb->CovMatrix(idx1Cov, idx2Cov+1);
 				  (*covMat)(idx1+1,idx2) = 0;
 				  (*covMat)(idx1+1,idx2+1) = 0;
 				}
 			      // 4) both fixed (impossible)
 			      else
 				{
-				  (*covMat)(idx1,idx2) = fitamb->GetCovarianceMatrixElement(idx1Cov, idx2Cov);
+				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1Cov, idx2Cov);
 				  (*covMat)(idx1,idx2+1) = 0;
 				  (*covMat)(idx1+1,idx2) = 0;
 				  (*covMat)(idx1+1,idx2+1) = 0;

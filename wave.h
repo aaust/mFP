@@ -7,7 +7,8 @@
 #include <iostream>
 
 #include "TH1.h"
-#include "TFitterMinuit.h"
+//#include "TFitterMinuit.h"
+#include "Math/Minimizer.h"
 
 using namespace std;
 
@@ -35,7 +36,7 @@ struct wave {
   // Thanks to the brilliance of Minuit2, the covariance matrix doesn't
   // contain the fixed parameters, making the mapping of fit parameters
   // to covariance matrix elements awkward.  This should help.
-  size_t idxInCovariance(const TFitterMinuit* minuit) const;
+  size_t idxInCovariance(const ROOT::Math::Minimizer* minuit) const;
 
   const string& getName() const { return name; }
   size_t getL() const { return l; }
@@ -43,8 +44,8 @@ struct wave {
   void buildHists(int nBins, double lower, double upper);
   TH1* getHistIntensity() const { return histIntensity; }
   TH1* getHistPhase(const wave& other);
-  void fillHistIntensity(int iBin, const TFitterMinuit* minuit);
-  void fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit);
+  void fillHistIntensity(int iBin, const ROOT::Math::Minimizer* minuit);
+  void fillHistPhase(int iBin, const wave& other, const ROOT::Math::Minimizer* minuit);
 
   ClassDefNV(wave, 1)
 };
