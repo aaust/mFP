@@ -256,8 +256,8 @@ decomposeMomentError(int L, int M, const waveset& ws, const ROOT::Math::Minimize
 	      double errRe2 = 0;//minuit->GetParError(w2.getIndex());
 	      double errIm2 = 0;//minuit->GetParError(w2.getIndex() + 1);
 
-	      double covReRe = minuit->CovMatrix(w1.idxInCovariance(minuit),
-								  w2.idxInCovariance(minuit));
+	      double covReRe = minuit->CovMatrix(w1.getIndex(),
+						 w2.getIndex());
 
 	      // The covariance between the imaginary parts is only
 	      // non-zero if neither is fixed.
@@ -265,8 +265,8 @@ decomposeMomentError(int L, int M, const waveset& ws, const ROOT::Math::Minimize
 	      if (!minuit->IsFixedVariable(w1.getIndex() + 1)
 		  && !minuit->IsFixedVariable(w2.getIndex() + 1))
 		{
-		  covImIm = minuit->CovMatrix(w1.idxInCovariance(minuit) + 1,
-					      w2.idxInCovariance(minuit) + 1);
+		  covImIm = minuit->CovMatrix(w1.getIndex() + 1,
+					      w2.getIndex() + 1);
 		}
 
 	      // value += coeff*(x[w1.getIndex()]*x[w2.getIndex()] - x[w1.getIndex()+1]*x[w1.getIndex()+1]);

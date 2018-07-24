@@ -49,14 +49,14 @@ wave::getHistPhase(const wave& other)
 // the correct indices into the covariance matrix.  Therefore this
 // contortion ... which carries the assumption also made above that we
 // never fix real parts.
-size_t
-wave::idxInCovariance(const ROOT::Math::Minimizer* minuit) const
-{
-  size_t countFixedBelow = 0;
-  for (size_t i = 0; i < idx; i++)
-    countFixedBelow += minuit->IsFixedVariable(i);
-  return idx - countFixedBelow;
-}
+// size_t
+// wave::idxInCovariance(const ROOT::Math::Minimizer* minuit) const
+// {
+//   size_t countFixedBelow = 0;
+//   for (size_t i = 0; i < idx; i++)
+//     countFixedBelow += minuit->IsFixedVariable(i);
+//   return idx - countFixedBelow;
+// }
 
   
 void
@@ -70,8 +70,8 @@ wave::fillHistIntensity(int iBin, const ROOT::Math::Minimizer* minuit)
     error = 2*abs(a)*minuit->Errors()[idx];
   else
     {
-      size_t idxCov = idxInCovariance(minuit);
-      double cov = minuit->CovMatrix(idxCov, idxCov + 1);
+      //size_t idxCov = idxInCovariance(minuit);
+      double cov = minuit->CovMatrix(idx, idx + 1);
 
       error = 2*(sqrt(pow(real(a) * minuit->Errors()[idx], 2)
                       + pow(imag(a) * minuit->Errors()[idx+1], 2)
@@ -138,34 +138,20 @@ wave::fillHistPhase(int iBin, const wave& other, const ROOT::Math::Minimizer* mi
 	}
       else
 	{
-	  bool swapped = false;
 	  size_t idxFix = idx;
 	  size_t idxFree = other.getIndex();
 	  if (minuit->IsFixedVariable(other.getIndex() + 1))
-	    {
-	      swapped = true;
-	      std::swap(idxFix, idxFree);
-	    }
+	    std::swap(idxFix, idxFree);
+	    
 	  TMatrixDSym cov(3);
-	  size_t idxCovFix, idxCovFree;
-	  if (swapped)
-	    {
-	      idxCovFix = other.idxInCovariance(minuit);
-	      idxCovFree = idxInCovariance(minuit);
-	    }
-	  else
-	    {
-	      idxCovFix = idxInCovariance(minuit);
-	      idxCovFree = other.idxInCovariance(minuit);
-	    }	  
 
-	  cov(0,0) = minuit->CovMatrix(idxCovFix, idxCovFix);
-	  cov(1,1) = minuit->CovMatrix(idxCovFree, idxCovFree);
-	  cov(2,2) = minuit->CovMatrix(idxCovFree + 1, idxCovFree + 1);
+	  cov(0,0) = minuit->CovMatrix(idxFix, idxFix);
+	  cov(1,1) = minuit->CovMatrix(idxFree, idxFree);
+	  cov(2,2) = minuit->CovMatrix(idxFree + 1, idxFree + 1);
 
-	  cov(0,1) = cov(1,0) = minuit->CovMatrix(idxCovFix, idxCovFree);
-	  cov(0,2) = cov(2,0) = minuit->CovMatrix(idxCovFix, idxCovFree + 1);
-	  cov(1,2) = cov(2,1) = minuit->CovMatrix(idxCovFree, idxCovFree + 1);
+	  cov(0,1) = cov(1,0) = minuit->CovMatrix(idxFix, idxFree);
+	  cov(0,2) = cov(2,0) = minuit->CovMatrix(idxFix, idxFree + 1);
+	  cov(1,2) = cov(2,1) = minuit->CovMatrix(idxFree, idxFree + 1);
 
 	  double values[3] = { minuit->X()[idxFix],
 			       minuit->X()[idxFree],
@@ -223,20 +209,21 @@ wave::fillHistPhase(int iBin, const wave& other, const ROOT::Math::Minimizer* mi
   else
     {   
       TMatrixDSym cov(4);
-      size_t idxCov, idxCovOther;
-      idxCov = idxInCovariance(minuit);
-      idxCovOther = other.idxInCovariance(minuit);
-      cov(0,0) = minuit->CovMatrix(idxCov, idxCov);
-      cov(1,1) = minuit->CovMatrix(idxCov + 1, idxCov + 1);
-      cov(2,2) = minuit->CovMatrix(idxCovOther, idxCovOther);
-      cov(3,3) = minuit->CovMatrix(idxCovOther + 1, idxCovOther + 1);
+      size_t idxOther = other.getIndex();
+      // size_t idxCov, idxCovOther;
+      // idxCov = idxInCovariance(minuit);
+      // idxCovOther = other.idxInCovariance(minuit);
+      cov(0,0) = minuit->CovMatrix(idx, idx);
+      cov(1,1) = minuit->CovMatrix(idx + 1, idx + 1);
+      cov(2,2) = minuit->CovMatrix(idxOther, idxOther);
+      cov(3,3) = minuit->CovMatrix(idxOther + 1, idxOther + 1);
 
-      cov(0,1) = cov(1,0) = minuit->CovMatrix(idxCov, idxCov + 1);
-      cov(0,2) = cov(2,0) = minuit->CovMatrix(idxCov, idxCovOther);
-      cov(0,3) = cov(3,0) = minuit->CovMatrix(idxCov, idxCovOther + 1);
-      cov(1,2) = cov(2,1) = minuit->CovMatrix(idxCov + 1, idxCovOther);
-      cov(1,3) = cov(3,1) = minuit->CovMatrix(idxCov + 1, idxCovOther + 1);
-      cov(2,3) = cov(3,2) = minuit->CovMatrix(idxCovOther, idxCovOther + 1);
+      cov(0,1) = cov(1,0) = minuit->CovMatrix(idx, idx + 1);
+      cov(0,2) = cov(2,0) = minuit->CovMatrix(idx, idxOther);
+      cov(0,3) = cov(3,0) = minuit->CovMatrix(idx, idxOther + 1);
+      cov(1,2) = cov(2,1) = minuit->CovMatrix(idx + 1, idxOther);
+      cov(1,3) = cov(3,1) = minuit->CovMatrix(idx + 1, idxOther + 1);
+      cov(2,3) = cov(3,2) = minuit->CovMatrix(idxOther, idxOther + 1);
 
       double values[4] = { minuit->X()[idx], minuit->X()[idx + 1],
 			   minuit->X()[other.getIndex()], minuit->X()[other.getIndex()+1] };

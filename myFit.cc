@@ -913,7 +913,7 @@ myFit()
       //minuit->CreateMinimizer();
       //minuit->SetPrintLevel(1);
       int iret = minuit->Minimize();
-      //minuit->PrintResults();
+      minuit->PrintResults();
 
       
       while ( iret != 1 ){
@@ -975,44 +975,42 @@ myFit()
 		{
 		  const wave& w1 = ws[i1].waves[j1];
 		  size_t idx1 = w1.getIndex();
-		  size_t idx1Cov = w1.idxInCovariance(minuit);
 		  
 		  for (size_t i2 = 0; i2 < ws.size(); i2++)
 		    for (size_t j2 = 0; j2 < ws[i2].waves.size(); j2++)
 		      {
 			const wave& w2 = ws[i2].waves[j2];
 			size_t idx2 = w2.getIndex();
-			size_t idx2Cov = w2.idxInCovariance(minuit);
 			
 			// Four possibilities:
 			// 1) both free -> simply copy values to covMat
 			if (!w1.phaseLocked && !w2.phaseLocked)
 			  {
-			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1Cov, idx2Cov);
-			    (*covMat)(idx1,idx2+1) = minuit->CovMatrix(idx1Cov, idx2Cov+1);
-			    (*covMat)(idx1+1,idx2) = minuit->CovMatrix(idx1Cov+1, idx2Cov);
-			    (*covMat)(idx1+1,idx2+1) = minuit->CovMatrix(idx1Cov+1, idx2Cov+1);
+			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1, idx2);
+			    (*covMat)(idx1,idx2+1) = minuit->CovMatrix(idx1, idx2+1);
+			    (*covMat)(idx1+1,idx2) = minuit->CovMatrix(idx1+1, idx2);
+			    (*covMat)(idx1+1,idx2+1) = minuit->CovMatrix(idx1+1, idx2+1);
 			  }
 			// 2) first free, second fixed -> covariances with Im(w1) are zero
 			else if (!w1.phaseLocked && w2.phaseLocked)
 			  {
-			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1Cov, idx2Cov);
+			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1, idx2);
 			    (*covMat)(idx1,idx2+1) = 0;
-			    (*covMat)(idx1+1,idx2) = minuit->CovMatrix(idx1Cov+1, idx2Cov);
+			    (*covMat)(idx1+1,idx2) = minuit->CovMatrix(idx1+1, idx2);
 			    (*covMat)(idx1+1,idx2+1) = 0;
 			  }
 			// 3) vice versa
 			else if (w1.phaseLocked && !w2.phaseLocked)
 			  {
-			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1Cov, idx2Cov);
-			    (*covMat)(idx1,idx2+1) = minuit->CovMatrix(idx1Cov, idx2Cov+1);
+			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1, idx2);
+			    (*covMat)(idx1,idx2+1) = minuit->CovMatrix(idx1, idx2+1);
 			    (*covMat)(idx1+1,idx2) = 0;
 			    (*covMat)(idx1+1,idx2+1) = 0;
 			  }
 			// 4) both fixed (impossible)
 			else
 			  {
-			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1Cov, idx2Cov);
+			    (*covMat)(idx1,idx2) = minuit->CovMatrix(idx1, idx2);
 			    (*covMat)(idx1,idx2+1) = 0;
 			    (*covMat)(idx1+1,idx2) = 0;
 			    (*covMat)(idx1+1,idx2+1) = 0;
@@ -1250,44 +1248,42 @@ myFit()
 		      {
 			const wave& w1 = ws[i1].waves[j1];
 			size_t idx1 = w1.getIndex();
-			size_t idx1Cov = w1.idxInCovariance(fitamb);
 			
 			for (size_t i2 = 0; i2 < ws.size(); i2++)
 			  for (size_t j2 = 0; j2 < ws[i2].waves.size(); j2++)
 			    {
 			      const wave& w2 = ws[i2].waves[j2];
 			      size_t idx2 = w2.getIndex();
-			      size_t idx2Cov = w2.idxInCovariance(fitamb);
 			      
 			      // Four possibilities:
 			      // 1) both free -> simply copy values to covMat
 			      if (!w1.phaseLocked && !w2.phaseLocked)
 				{
-				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1Cov, idx2Cov);
-				  (*covMat)(idx1,idx2+1) = fitamb->CovMatrix(idx1Cov, idx2Cov+1);
-				  (*covMat)(idx1+1,idx2) = fitamb->CovMatrix(idx1Cov+1, idx2Cov);
-				  (*covMat)(idx1+1,idx2+1) = fitamb->CovMatrix(idx1Cov+1, idx2Cov+1);
+				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1, idx2);
+				  (*covMat)(idx1,idx2+1) = fitamb->CovMatrix(idx1, idx2+1);
+				  (*covMat)(idx1+1,idx2) = fitamb->CovMatrix(idx1+1, idx2);
+				  (*covMat)(idx1+1,idx2+1) = fitamb->CovMatrix(idx1+1, idx2+1);
 				}
 			      // 2) first free, second fixed -> covariances with Im(w1) are zero
 			      else if (!w1.phaseLocked && w2.phaseLocked)
 				{
-				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1Cov, idx2Cov);
+				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1, idx2);
 				  (*covMat)(idx1,idx2+1) = 0;
-				  (*covMat)(idx1+1,idx2) = fitamb->CovMatrix(idx1Cov+1, idx2Cov);
+				  (*covMat)(idx1+1,idx2) = fitamb->CovMatrix(idx1+1, idx2);
 				  (*covMat)(idx1+1,idx2+1) = 0;
 				}
 			      // 3) vice versa
 			      else if (w1.phaseLocked && !w2.phaseLocked)
 				{
-				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1Cov, idx2Cov);
-				  (*covMat)(idx1,idx2+1) = fitamb->CovMatrix(idx1Cov, idx2Cov+1);
+				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1, idx2);
+				  (*covMat)(idx1,idx2+1) = fitamb->CovMatrix(idx1, idx2+1);
 				  (*covMat)(idx1+1,idx2) = 0;
 				  (*covMat)(idx1+1,idx2+1) = 0;
 				}
 			      // 4) both fixed (impossible)
 			      else
 				{
-				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1Cov, idx2Cov);
+				  (*covMat)(idx1,idx2) = fitamb->CovMatrix(idx1, idx2);
 				  (*covMat)(idx1,idx2+1) = 0;
 				  (*covMat)(idx1+1,idx2) = 0;
 				  (*covMat)(idx1+1,idx2+1) = 0;
