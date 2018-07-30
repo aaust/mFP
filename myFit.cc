@@ -12,7 +12,6 @@ using namespace std;
 #include "TH3.h"
 #include "TCanvas.h"
 #include "TRandom1.h"
-//#include "TFitterMinuit.h"
 #include "TStopwatch.h"
 #include "TDirectory.h"
 #include "TFile.h"
@@ -58,7 +57,7 @@ public:
 	     vector<event>& MCevents,
 	     vector<event>& MCallEvents)
   {
-    size_t idxBranching = /*2*NWAVES*/ 16 + this->getNChannels();
+    size_t idxBranching = 2*ws.getNwaves() + this->getNChannels();
     myLs.push_back(new likelihood(ws, RDevents, MCevents, MCallEvents, nBins, threshold, binWidth, idxBranching));
   }
 
@@ -128,7 +127,7 @@ public:
   }
 
   double operator()( const double * x) const {
-    std::vector<double> p(x , x+14);
+    std::vector<double> p(x , x + 2*ws.getNwaves() + this->getNChannels());
     return (*this)(p);
   }
 
@@ -405,7 +404,7 @@ myFit()
   negative.push_back(wave("P-", 1, 1, nBins, lower, upper));
   negative.push_back(wave("D0", 2, 0, nBins, lower, upper));
   negative.push_back(wave("D-", 2, 1, nBins, lower, upper));
-  //  negative.push_back(wave("G0", 4, 0, nBins, lower, upper));
+  //negative.push_back(wave("G0", 4, 0, nBins, lower, upper));
   //negative.push_back(wave("G0", 4, 0, 78, 1.7, upper));
   //negative.push_back(wave("G-", 4, 1, 78, 1.7, upper));
  
@@ -540,21 +539,16 @@ myFit()
 	      float tPr;
 	      float theta;
 	      float phi;
-	      float likeK, likePi;
 
 	      tree->SetBranchAddress("mKpi", &mX);
 	      tree->SetBranchAddress("tPrime", &tPr);
 	      tree->SetBranchAddress("theta", &theta);
 	      tree->SetBranchAddress("phi", &phi);
-	      //tree->SetBranchAddress("likeK", &likeK);
-	      //tree->SetBranchAddress("likePi", &likePi);
 
 	      RDevents.reserve(tree->GetEntries());
 	      for (Long_t i = 0; i < tree->GetEntries(); i++)
 		{
 		  tree->GetEntry(i);
-		  //if (likeK != -1 && likePi > 2*likeK)
-		  //continue;
 		  event e(mX, tPr, theta, phi);
 		  RDevents.push_back(e);
 		  fillRDhists(e);
@@ -813,14 +807,15 @@ myFit()
   const size_t nParams = lastIdx + myL.getNChannels();
 
   ROOT::Math::Minimizer* minuit = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
-  ROOT::Math::Functor func(myL, 14);
+  ROOT::Math::Functor func(myL, 2*ws.getNwaves() + myL.getNChannels());
   minuit->SetFunction(func);
 
   // set tolerance , etc...
-  // minuit->SetMaxFunctionCalls(1000000); // for Minuit/Minuit2
-  // minuit->SetMaxIterations(10000);  // for GSL
-  // minuit->SetTolerance(0.001);
-  //minuit->SetPrintLevel(1);
+  minuit->SetErrorDef(0.5); //statistical scale for negative log likelihood
+  // minuit->SetMaxFunctionCalls(1000000);
+  // minuit->SetMaxIterations(10000);
+  minuit->SetTolerance(0.1);
+  // minuit->SetPrintLevel(1);
 
   ROOT::Math::Minimizer* fitamb = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
   fitamb->SetFunction(func);
@@ -913,8 +908,6 @@ myFit()
       //minuit->CreateMinimizer();
       //minuit->SetPrintLevel(1);
       int iret = minuit->Minimize();
-      minuit->PrintResults();
-
       
       while ( iret != 1 ){
 	// if fit did not converge, use random starting values until it does
@@ -947,7 +940,9 @@ myFit()
 	
 	iret = minuit->Minimize();
       }
-      
+
+      minuit->PrintResults();
+
       sw.Stop();
       cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
       
@@ -1094,7 +1089,7 @@ myFit()
 	    {
 	      // calculate coefficients
 	      vector<double> amplitudes;
-	      for (int k = 0; k < lastIdx; k++)
+	      for (unsigned int k = 0; k < lastIdx; k++)
 		amplitudes.push_back(values[k]);
 	    
 	      vector<complex<double> > input;
