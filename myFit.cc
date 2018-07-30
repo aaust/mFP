@@ -815,14 +815,16 @@ myFit()
   // minuit->SetMaxFunctionCalls(1000000);
   // minuit->SetMaxIterations(10000);
   minuit->SetTolerance(0.1);
-  // minuit->SetPrintLevel(1);
+  minuit->SetPrintLevel(0);
 
   ROOT::Math::Minimizer* fitamb = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
   fitamb->SetFunction(func);
   
-  // Do not show fit results:
-    fitamb->SetPrintLevel(0);
-
+  // set tolerance , etc...
+  fitamb->SetPrintLevel(0);
+  fitamb->SetErrorDef(0.5); //statistical scale for negative log likelihood
+  fitamb->SetTolerance(0.1);
+  
   //TH3* hPredict = new TH3D("hPredict", "prediction", nBins, 0, nBins, 100, -1, 1, 100, -M_PI, M_PI);
 
   TH2* hthpre = new TH2D("hthpre", "prediction for cos(#theta)", nBins, threshold, threshold + nBins*binWidth, 100, -1, 1);
@@ -905,8 +907,6 @@ myFit()
 	}
 
       // Run minimizer.
-      //minuit->CreateMinimizer();
-      //minuit->SetPrintLevel(1);
       int iret = minuit->Minimize();
       
       while ( iret != 1 ){
@@ -944,7 +944,7 @@ myFit()
       minuit->PrintResults();
 
       sw.Stop();
-      cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
+      cout << "Fit converged after " << sw.CpuTime() << " s." << endl;
       
 
       if (iret == 1)
@@ -1016,9 +1016,9 @@ myFit()
 	    NMCevents = myL.MCeventsInBin();
 	    outTree->Fill();
 	  }
-	  
-	  for (int j = 0; j < 14/*minuit->GetNumberTotalParameters()*/; j++)
-	    startingValues[j].value = minuit->X()[j];
+
+	  for (size_t iPar = 0; iPar < nParams; iPar++)
+	    startingValues[iPar].value = minuit->X()[iPar];
 	  
 	  gHist.getHist("hMClikelihood", "MC likelihood of result", nBins, lower, upper)
 	    ->SetBinContent(iBin+1, myL.calc_mc_likelihood(vStartingValues));
@@ -1042,11 +1042,11 @@ myFit()
 	  if (myL.getNChannels() == 2)
 	    {
 	      hBR->SetBinContent(iBin+1, minuit->X()[nParams - 1]);
-	      //hBR->SetBinError(iBin+1, minuit->GetParError(nParams - 1));
+	      hBR->SetBinError(iBin+1, minuit->Errors()[nParams - 1]);
 	    }
 
 	  vector<double> result;
-	  for (int iPar = 0; iPar < 14/*minuit->GetNumberTotalParameters()*/; iPar++)
+	  for (size_t iPar = 0; iPar < nParams; iPar++)
 	    {
 	      result.push_back(minuit->X()[iPar]);
 	    }
