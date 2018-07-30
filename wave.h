@@ -7,7 +7,6 @@
 #include <iostream>
 
 #include "TH1.h"
-//#include "TFitterMinuit.h"
 #include "Math/Minimizer.h"
 
 using namespace std;

@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <iostream>
 
-//#include "TFitterMinuit.h"
 #include "Math/Minimizer.h"
 #include "TMatrixDSym.h"
 #include "TVectorD.h"

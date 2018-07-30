@@ -5,7 +5,6 @@
 
 using namespace std;
 
-//#include "TFitterMinuit.h"
 #include "Math/Minimizer.h"
 #include "Math/SpecFunc.h"
 
