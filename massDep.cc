@@ -1,12 +1,16 @@
 #include <vector>
 #include <complex>
+#include <assert.h>
 using namespace std;
 
 #include "TObject.h"
 #include "TStopwatch.h"
 #include "TFile.h"
 #include "TTree.h"
-#include "TFitterMinuit.h"
+#include "Minuit2/FCNBase.h"
+#include "Math/Minimizer.h"
+#include "Math/Factory.h"
+#include "Math/Functor.h"
 #include "TVectorD.h"
 #include "TMatrixDSym.h"
 #include "TDecompChol.h"
@@ -25,8 +29,13 @@ public:
 
   double Up() const { return 1.; }
   double operator()(const vector<double>& x) const;
+ 
+  double operator()( const double* x ) const { 
+    std::vector<double> p(x, x+info->getNvars()); 
+    return (*this)(p); 
+  }
 
-  ~chiSquare() { delete model; }
+  //~chiSquare() { delete model; }
 
 private:
   TTree *tree;
@@ -218,6 +227,8 @@ int main(int argc, char **argv)
       return 1;
     }
 
+  cout << info->getModelName() << endl;
+
   TRandom1* gRandom = new TRandom1();
   gRandom->SetSeed2(0); // truely random!!!
 
@@ -257,8 +268,9 @@ int main(int argc, char **argv)
 
   chiSquare fitFunc(tree);
 
-  TFitterMinuit* minuit = new TFitterMinuit();
-  minuit->SetMinuitFCN(&fitFunc);
+  ROOT::Math::Minimizer* minuit = ROOT::Math::Factory::CreateMinimizer("Minuit2", "");
+  ROOT::Math::Functor func(fitFunc, info->getNvars());
+  minuit->SetFunction(func);
 
   double vals[] = //{ 50, 50 , 1.275, 0.185, 50, 50, 1.515, 0.07, 50, 50, 2.13, .27, 200, 0, 1, .065, 50, 50, 1.5, 0.104, 0, 100, 1.730, 0.100, 50, 50, 1.37, .3, 50, 50, 0.5, 0.5, -0.5, 50, 50, 0.5, 0.5, -0.5} //WA102 
   //{ 50, 50, 1.275, 0.185, 50, 50, 1.32, .107, 50, 50, 1.515, 0.07, 200, 0, 1, .065, 100, 0, 1.5, 0.104, 100, 0, 1.730, 0.100, 50, 50, 0.5, -0.5, 0.5, 50, 50, 0.5, -0.5, 0.5} // f2/a2
@@ -304,90 +316,100 @@ int main(int argc, char **argv)
   //10, 10, 1.505, 0.109, 10, 10, 1.72, 0.135, 10, 10, 1.300, 0.350, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}// start over with pdg
   ;
   
-  minuit->SetParameter(0, "f_2 strength Re", vals[0], 1, 0, 0);
+  minuit->SetVariable(0, "f_2 strength Re", vals[0], 1);
   //minuit->FixParameter(0);
-  minuit->SetParameter(1, "f_2 strength Im", vals[1], 1, 0, 0);
+  minuit->SetVariable(1, "f_2 strength Im", vals[1], 1);
   //minuit->FixParameter(1);
-  minuit->SetParameter(2, "f_2 mass", vals[2], 1, 1.20, 1.35);
+  minuit->SetVariable(2, "f_2 mass", vals[2], 1);
+  minuit->SetVariableLimits(2, 1.2, 1.35);
   //minuit->FixParameter(2);
-  minuit->SetParameter(3, "f_2 width", vals[3], 1, 0.1, 0.5);
+  minuit->SetVariable(3, "f_2 width", vals[3], 1);
+  minuit->SetVariableLimits(3, 0.1, 0.5);
   //minuit->FixParameter(3);
-  minuit->SetParameter(4, "f_2' strength Re", vals[4], 1, 0, 0);
+  minuit->SetVariable(4, "f_2' strength Re", vals[4], 1);
   //minuit->FixParameter(4);
-  minuit->SetParameter(5, "f_2' strength Im", vals[5], 1, 0, 0);
+  minuit->SetVariable(5, "f_2' strength Im", vals[5], 1);
   //minuit->FixParameter(5);
-  minuit->SetParameter(6, "f_2' mass", vals[6], 1, 1.45, 1.6);
+  minuit->SetVariable(6, "f_2' mass", vals[6], 1);
+  minuit->SetVariableLimits(6, 1.45, 1.6);
   //minuit->FixParameter(6);
-  minuit->SetParameter(7, "f_2' width", vals[7], 1, 0.05, 0.5);
+  minuit->SetVariable(7, "f_2' width", vals[7], 1);
+  minuit->SetVariableLimits(7, 0.05, 0.5);
   //minuit->FixParameter(7);
   
-  minuit->SetParameter(8, "D BG strength Re", vals[8], 1, 0, 0);
+  minuit->SetVariable(8, "D BG strength Re", vals[8], 1);
   //minuit->FixParameter(8);
-  minuit->SetParameter(9, "D BG strength Im", vals[9], 1, 0, 0);
+  minuit->SetVariable(9, "D BG strength Im", vals[9], 1);
   ///minuit->FixParameter(9);
-  //minuit->SetParameter(10, "D BG const", vals[10], 1, 0, 0);
+  //minuit->SetVariable(10, "D BG const", vals[10], 1);
   //minuit->FixParameter(10);
-  minuit->SetParameter(10, "D BG linear", vals[10], .1, 0, 0);
+  minuit->SetVariable(10, "D BG linear", vals[10], .1);
   //minuit->FixParameter(10);
-  minuit->SetParameter(11, "D BG quadratic", vals[11], .1, 0, 0);
+  minuit->SetVariable(11, "D BG quadratic", vals[11], .1);
   //minuit->FixParameter(11);
   
   /*  
-  minuit->SetParameter(12, "f_0(980) strength Re", vals[12], 1, 0, 0);
+  minuit->SetVariable(12, "f_0(980) strength Re", vals[12], 1);
   //minuit->FixParameter(12);
-  minuit->SetParameter(13, "f_0(980) strength Im", vals[13], 1, 0, 0);
+  minuit->SetVariable(13, "f_0(980) strength Im", vals[13], 1);
   //minuit->FixParameter(13);
-  minuit->SetParameter(14, "f_0(980) mass", vals[14], 0.01, 0, 0);
+  minuit->SetVariable(14, "f_0(980) mass", vals[14], 0.01);
   minuit->FixParameter(14);
-  minuit->SetParameter(15, "f_0(980) width", vals[15], 0.01, 0, 0);
+  minuit->SetVariable(15, "f_0(980) width", vals[15], 0.01);
   minuit->FixParameter(15);
   */
 
-  //minuit->SetParameter(12, "S BG strength Re", vals[12], 1, 0, 0);
+  //minuit->SetVariable(12, "S BG strength Re", vals[12], 1);
   //minuit->FixParameter(12);
-  minuit->SetParameter(12, "S BG strength Re", vals[12], 1, 0, 0);
+  minuit->SetVariable(12, "S BG strength Re", vals[12], 1);
   //minuit->FixParameter(12);
-  //minuit->SetParameter(12, "S BG const", vals[12], 1, 0, 0);
+  //minuit->SetVariable(12, "S BG const", vals[12], 1);
   //minuit->FixParameter(12);
-  minuit->SetParameter(13, "S BG linear", vals[13], .1, 0, 0);
+  minuit->SetVariable(13, "S BG linear", vals[13], .1);
   //minuit->FixParameter(13);
-  minuit->SetParameter(14, "S BG quadratic", vals[14], .1, 0, 0);
+  minuit->SetVariable(14, "S BG quadratic", vals[14], .1);
   //minuit->FixParameter(14);
 
-  minuit->SetParameter(15, "f_0(1500) strength Re", vals[15], 1, 0, 0);
+  minuit->SetVariable(15, "f_0(1500) strength Re", vals[15], 1);
   //minuit->FixParameter(15);
-  minuit->SetParameter(16, "f_0(1500) strength Im", vals[16], 1, 0, 0);
+  minuit->SetVariable(16, "f_0(1500) strength Im", vals[16], 1);
   //minuit->FixParameter(16);
-  minuit->SetParameter(17, "f_0(1500) mass", vals[17], 1, 1.45, 1.55);
+  minuit->SetVariable(17, "f_0(1500) mass", vals[17], 1);
+  minuit->SetVariableLimits(17, 1.45, 1.55);
   //minuit->FixParameter(17);
-  minuit->SetParameter(18, "f_0(1500) width", vals[18], 1, 0.05, 0.15);
+  minuit->SetVariable(18, "f_0(1500) width", vals[18], 1);
+  minuit->SetVariableLimits(18, 0.05, 0.15);
   //minuit->FixParameter(18);
-  minuit->SetParameter(19, "f_0(1710) strength Re", vals[19], 1, 0, 0);
+  minuit->SetVariable(19, "f_0(1710) strength Re", vals[19], 1);
   //minuit->FixParameter(19);
-  minuit->SetParameter(20, "f_0(1710) strength Im", vals[20], 1, 0, 0);
+  minuit->SetVariable(20, "f_0(1710) strength Im", vals[20], 1);
   //minuit->FixParameter(20);
-  minuit->SetParameter(21, "f_0(1710) mass", vals[21], 1, 1.65, 1.75);
+  minuit->SetVariable(21, "f_0(1710) mass", vals[21], 1);
+  minuit->SetVariableLimits(21, 1.65, 1.75);
   //minuit->FixParameter(21);
-  minuit->SetParameter(22, "f_0(1710) width", vals[22], 1, 0.05, 0.2);
+  minuit->SetVariable(22, "f_0(1710) width", vals[22], 1);
+  minuit->SetVariableLimits(22, 0.05, 0.2);
   //minuit->FixParameter(22);
   
-  minuit->SetParameter(23, "f_0(1370) strength Re", vals[23], 1, 0, 0);
+  minuit->SetVariable(23, "f_0(1370) strength Re", vals[23], 1);
   //minuit->FixParameter(23);
-  minuit->SetParameter(24, "f_0(1370) strength Im", vals[24], 1, 0, 0);
+  minuit->SetVariable(24, "f_0(1370) strength Im", vals[24], 1);
   //minuit->FixParameter(24);
-  minuit->SetParameter(25, "f_0(1370) mass", vals[25], 1, 1.25, 1.40);
+  minuit->SetVariable(25, "f_0(1370) mass", vals[25], 1);
+  minuit->SetVariableLimits(25, 1.25, 1.4);
   //minuit->FixParameter(25);
-  minuit->SetParameter(26, "f_0(1370) width", vals[26], 1, 0.05, 0.40);
+  minuit->SetVariable(26, "f_0(1370) width", vals[26], 1);
+  minuit->SetVariableLimits(26, 0.05, 0.40);
   //minuit->FixParameter(26);
   
   /*
-  minuit->SetParameter(24, "f_0(1370) strength Re", vals[24], 1, 0, 0);
+  minuit->SetVariable(24, "f_0(1370) strength Re", vals[24], 1);
   //minuit->FixParameter(24);
-  minuit->SetParameter(25, "f_0(1370) strength Im", vals[25], 1, 0, 0);
+  minuit->SetVariable(25, "f_0(1370) strength Im", vals[25], 1);
   //minuit->FixParameter(25);
-  minuit->SetParameter(26, "f_0(1370) mass", vals[26], 0.01, 0, 0);
+  minuit->SetVariable(26, "f_0(1370) mass", vals[26], 0.01);
   minuit->FixParameter(26);
-  minuit->SetParameter(27, "f_0(1370) width", vals[27], 0.01, 0, 0);
+  minuit->SetVariable(27, "f_0(1370) width", vals[27], 0.01);
   minuit->FixParameter(27);
   */
   
@@ -398,20 +420,19 @@ int main(int argc, char **argv)
     
   TStopwatch sw;
   sw.Start();
-  minuit->CreateMinimizer();
   int iret = minuit->Minimize();
   sw.Stop();
   cout << "iret = " << iret << " after " << sw.CpuTime() << " s." << endl;
   if (iret)
-    minuit->PrintResults(1, 0.);
+    minuit->PrintResults();
 
   //if (!iret)
     {
       fitModel* model = fitModel::getFitModelForName(info->getModelName());
 
       vector<double> x;
-      for (int i = 0; i < minuit->GetNumberTotalParameters(); i++)
-	x.push_back(minuit->GetParameter(i));
+      for (size_t i = 0; i < info->getNvars(); i++)
+	x.push_back(minuit->X()[i]);
 
       for (size_t i = 0; i < info->getNbins(); i++)
 	{
@@ -428,7 +449,7 @@ int main(int argc, char **argv)
 	  complex<double> SwaveBG = model->valueForWave("S0BG");
 
 	  complex<double> f2 = model->valueForWave("f2");
-	  complex<double> f2prime = model->valueForWave("f2prime");
+	  //complex<double> f2prime = model->valueForWave("f2prime");
 
 	  complex<double> f01370 = model->valueForWave("f01370");
 	  complex<double> f01500 = model->valueForWave("f01500");
@@ -454,7 +475,7 @@ int main(int argc, char **argv)
 	  gHist.getHist("hPhaseSD", "phase D - S", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, arg(Swave/Dwave));
 	  
 	  gHist.getHist("hf2", "f2(1270)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, norm(f2));
-	  gHist.getHist("hf2prime", "f2'(1525)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, norm(f2prime));
+	  //gHist.getHist("hf2prime", "f2'(1525)", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, norm(f2prime));
 
 	  gHist.getHist("hf01370", "f0 1370", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, norm(f01370));
 	  gHist.getHist("hf01500", "f01500", info->getNbins(), info->getLower(), info->getUpper())->SetBinContent(i, norm(f01500));
