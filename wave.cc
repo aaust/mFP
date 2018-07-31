@@ -43,21 +43,6 @@ wave::getHistPhase(const wave& other)
 }
 
 
-// The covariance matrix doesn't contain columns corresponding to the
-// fixed parameters, and there seems to be no way foreseen to obtain
-// the correct indices into the covariance matrix.  Therefore this
-// contortion ... which carries the assumption also made above that we
-// never fix real parts.
-// size_t
-// wave::idxInCovariance(const ROOT::Math::Minimizer* minuit) const
-// {
-//   size_t countFixedBelow = 0;
-//   for (size_t i = 0; i < idx; i++)
-//     countFixedBelow += minuit->IsFixedVariable(i);
-//   return idx - countFixedBelow;
-// }
-
-  
 void
 wave::fillHistIntensity(int iBin, const ROOT::Math::Minimizer* minuit)
 {
@@ -69,7 +54,6 @@ wave::fillHistIntensity(int iBin, const ROOT::Math::Minimizer* minuit)
     error = 2*abs(a)*minuit->Errors()[idx];
   else
     {
-      //size_t idxCov = idxInCovariance(minuit);
       double cov = minuit->CovMatrix(idx, idx + 1);
 
       error = 2*(sqrt(pow(real(a) * minuit->Errors()[idx], 2)
@@ -209,9 +193,6 @@ wave::fillHistPhase(int iBin, const wave& other, const ROOT::Math::Minimizer* mi
     {   
       TMatrixDSym cov(4);
       size_t idxOther = other.getIndex();
-      // size_t idxCov, idxCovOther;
-      // idxCov = idxInCovariance(minuit);
-      // idxCovOther = other.idxInCovariance(minuit);
       cov(0,0) = minuit->CovMatrix(idx, idx);
       cov(1,1) = minuit->CovMatrix(idx + 1, idx + 1);
       cov(2,2) = minuit->CovMatrix(idxOther, idxOther);
