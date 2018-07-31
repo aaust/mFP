@@ -33,8 +33,8 @@ double decomposeMoment(int L, int M, const waveset& ws, const vector<double>& x)
 double decomposeMoment(int L, int M, const waveset& ws, const double* x);
 
 double decomposeMomentError(const std::pair<size_t, size_t>& LM,
-			    const waveset& ws, const TFitterMinuit* minuit);
-double decomposeMomentError(int L, int M, const waveset& ws, const TFitterMinuit* minuit);
+			    const waveset& ws, const ROOT::Math::Minimizer* minuit);
+double decomposeMomentError(int L, int M, const waveset& ws, const ROOT::Math::Minimizer* minuit);
 
 
 #endif

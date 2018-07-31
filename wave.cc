@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 
-#include "TFitterMinuit.h"
+#include "Math/Minimizer.h"
 #include "TMatrixDSym.h"
 #include "TVectorD.h"
 
@@ -48,40 +48,40 @@ wave::getHistPhase(const wave& other)
 // the correct indices into the covariance matrix.  Therefore this
 // contortion ... which carries the assumption also made above that we
 // never fix real parts.
-size_t
-wave::idxInCovariance(const TFitterMinuit* minuit) const
-{
-  size_t countFixedBelow = 0;
-  for (size_t i = 0; i < idx; i++)
-    countFixedBelow += minuit->IsFixed(i);
-  return idx - countFixedBelow;
-}
+// size_t
+// wave::idxInCovariance(const ROOT::Math::Minimizer* minuit) const
+// {
+//   size_t countFixedBelow = 0;
+//   for (size_t i = 0; i < idx; i++)
+//     countFixedBelow += minuit->IsFixedVariable(i);
+//   return idx - countFixedBelow;
+// }
 
   
 void
-wave::fillHistIntensity(int iBin, const TFitterMinuit* minuit)
+wave::fillHistIntensity(int iBin, const ROOT::Math::Minimizer* minuit)
 {
-  complex<double> a(minuit->GetParameter(idx), minuit->GetParameter(idx+1));
+  complex<double> a(minuit->X()[idx], minuit->X()[idx+1]);
 
   histIntensity->SetBinContent(iBin+1,norm(a));
   double error;
-  if (minuit->IsFixed(idx+1))
-    error = 2*abs(a)*minuit->GetParError(idx);
+  if (minuit->IsFixedVariable(idx+1))
+    error = 2*abs(a)*minuit->Errors()[idx];
   else
     {
-      size_t idxCov = idxInCovariance(minuit);
-      double cov = minuit->GetCovarianceMatrixElement(idxCov, idxCov + 1);
+      //size_t idxCov = idxInCovariance(minuit);
+      double cov = minuit->CovMatrix(idx, idx + 1);
 
-      error = 2*(sqrt(pow(real(a) * minuit->GetParError(idx), 2)
-		      + pow(imag(a) * minuit->GetParError(idx+1), 2)
-		      + (2*real(a)*imag(a)*cov)));
+      error = 2*(sqrt(pow(real(a) * minuit->Errors()[idx], 2)
+                      + pow(imag(a) * minuit->Errors()[idx+1], 2)
+      		      + (2*real(a)*imag(a)*cov)));
     }
   histIntensity->SetBinError(iBin+1, error);
 }  
 
 
 void
-wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
+wave::fillHistPhase(int iBin, const wave& other, const ROOT::Math::Minimizer* minuit)
 {
   TH1* h = 0;
   if (mHistPhase.find(other.name) == mHistPhase.end())
@@ -100,8 +100,8 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
 
   h = mHistPhase[other.name];
 
-  complex<double> a1(minuit->GetParameter(idx), minuit->GetParameter(idx + 1));
-  complex<double> a2(minuit->GetParameter(other.getIndex()), minuit->GetParameter(other.getIndex()+1));
+  complex<double> a1(minuit->X()[idx], minuit->X()[idx + 1]);
+  complex<double> a2(minuit->X()[other.getIndex()], minuit->X()[other.getIndex()+1]);
 
   double phi = arg(a1 / a2);
   double oldPhase = 0;
@@ -128,47 +128,33 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
   // 2. Im(a2) fixed.
   // 3. Neither fixed.
 
-  if (minuit->IsFixed(idx + 1) || minuit->IsFixed(other.getIndex() + 1))
+  if (minuit->IsFixedVariable(idx + 1) || minuit->IsFixedVariable(other.getIndex() + 1))
     {
-      if (minuit->IsFixed(idx + 1) && minuit->IsFixed(other.getIndex() + 1))
+      if (minuit->IsFixedVariable(idx + 1) && minuit->IsFixedVariable(other.getIndex() + 1))
 	{
 	  // Can't happen, ignore.
 	  h->SetBinError(iBin+1, 0.2);
 	}
       else
 	{
-	  bool swapped = false;
 	  size_t idxFix = idx;
 	  size_t idxFree = other.getIndex();
-	  if (minuit->IsFixed(other.getIndex() + 1))
-	    {
-	      swapped = true;
-	      std::swap(idxFix, idxFree);
-	    }
+	  if (minuit->IsFixedVariable(other.getIndex() + 1))
+	    std::swap(idxFix, idxFree);
+	    
 	  TMatrixDSym cov(3);
-	  size_t idxCovFix, idxCovFree;
-	  if (swapped)
-	    {
-	      idxCovFix = other.idxInCovariance(minuit);
-	      idxCovFree = idxInCovariance(minuit);
-	    }
-	  else
-	    {
-	      idxCovFix = idxInCovariance(minuit);
-	      idxCovFree = other.idxInCovariance(minuit);
-	    }	  
 
-	  cov(0,0) = minuit->GetCovarianceMatrixElement(idxCovFix, idxCovFix);
-	  cov(1,1) = minuit->GetCovarianceMatrixElement(idxCovFree, idxCovFree);
-	  cov(2,2) = minuit->GetCovarianceMatrixElement(idxCovFree + 1, idxCovFree + 1);
+	  cov(0,0) = minuit->CovMatrix(idxFix, idxFix);
+	  cov(1,1) = minuit->CovMatrix(idxFree, idxFree);
+	  cov(2,2) = minuit->CovMatrix(idxFree + 1, idxFree + 1);
 
-	  cov(0,1) = cov(1,0) = minuit->GetCovarianceMatrixElement(idxCovFix, idxCovFree);
-	  cov(0,2) = cov(2,0) = minuit->GetCovarianceMatrixElement(idxCovFix, idxCovFree + 1);
-	  cov(1,2) = cov(2,1) = minuit->GetCovarianceMatrixElement(idxCovFree, idxCovFree + 1);
+	  cov(0,1) = cov(1,0) = minuit->CovMatrix(idxFix, idxFree);
+	  cov(0,2) = cov(2,0) = minuit->CovMatrix(idxFix, idxFree + 1);
+	  cov(1,2) = cov(2,1) = minuit->CovMatrix(idxFree, idxFree + 1);
 
-	  double values[3] = { minuit->GetParameter(idxFix),
-			       minuit->GetParameter(idxFree),
-			       minuit->GetParameter(idxFree + 1) };
+	  double values[3] = { minuit->X()[idxFix],
+			       minuit->X()[idxFree],
+			       minuit->X()[idxFree + 1] };
 	  TVectorD gradient(3);
 	  // The algorithm follows the one in TF1::Derivative() :
 	  //   df(x) = (4 D(h/2) - D(h)) / 3
@@ -222,23 +208,24 @@ wave::fillHistPhase(int iBin, const wave& other, const TFitterMinuit* minuit)
   else
     {   
       TMatrixDSym cov(4);
-      size_t idxCov, idxCovOther;
-      idxCov = idxInCovariance(minuit);
-      idxCovOther = other.idxInCovariance(minuit);
-      cov(0,0) = minuit->GetCovarianceMatrixElement(idxCov, idxCov);
-      cov(1,1) = minuit->GetCovarianceMatrixElement(idxCov + 1, idxCov + 1);
-      cov(2,2) = minuit->GetCovarianceMatrixElement(idxCovOther, idxCovOther);
-      cov(3,3) = minuit->GetCovarianceMatrixElement(idxCovOther + 1, idxCovOther + 1);
+      size_t idxOther = other.getIndex();
+      // size_t idxCov, idxCovOther;
+      // idxCov = idxInCovariance(minuit);
+      // idxCovOther = other.idxInCovariance(minuit);
+      cov(0,0) = minuit->CovMatrix(idx, idx);
+      cov(1,1) = minuit->CovMatrix(idx + 1, idx + 1);
+      cov(2,2) = minuit->CovMatrix(idxOther, idxOther);
+      cov(3,3) = minuit->CovMatrix(idxOther + 1, idxOther + 1);
 
-      cov(0,1) = cov(1,0) = minuit->GetCovarianceMatrixElement(idxCov, idxCov + 1);
-      cov(0,2) = cov(2,0) = minuit->GetCovarianceMatrixElement(idxCov, idxCovOther);
-      cov(0,3) = cov(3,0) = minuit->GetCovarianceMatrixElement(idxCov, idxCovOther + 1);
-      cov(1,2) = cov(2,1) = minuit->GetCovarianceMatrixElement(idxCov + 1, idxCovOther);
-      cov(1,3) = cov(3,1) = minuit->GetCovarianceMatrixElement(idxCov + 1, idxCovOther + 1);
-      cov(2,3) = cov(3,2) = minuit->GetCovarianceMatrixElement(idxCovOther, idxCovOther + 1);
+      cov(0,1) = cov(1,0) = minuit->CovMatrix(idx, idx + 1);
+      cov(0,2) = cov(2,0) = minuit->CovMatrix(idx, idxOther);
+      cov(0,3) = cov(3,0) = minuit->CovMatrix(idx, idxOther + 1);
+      cov(1,2) = cov(2,1) = minuit->CovMatrix(idx + 1, idxOther);
+      cov(1,3) = cov(3,1) = minuit->CovMatrix(idx + 1, idxOther + 1);
+      cov(2,3) = cov(3,2) = minuit->CovMatrix(idxOther, idxOther + 1);
 
-      double values[4] = { minuit->GetParameter(idx), minuit->GetParameter(idx + 1),
-			   minuit->GetParameter(other.getIndex()), minuit->GetParameter(other.getIndex()+1) };
+      double values[4] = { minuit->X()[idx], minuit->X()[idx + 1],
+			   minuit->X()[other.getIndex()], minuit->X()[other.getIndex()+1] };
       TVectorD gradient(4);
       // The algorithm follows the one in TF1::Derivative() :
       //   df(x) = (4 D(h/2) - D(h)) / 3

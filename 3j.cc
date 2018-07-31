@@ -5,7 +5,7 @@
 
 using namespace std;
 
-#include "TFitterMinuit.h"
+#include "Math/Minimizer.h"
 #include "Math/SpecFunc.h"
 
 #include "wave.h"
@@ -223,13 +223,13 @@ decomposeMoment(int L, int M, const waveset& ws, const double* x)
 
 double
 decomposeMomentError(const std::pair<size_t, size_t>& LM,
-		     const waveset& ws, const TFitterMinuit* minuit)
+		     const waveset& ws, const ROOT::Math::Minimizer* minuit)
 {
   return decomposeMomentError(LM.first, LM.second, ws, minuit);
 }
 
 double
-decomposeMomentError(int L, int M, const waveset& ws, const TFitterMinuit* minuit)
+decomposeMomentError(int L, int M, const waveset& ws, const ROOT::Math::Minimizer* minuit)
 {
   double resultSquare = 0;
   for (size_t iWs = 0; iWs < ws.size(); iWs++)
@@ -245,27 +245,27 @@ decomposeMomentError(int L, int M, const waveset& ws, const TFitterMinuit* minui
 	      const wave& w2 = w[iW2];
 	      double coeff = getCoefficient(eps, L, M, w1.l, w1.m, w2.l, w2.m);
 
-	      double re1 = minuit->GetParameter(w1.getIndex());
-	      double im1 = minuit->GetParameter(w1.getIndex() + 1);
-	      double re2 = minuit->GetParameter(w2.getIndex());
-	      double im2 = minuit->GetParameter(w2.getIndex() + 1);
+	      double re1 = minuit->X()[w1.getIndex()];
+	      double im1 = minuit->X()[w1.getIndex() + 1];
+	      double re2 = minuit->X()[w2.getIndex()];
+	      double im2 = minuit->X()[w2.getIndex() + 1];
 
-	      double errRe1 = minuit->GetParError(w1.getIndex());
-	      double errIm1 = minuit->GetParError(w1.getIndex() + 1);
-	      double errRe2 = minuit->GetParError(w2.getIndex());
-	      double errIm2 = minuit->GetParError(w2.getIndex() + 1);
+	      double errRe1 = 0;//minuit->GetParError(w1.getIndex());
+	      double errIm1 = 0;//minuit->GetParError(w1.getIndex() + 1);
+	      double errRe2 = 0;//minuit->GetParError(w2.getIndex());
+	      double errIm2 = 0;//minuit->GetParError(w2.getIndex() + 1);
 
-	      double covReRe = minuit->GetCovarianceMatrixElement(w1.idxInCovariance(minuit),
-								  w2.idxInCovariance(minuit));
+	      double covReRe = minuit->CovMatrix(w1.getIndex(),
+						 w2.getIndex());
 
 	      // The covariance between the imaginary parts is only
 	      // non-zero if neither is fixed.
 	      double covImIm = 0;
-	      if (!minuit->IsFixed(w1.getIndex() + 1)
-		  && !minuit->IsFixed(w2.getIndex() + 1))
+	      if (!minuit->IsFixedVariable(w1.getIndex() + 1)
+		  && !minuit->IsFixedVariable(w2.getIndex() + 1))
 		{
-		  covImIm = minuit->GetCovarianceMatrixElement(w1.idxInCovariance(minuit) + 1,
-							       w2.idxInCovariance(minuit) + 1);
+		  covImIm = minuit->CovMatrix(w1.getIndex() + 1,
+					      w2.getIndex() + 1);
 		}
 
 	      // value += coeff*(x[w1.getIndex()]*x[w2.getIndex()] - x[w1.getIndex()+1]*x[w1.getIndex()+1]);
